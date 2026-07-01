@@ -50,3 +50,10 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Se agregaron tokens reutilizables de color, tipografía y gradiente/glass en Tailwind/CSS variables: base/surface, accent from/to, risk high/medium/low, text primary/secondary, Space Grotesk, Inter y JetBrains Mono.
 - Se aplicó el sistema visual a login, set-password y placeholder home sin construir nuevas pantallas ni dashboard.
 - Pendiente: construir el orbe de riesgo cuando exista la lista de pedidos y reemplazar el placeholder por el layout real del dashboard.
+
+### [Fase 2] Motor de tareas — COMPLETADO
+- Se agregó `processOrderEvent(orderId)` como motor compartido e idempotente para leer `orders.estado_dropi`, clasificarlo vía `status_catalog`, crear/actualizar/cerrar tareas automáticas y marcar `orders.tarea_generada_para_estado`.
+- Se agregó webhook server-to-server `POST /api/webhooks/orders/status-changed`, protegido con `x-webhook-secret` (`WEBHOOK_SHARED_SECRET`), para que n8n notifique cambios de estado usando el `orders.id` interno.
+- Se agregó cron de reconciliación `GET /api/cron/reconcile-tasks`, protegido con `CRON_SECRET`, programado en Vercel cada 30 minutos para reprocesar órdenes activas cuyo estado no esté marcado como procesado.
+- Se agregaron placeholders server-only `WEBHOOK_SHARED_SECRET` y `CRON_SECRET` en `.env.example`.
+- Pendiente: actualizar los workflows de n8n para llamar el webhook después de persistir cambios de estado; eso se hará vía API REST de n8n, no en este repo.

@@ -1,0 +1,380 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { Database, Tables } from "@/lib/supabase/database.types";
+
+type Order = Tables<"orders">;
+type Task = Tables<"tasks">;
+type TaskType = Database["public"]["Enums"]["tipo_tarea_enum"];
+type TaskState = Database["public"]["Enums"]["estado_tarea_enum"];
+
+type DecisionCategory =
+  | "nuevo"
+  | "confirmado"
+  | "guia_generada"
+  | "en_ruta"
+  | "en_reparto"
+  | "recoger_oficina"
+  | "intento_fallido"
+  | "novedad"
+  | "proximo_a_llegar"
+  | "entregado"
+  | "cancelado"
+  | "devolucion"
+  | "sin_clasificar";
+
+type ProcessResult = {
+  action: string;
+  taskId?: number;
+  categoria: string;
+};
+
+type EnsureTaskOptions = {
+  order: Order;
+  tipo: TaskType;
+  titulo: string;
+  descripcion?: string | null;
+};
+
+const OPEN_TASK_STATES = ["pendiente", "en_progreso"] satisfies TaskState[];
+
+export class OrderNotFoundError extends Error {
+  constructor(orderId: number) {
+    super(`Order ${orderId} not found`);
+    this.name = "OrderNotFoundError";
+  }
+}
+
+function deadlineInTwoHours() {
+  return new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+}
+
+function automaticCloseMessage(estadoDropi: string | null) {
+  return `Cerrada automáticamente por cambio de estado a ${estadoDropi ?? "sin estado"}, no gestionada manualmente.`;
+}
+
+function appendCloseMessage(description: string | null, message: string) {
+  if (!description) {
+    return message;
+  }
+
+  if (description.includes(message)) {
+    return description;
+  }
+
+  return `${description}\n\n${message}`;
+}
+
+function getOrderNumber(order: Order) {
+  return order.numero_orden ?? String(order.id);
+}
+
+async function updateProcessedState(orderId: number, estadoDropi: string | null) {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("orders")
+    .update({ tarea_generada_para_estado: estadoDropi })
+    .eq("id", orderId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function loadOrder(orderId: number) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    throw new OrderNotFoundError(orderId);
+  }
+
+  return data;
+}
+
+async function lookupCategory(order: Order): Promise<DecisionCategory> {
+  if (!order.estado_dropi) {
+    return "sin_clasificar";
+  }
+
+  const supabase = createAdminClient();
+
+  if (order.transportadora) {
+    const { data, error } = await supabase
+      .from("status_catalog")
+      .select("categoria")
+      .eq("estado", order.estado_dropi)
+      .eq("transportadora", order.transportadora)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (data?.categoria) {
+      return data.categoria as DecisionCategory;
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("status_catalog")
+    .select("categoria")
+    .eq("estado", order.estado_dropi)
+    .is("transportadora", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data?.categoria ?? "sin_clasificar") as DecisionCategory;
+}
+
+async function findOpenTask(orderId: number, tipo: TaskType) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("order_id", orderId)
+    .eq("tipo", tipo)
+    .in("estado", OPEN_TASK_STATES)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+async function ensureOpenTask({
+  order,
+  tipo,
+  titulo,
+  descripcion = null,
+}: EnsureTaskOptions): Promise<ProcessResult> {
+  const existingTask = await findOpenTask(order.id, tipo);
+
+  if (existingTask) {
+    return {
+      action: "task_exists",
+      taskId: existingTask.id,
+      categoria: "",
+    };
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert({
+      order_id: order.id,
+      tipo,
+      titulo,
+      descripcion,
+      estado: "pendiente",
+      intento_numero: 1,
+      creado_por: "automatico",
+      fecha_limite: deadlineInTwoHours(),
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return {
+    action: "task_created",
+    taskId: data.id,
+    categoria: "",
+  };
+}
+
+async function updateFailedAttemptTask(order: Order) {
+  const tipo = "presionar_entrega";
+  const descripcion = `Estado Dropi: ${order.estado_dropi ?? "sin estado"}`;
+  const existingTask = await findOpenTask(order.id, tipo);
+
+  if (!existingTask) {
+    return ensureOpenTask({
+      order,
+      tipo,
+      titulo: "Presionar entrega, intento fallido",
+      descripcion,
+    });
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({
+      intento_numero: existingTask.intento_numero + 1,
+      descripcion,
+      fecha_limite: deadlineInTwoHours(),
+    })
+    .eq("id", existingTask.id)
+    .select("id")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return {
+    action: "task_updated",
+    taskId: data.id,
+    categoria: "",
+  };
+}
+
+async function buildNovedadDescription(order: Order) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("status_history")
+    .select("novedad, notas")
+    .eq("order_id", order.id)
+    .order("registrado_en", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  const notes = [data?.novedad, data?.notas].filter(Boolean).join(" | ");
+
+  return notes
+    ? `Estado Dropi: ${order.estado_dropi ?? "sin estado"}\nNovedad/notas: ${notes}`
+    : `Estado Dropi: ${order.estado_dropi ?? "sin estado"}`;
+}
+
+async function closeOpenTasks(order: Order) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("order_id", order.id)
+    .in("estado", OPEN_TASK_STATES);
+
+  if (error) {
+    throw error;
+  }
+
+  const openTasks = data ?? [];
+  const closeMessage = automaticCloseMessage(order.estado_dropi);
+
+  await Promise.all(
+    openTasks.map((task: Task) =>
+      supabase
+        .from("tasks")
+        .update({
+          estado: "completada",
+          completado_en: new Date().toISOString(),
+          completado_por: "sistema (cambio de estado automático)",
+          descripcion: appendCloseMessage(task.descripcion, closeMessage),
+        })
+        .eq("id", task.id)
+        .then(({ error: updateError }) => {
+          if (updateError) {
+            throw updateError;
+          }
+        }),
+    ),
+  );
+
+  return {
+    action: openTasks.length > 0 ? "tasks_closed" : "no_open_tasks_to_close",
+    taskId: openTasks[0]?.id,
+    categoria: "",
+  };
+}
+
+async function executeDecision(
+  order: Order,
+  categoria: DecisionCategory,
+): Promise<ProcessResult> {
+  switch (categoria) {
+    case "nuevo":
+      return ensureOpenTask({
+        order,
+        tipo: "llamar_confirmacion",
+        titulo: `Llamar para confirmar pedido ${getOrderNumber(order)}`,
+      });
+    case "guia_generada":
+      return ensureOpenTask({
+        order,
+        tipo: "notificar_guia",
+        titulo: "Notificar guía de seguimiento al cliente",
+      });
+    case "en_reparto":
+      return ensureOpenTask({
+        order,
+        tipo: "presionar_entrega",
+        titulo: "Confirmar que el cliente esté pendiente de recibir",
+      });
+    case "recoger_oficina":
+      return ensureOpenTask({
+        order,
+        tipo: "presionar_entrega",
+        titulo: "Avisar al cliente que debe recoger el paquete en oficina",
+      });
+    case "intento_fallido":
+      return updateFailedAttemptTask(order);
+    case "novedad":
+      return ensureOpenTask({
+        order,
+        tipo: "resolver_novedad",
+        titulo: "Revisar y gestionar novedad",
+        descripcion: await buildNovedadDescription(order),
+      });
+    case "proximo_a_llegar":
+      return ensureOpenTask({
+        order,
+        tipo: "notificar_proximo_llegar",
+        titulo: "Avisar al cliente que el paquete está próximo a llegar",
+      });
+    case "entregado":
+    case "cancelado":
+    case "devolucion":
+      return closeOpenTasks(order);
+    case "confirmado":
+    case "en_ruta":
+    case "sin_clasificar":
+      return { action: "noop", categoria };
+    default:
+      return { action: "noop", categoria: "sin_clasificar" };
+  }
+}
+
+export async function processOrderEvent(
+  orderId: number,
+): Promise<{ action: string; taskId?: number; categoria: string }> {
+  const order = await loadOrder(orderId);
+  const categoria = await lookupCategory(order);
+
+  if (order.estado_dropi === order.tarea_generada_para_estado) {
+    return {
+      action: "skipped_no_change",
+      categoria,
+    };
+  }
+
+  const result = await executeDecision(order, categoria);
+  await updateProcessedState(order.id, order.estado_dropi);
+
+  return {
+    ...result,
+    categoria,
+  };
+}
