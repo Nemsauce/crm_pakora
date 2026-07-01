@@ -44,3 +44,9 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - No existe signup público; los usuarios se crean por invitación desde Supabase Auth.
 - La raíz protegida muestra solo un placeholder de sesión iniciada con botón de logout. El dashboard real reemplaza esta pantalla en un commit futuro.
 - Pendiente: diferenciar roles/permisos en UI y backend; por ahora solo existe el rol operativo `admin`.
+
+### [Fase 3] Sistema de diseño — COMPLETADO
+- Se estableció `DESIGN.md` como fuente de verdad para dirección visual, color, tipografía, layout y motion.
+- Se agregaron tokens reutilizables de color, tipografía y gradiente/glass en Tailwind/CSS variables: base/surface, accent from/to, risk high/medium/low, text primary/secondary, Space Grotesk, Inter y JetBrains Mono.
+- Se aplicó el sistema visual a login, set-password y placeholder home sin construir nuevas pantallas ni dashboard.
+- Pendiente: construir el orbe de riesgo cuando exista la lista de pedidos y reemplazar el placeholder por el layout real del dashboard.

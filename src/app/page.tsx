@@ -38,17 +38,28 @@ async function AuthenticatedHome() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
-      <h1 className="text-4xl font-semibold text-foreground">CRM Pakora</h1>
-      <p className="mt-4 text-base text-muted-foreground">Sesión iniciada</p>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {user.email ? `Sesión iniciada como ${user.email}` : "Usuario activo"}
-      </p>
-      <form action={logout} className="mt-8">
-        <Button type="submit" variant="outline">
-          Cerrar sesión
-        </Button>
-      </form>
+    <main className="relative isolate flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center text-text-primary">
+      <div className="pointer-events-none absolute inset-x-8 top-20 -z-10 h-56 rounded-full bg-gradient-to-r from-accent-from/20 to-accent-to/20 blur-3xl" />
+      <section className="rounded-xl border border-border bg-bg-surface/70 px-8 py-7 shadow-2xl shadow-accent-from/10 backdrop-blur-xl">
+        <h1 className="font-display text-4xl font-semibold text-text-primary">
+          CRM Pakora
+        </h1>
+        <p className="mt-4 font-body text-base text-text-secondary">
+          Sesión iniciada
+        </p>
+        <p className="mt-2 font-mono text-sm text-text-secondary">
+          {user.email ? `Sesión iniciada como ${user.email}` : "Usuario activo"}
+        </p>
+        <form action={logout} className="mt-8">
+          <Button
+            type="submit"
+            variant="outline"
+            className="border-border bg-bg-surface/80 text-text-primary hover:bg-bg-surface hover:text-text-primary"
+          >
+            Cerrar sesión
+          </Button>
+        </form>
+      </section>
     </main>
   );
 }
