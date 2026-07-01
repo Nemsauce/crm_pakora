@@ -32,3 +32,9 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Pendiente: autenticación con roles (multi-usuario desde el inicio, no un solo usuario).
 
 ### [Fase 4] Command Center financiero — NO INICIADO
+
+### [Fase 3] Cliente Supabase — COMPLETADO
+- Se agregaron clientes Supabase tipados para browser, server/RLS y admin server-only usando `@supabase/ssr` + `@supabase/supabase-js`.
+- Se generó `src/lib/supabase/database.types.ts` desde el schema live de Supabase (`nauqpgsspwfqkxidenkx`, schema `public`). El schema real incluye `orders`, `status_history`, `status_catalog`, `tasks`, `comentarios`, `wallet_movements`, `wallet_movement_catalog`; también aparece `tarea_generada_para_estado` en `orders`, consistente con la mitigación definida para webhooks. Sigue pendiente revisar manualmente los ~69 estados `sin_clasificar` de `status_catalog` antes de confiar en producción.
+- Se agregó `middleware.ts` con refresh de sesión vía cookies para Next.js App Router, sin crear UI de auth ni páginas nuevas.
+- Pendiente: auth UI, roles/permisos multi-usuario, reglas RLS finales y uso real de los clientes en features.
