@@ -57,3 +57,9 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Se agregó cron de reconciliación `GET /api/cron/reconcile-tasks`, protegido con `CRON_SECRET`, programado en Vercel cada 30 minutos para reprocesar órdenes activas cuyo estado no esté marcado como procesado.
 - Se agregaron placeholders server-only `WEBHOOK_SHARED_SECRET` y `CRON_SECRET` en `.env.example`.
 - Pendiente: actualizar los workflows de n8n para llamar el webhook después de persistir cambios de estado; eso se hará vía API REST de n8n, no en este repo.
+
+### [Fase 2] Integración n8n -> webhook — SCRIPT LISTO, PENDIENTE DE EJECUCIÓN
+- Se agregó `scripts/n8n/patch-dropi-polling-webhook.mjs` para patchar vía API REST de n8n los workflows Dropi Polling (`9p1gvbDxdYqugkMT`) y Dropi Polling MX (`BQ7G5rSntIoszmJ3`), agregando/actualizando el nodo HTTP `Notificar backend CRM` después de `Actualizar orden Supabase`.
+- Codex no ejecutó el script contra n8n porque este sandbox no tiene acceso de red ni credenciales. Alejo debe correrlo localmente con `N8N_BASE_URL`, `N8N_API_KEY` y `WEBHOOK_SHARED_SECRET`, primero en dry-run y luego con `--confirm`.
+- El script no toca Dropi migracion, Dropi migracion MEX, Shopify Orders ni Shopify Orders MX.
+- Pendiente: Alejo debe ejecutar el script, re-testear manualmente ambos workflows en n8n y confirmar que el webhook `/api/webhooks/orders/status-changed` se dispare correctamente.
