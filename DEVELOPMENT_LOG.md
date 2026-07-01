@@ -38,3 +38,9 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Se generó `src/lib/supabase/database.types.ts` desde el schema live de Supabase (`nauqpgsspwfqkxidenkx`, schema `public`). El schema real incluye `orders`, `status_history`, `status_catalog`, `tasks`, `comentarios`, `wallet_movements`, `wallet_movement_catalog`; también aparece `tarea_generada_para_estado` en `orders`, consistente con la mitigación definida para webhooks. Sigue pendiente revisar manualmente los ~69 estados `sin_clasificar` de `status_catalog` antes de confiar en producción.
 - Se agregó `middleware.ts` con refresh de sesión vía cookies para Next.js App Router, sin crear UI de auth ni páginas nuevas.
 - Pendiente: auth UI, roles/permisos multi-usuario, reglas RLS finales y uso real de los clientes en features.
+
+### [Fase 3] Auth (login/invite/logout) — COMPLETADO
+- Se agregó flujo mínimo invite-only: login con email/password, callback de Supabase para códigos PKCE y token hashes, set-password para invitaciones, logout vía Server Action y protección de rutas desde `middleware.ts`.
+- No existe signup público; los usuarios se crean por invitación desde Supabase Auth.
+- La raíz protegida muestra solo un placeholder de sesión iniciada con botón de logout. El dashboard real reemplaza esta pantalla en un commit futuro.
+- Pendiente: diferenciar roles/permisos en UI y backend; por ahora solo existe el rol operativo `admin`.
