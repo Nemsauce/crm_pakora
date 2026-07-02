@@ -19,6 +19,9 @@ const DEFAULT_BACKEND_WEBHOOK_URL =
 const WEBHOOK_JSON_BODY = `={
   "order_id": {{ $('Comparar y filtrar cambios').item.json.supabase_id }}
 }`;
+const UPDATE_ORDER_JSON_BODY = `={{ JSON.stringify({ id_orden_dropi: $json.dropi_id, estado_dropi: $json.estado_nuevo, estado_crm: $json.estado_crm, guia_envio: $json.guia, transportadora: $json.transportadora, nivel_riesgo: $json.nivel_riesgo, total_pedidos_cliente: $json.total_pedidos_cliente ?? 0, pedidos_entregados_cliente: $json.pedidos_entregados_cliente ?? 0, pedidos_devueltos_cliente: $json.pedidos_devueltos_cliente ?? 0, activo: $json.cerrar ? false : true, costo_producto: $json.costo_producto ?? 0, costo_envio: $json.costo_envio ?? 0, comision_cod: $json.comision_cod ?? 0, fecha_entrega_real: $json.estado_nuevo === "ENTREGADO" ? $json.registrado_en : null }) }}`;
+const UPDATE_ORDER_JSON_BODY_MARKER = "={{ JSON.stringify(";
+const WALLET_ON_CONFLICT_PARAM = "on_conflict=pais,id_movimiento_dropi";
 const RECONCILIATION_SELECT_COLUMN = "tarea_generada_para_estado";
 const CODE_RECONCILIATION_MARKER =
   "const yaProcesado = supabase.json.tarea_generada_para_estado === estadoNuevo;";
@@ -263,6 +266,35 @@ function createOrUpdateWebhookNode(workflow, updateOrderNode, config, retryStyle
   };
 }
 
+function patchUpdateOrderJsonBody(updateOrderNode) {
+  if (updateOrderNode.type !== "n8n-nodes-base.httpRequest") {
+    throw new Error(
+      `"${UPDATE_ORDER_NODE_NAME}" is not an HTTP Request node. Found type: ${updateOrderNode.type ?? "(missing)"}.`,
+    );
+  }
+
+  if (
+    !updateOrderNode.parameters ||
+    typeof updateOrderNode.parameters !== "object" ||
+    Array.isArray(updateOrderNode.parameters)
+  ) {
+    throw new Error(`"${UPDATE_ORDER_NODE_NAME}" does not have parameters.`);
+  }
+
+  const jsonBody = updateOrderNode.parameters.jsonBody;
+
+  if (
+    typeof jsonBody === "string" &&
+    jsonBody.trimStart().startsWith(UPDATE_ORDER_JSON_BODY_MARKER)
+  ) {
+    return "already-patched";
+  }
+
+  updateOrderNode.parameters.jsonBody = UPDATE_ORDER_JSON_BODY;
+
+  return "updated";
+}
+
 function buildWalletMappingCode(pais) {
   return `const pais = ${JSON.stringify(pais)};
 const rows = [];
@@ -396,7 +428,18 @@ function buildWalletMovementsUrl(supabaseSourceNode) {
     throw new Error("Could not infer Supabase REST URL from existing workflow nodes.");
   }
 
-  return `${sourceUrl.slice(0, restIndex)}/rest/v1/wallet_movements`;
+  return ensureWalletOnConflictParam(
+    `${sourceUrl.slice(0, restIndex)}/rest/v1/wallet_movements`,
+  );
+}
+
+function ensureWalletOnConflictParam(urlValue) {
+  if (urlValue.includes("on_conflict=")) {
+    return urlValue;
+  }
+
+  const separator = urlValue.includes("?") ? "&" : "?";
+  return `${urlValue}${separator}${WALLET_ON_CONFLICT_PARAM}`;
 }
 
 function getHeaderParameterList(sourceParameters) {
@@ -503,6 +546,7 @@ function createOrUpdateWalletInsertNode(
     return {
       node: newNode,
       status: "added",
+      onConflictStatus: "added",
     };
   }
 
@@ -519,6 +563,9 @@ function createOrUpdateWalletInsertNode(
     maxTries: existingNode.maxTries,
     waitBetweenTries: existingNode.waitBetweenTries,
   });
+  const onConflictStatus = getHttpRequestUrl(existingNode).includes("on_conflict=")
+    ? "confirmed"
+    : "added";
 
   existingNode.parameters = buildWalletInsertParameters(supabaseSourceNode);
   applyNodeCredentialsFromSource(existingNode, supabaseSourceNode);
@@ -535,6 +582,7 @@ function createOrUpdateWalletInsertNode(
   return {
     node: existingNode,
     status: before === after ? "confirmed" : "updated",
+    onConflictStatus,
   };
 }
 
@@ -767,6 +815,7 @@ function patchWorkflow(workflow, workflowTarget, config) {
   }
 
   const retryStyle = getRetryStyle(workflow);
+  const updateOrderJsonBodyStatus = patchUpdateOrderJsonBody(updateOrderNode);
   const nodeChange = createOrUpdateWebhookNode(
     workflow,
     updateOrderNode,
@@ -807,8 +856,10 @@ function patchWorkflow(workflow, workflowTarget, config) {
     connectionStatus,
     activeOrdersSelectStatus,
     compareFilterCodeStatus,
+    updateOrderJsonBodyStatus,
     walletMappingNodeStatus: walletMappingNodeChange.status,
     walletInsertNodeStatus: walletInsertNodeChange.status,
+    walletInsertOnConflictStatus: walletInsertNodeChange.onConflictStatus,
     walletSourceConnectionStatus,
     walletInsertConnectionStatus,
     walletInsertUrl: walletInsertNodeChange.node.parameters.url,
@@ -824,6 +875,9 @@ function patchWorkflow(workflow, workflowTarget, config) {
 function printChangeSummary(workflow, workflowTarget, patchResult, config) {
   console.log(`\n[${workflowTarget.name}] ${workflowTarget.id}`);
   console.log(`Workflow: ${workflow.name ?? "(unnamed)"}`);
+  console.log(
+    `- "${UPDATE_ORDER_NODE_NAME}" JSON body: ${patchResult.updateOrderJsonBodyStatus}`,
+  );
   console.log(`- node "${WEBHOOK_NODE_NAME}": ${patchResult.nodeStatus}`);
   console.log(
     `- connection "${UPDATE_ORDER_NODE_NAME}" -> "${WEBHOOK_NODE_NAME}": ${patchResult.connectionStatus}`,
@@ -839,6 +893,9 @@ function printChangeSummary(workflow, workflowTarget, patchResult, config) {
   );
   console.log(
     `- node "${INSERT_WALLET_NODE_NAME}": ${patchResult.walletInsertNodeStatus}`,
+  );
+  console.log(
+    `- "${INSERT_WALLET_NODE_NAME}" on_conflict param: ${patchResult.walletInsertOnConflictStatus}`,
   );
   console.log(
     `- connection "${DROPI_WALLET_NODE_NAME}" -> "${MAP_WALLET_NODE_NAME}": ${patchResult.walletSourceConnectionStatus}`,

@@ -11,12 +11,16 @@ The script adds or updates the `Notificar backend CRM` HTTP Request node after `
 
 It also turns the existing Dropi polling cycle into the free-tier reconciliation mechanism while Vercel Cron is paused on the Hobby plan. The polling schedule remains unchanged (5x/day), but the script patches `Traer ordenes activas Supabase` to fetch `tarea_generada_para_estado` and patches `Comparar y filtrar cambios` so orders are re-notified when `tarea_generada_para_estado` is out of sync with the live Dropi status, even if the status did not newly change since the previous poll.
 
+It patches `Actualizar orden Supabase` to send its JSON body through `JSON.stringify(...)` instead of manual string interpolation. This avoids production failures when real Dropi values contain quotes, backslashes, line breaks, or other characters that would otherwise produce invalid JSON.
+
 The script also adds a parallel wallet-capture branch from `Dropi Consultar Wallet`:
 
 - `Mapear movimientos wallet completo`: maps every wallet movement in the Dropi wallet response `objects` array that has `order_id`.
-- `Insertar movimientos wallet`: bulk inserts the mapped array into Supabase `wallet_movements` with `Prefer: resolution=ignore-duplicates,return=minimal`.
+- `Insertar movimientos wallet`: bulk inserts the mapped array into Supabase `wallet_movements` with `Prefer: resolution=ignore-duplicates,return=minimal` and `?on_conflict=pais,id_movimiento_dropi`.
 
 This branch runs alongside the existing `Procesar movimientos wallet` → `Actualizar liquidacion` / `Actualizar devolucion` chain. It does not replace or modify that existing order-field update flow. `wallet_movements` classification happens through `identification_code` and `wallet_movement_catalog`, not by matching unstable `description` text.
+
+The `on_conflict` query parameter is required because the idempotency target is the composite unique constraint `(pais, id_movimiento_dropi)`, not the primary key. Without it, PostgREST can still return duplicate-key `409` errors even when the `Prefer` header is present.
 
 `/api/cron/reconcile-tasks` remains available in the backend and can be scheduled again later if the Vercel account moves to Pro.
 
