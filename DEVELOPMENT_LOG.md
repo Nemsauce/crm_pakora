@@ -79,3 +79,8 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Se reemplazó el placeholder de sesión en `/` por un redirect server-side a `/pedidos` para usuarios autenticados.
 - Se agregó el grupo protegido `(app)` con layout de aplicación: sidebar densa con glassmorphism para navegación/chrome, usuario actual y logout; el contenido principal queda opaco sobre `bg-surface` para futuras tablas y datos densos.
 - Se creó `/pedidos` como placeholder mínimo dentro del shell. Pendiente: construir la lista real de pedidos y conectar datos.
+
+### [Fase 3] Lista de pedidos (cards + filtros + orbe de riesgo) — COMPLETADO
+- Se reemplazó el placeholder de `/pedidos` por una lista server-rendered de pedidos en cards opacas, con filtros por país, estado CRM y nivel de riesgo vía URL/search params.
+- Se agregó el `RiskOrb` de `DESIGN.md`: pulso CSS por `nivel_riesgo` (verde/ámbar/rojo) y fallback estático para `sin_datos` o `prefers-reduced-motion`.
+- La paginación quedó simple con anterior/siguiente a 24 pedidos por página. Pendiente: vista de detalle individual de pedido en un commit futuro.
