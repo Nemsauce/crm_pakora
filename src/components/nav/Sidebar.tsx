@@ -31,7 +31,14 @@ const disabledItems = [
 
 export function Sidebar({ userEmail }: SidebarProps) {
   return (
-    <aside className="flex h-full w-full flex-col border-r border-border bg-bg-surface/70 text-text-primary shadow-2xl shadow-accent-from/10 backdrop-blur-xl lg:w-72">
+    <aside className="relative isolate flex h-full w-full overflow-hidden border-r border-border bg-bg-surface/45 text-text-primary shadow-2xl shadow-accent-from/20 backdrop-blur-3xl lg:w-72">
+      <div className="pointer-events-none absolute inset-0 -z-20 bg-bg-base/35" />
+      <div className="sidebar-liquid-blob sidebar-liquid-blob--one pointer-events-none absolute -left-16 top-8 -z-10 h-44 w-44 bg-gradient-to-br from-accent-from/55 to-accent-to/35 blur-2xl" />
+      <div className="sidebar-liquid-blob sidebar-liquid-blob--two pointer-events-none absolute -right-24 top-56 -z-10 h-60 w-60 bg-gradient-to-tr from-accent-to/45 to-accent-from/25 blur-3xl" />
+      <div className="sidebar-liquid-blob sidebar-liquid-blob--three pointer-events-none absolute -bottom-20 left-10 -z-10 h-52 w-52 bg-gradient-to-br from-accent-from/40 to-accent-to/30 blur-2xl" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-bg-surface/50" />
+
+      <div className="relative z-10 flex min-h-full w-full flex-col">
       <div className="border-b border-border px-5 py-4">
         <p className="font-display text-lg font-semibold tracking-normal">
           CRM Pakora
@@ -45,7 +52,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
         <Link
           href="/pedidos"
           aria-current="page"
-          className="flex h-10 items-center gap-3 rounded-md border border-border bg-accent-from/20 px-3 font-body text-sm font-medium text-text-primary shadow-sm shadow-accent-from/10 outline-none transition-colors hover:bg-accent-from/25 focus-visible:ring-2 focus-visible:ring-ring"
+          className="sidebar-active-nav flex h-10 items-center gap-3 rounded-md border border-accent-to/70 bg-gradient-to-r from-accent-from via-accent-to to-accent-from bg-[length:220%_100%] px-3 font-body text-sm font-medium text-bg-base shadow-lg shadow-accent-from/25 outline-none transition-colors hover:text-bg-base focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ClipboardList className="h-4 w-4" aria-hidden="true" />
           <span>Pedidos</span>
@@ -88,6 +95,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
             </Button>
           </form>
         </div>
+      </div>
       </div>
     </aside>
   );
