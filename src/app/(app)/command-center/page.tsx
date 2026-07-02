@@ -90,8 +90,9 @@ export default async function CommandCenterPage({
   const range = getRange(params.range);
   const { dateFrom, dateTo } = getDateRange(Number(range));
   const supabase = await createClient();
-  const walletSummaryRpc = supabase.rpc as unknown as WalletSummaryRpc;
-  const { data, error } = await walletSummaryRpc("wallet_summary", {
+  const { data, error } = await (
+    supabase as unknown as { rpc: WalletSummaryRpc }
+  ).rpc("wallet_summary", {
     p_date_from: dateFrom,
     p_date_to: dateTo,
   });
