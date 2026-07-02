@@ -31,18 +31,28 @@ const badgeClassName: Record<BadgeTone, string> = {
   danger: "bg-risk-high-bg text-risk-high",
 };
 
-const cornerBlobBackground: Record<Order["estado_crm"], string> = {
-  nuevo:
-    "radial-gradient(circle at 35% 35%, var(--color-badge-nuevo-bg) 0%, var(--color-accent-to) 48%, transparent 72%)",
-  en_ruta:
-    "radial-gradient(circle at 35% 35%, var(--color-badge-en-ruta-bg) 0%, var(--color-badge-en-ruta) 48%, transparent 72%)",
-  entregado:
-    "radial-gradient(circle at 35% 35%, var(--color-positive-bg) 0%, var(--color-positive) 48%, transparent 72%)",
-  cancelado:
-    "radial-gradient(circle at 35% 35%, var(--color-negative-bg) 0%, var(--color-negative) 48%, transparent 72%)",
-  devolucion:
-    "radial-gradient(circle at 35% 35%, var(--color-negative-bg) 0%, var(--color-negative) 48%, transparent 72%)",
-};
+const cornerBlobBackground = {
+  bajo:
+    "radial-gradient(circle at 35% 35%, var(--color-risk-low-bg) 0%, var(--color-risk-low) 48%, transparent 72%)",
+  medio:
+    "radial-gradient(circle at 35% 35%, var(--color-risk-medium-bg) 0%, var(--color-risk-medium) 48%, transparent 72%)",
+  alto:
+    "radial-gradient(circle at 35% 35%, var(--color-risk-high-bg) 0%, var(--color-risk-high) 48%, transparent 72%)",
+  sin_datos:
+    "radial-gradient(circle at 35% 35%, var(--color-bg-page) 0%, var(--color-text-secondary) 48%, transparent 72%)",
+} as const;
+
+function normalizeRisk(nivelRiesgo: string | null) {
+  if (
+    nivelRiesgo === "bajo" ||
+    nivelRiesgo === "medio" ||
+    nivelRiesgo === "alto"
+  ) {
+    return nivelRiesgo;
+  }
+
+  return "sin_datos";
+}
 
 const currencyFormatter = {
   CO: new Intl.NumberFormat("es-CO", {
@@ -107,6 +117,7 @@ export function OrderCard({
   selected?: boolean;
 }) {
   const badgeTone = estadoTone[order.estado_crm];
+  const risk = normalizeRisk(order.nivel_riesgo);
 
   return (
     <article
@@ -119,7 +130,7 @@ export function OrderCard({
     >
       <div
         className="pointer-events-none absolute -bottom-8 -right-8 z-0 h-28 w-36 rounded-[62%_38%_46%_54%/48%_44%_56%_52%] opacity-[0.14] dark:opacity-[0.12]"
-        style={{ background: cornerBlobBackground[order.estado_crm] }}
+        style={{ background: cornerBlobBackground[risk] }}
         aria-hidden="true"
       />
 
