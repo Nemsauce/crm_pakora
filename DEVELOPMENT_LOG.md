@@ -94,3 +94,8 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Se reemplazó el sistema dark liquid-glass por una dirección visual clara basada en la referencia de Figma aprobada por Alejo: fondo cálido a lavanda, superficies blancas, sombras suaves y acento violeta.
 - Este commit solo actualiza `DESIGN.md` y la infraestructura de tokens en Tailwind/CSS variables; no migra componentes ni pantallas todavía.
 - Temporalmente Sidebar, login, set-password, OrderCard, OrderDetailDrawer y RiskOrb todavía reflejan parte del tema oscuro anterior hasta que se actualicen en commits siguientes. Esta inconsistencia visual es esperada y temporal.
+
+### [Fase 3] Rediseño visual — tema claro (componentes) — COMPLETADO
+- Se completó la migración visual iniciada en el commit de tokens: Sidebar/auth ya estaban migrados y ahora `/pedidos`, filtros, cards, drawer de detalle y skeleton de carga usan superficies blancas, sombras suaves, bordes mínimos y acento violeta.
+- `RiskOrb` dejó de ser un pulso animado y pasó a un indicador plano/estático por color, alineado con `DESIGN.md`: el nuevo tema no usa lenguaje de motion líquido ni glows.
+- El rediseño visual de Fase 3 queda completo en las superficies existentes: Sidebar, auth, pedidos, drawer y estados de carga.

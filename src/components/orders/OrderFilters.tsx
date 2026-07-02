@@ -46,7 +46,7 @@ function FilterSelect({
     <label className="grid gap-1.5">
       <span className="font-body text-xs text-text-secondary">{label}</span>
       <Select.Root value={value} onValueChange={onChange}>
-        <Select.Trigger className="inline-flex h-9 min-w-36 items-center justify-between gap-2 rounded-md border border-border bg-bg-base px-3 font-body text-sm text-text-primary outline-none transition-colors hover:bg-bg-base focus:ring-2 focus:ring-ring">
+        <Select.Trigger className="inline-flex h-9 min-w-36 items-center justify-between gap-2 rounded-lg border border-border bg-bg-surface px-3 font-body text-sm text-text-primary shadow-sm outline-none transition-colors hover:bg-bg-page focus:ring-2 focus:ring-ring">
           <Select.Value />
           <Select.Icon>
             <ChevronDown className="h-4 w-4 text-text-secondary" />
@@ -56,14 +56,14 @@ function FilterSelect({
           <Select.Content
             position="popper"
             sideOffset={6}
-            className="z-50 overflow-hidden rounded-md border border-border bg-bg-surface text-text-primary shadow-xl"
+            className="z-50 overflow-hidden rounded-2xl border border-border bg-bg-surface text-text-primary shadow-md"
           >
             <Select.Viewport className="p-1">
               {options.map((option) => (
                 <Select.Item
                   key={option.value}
                   value={option.value}
-                  className="relative flex h-8 cursor-default select-none items-center rounded px-2 font-body text-sm text-text-primary outline-none data-[highlighted]:bg-accent-from/20 data-[highlighted]:text-text-primary"
+                  className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-text-primary outline-none data-[highlighted]:bg-accent/10 data-[highlighted]:text-accent"
                 >
                   <Select.ItemText>{option.label}</Select.ItemText>
                 </Select.Item>
@@ -107,7 +107,7 @@ export function OrderFilters() {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-bg-base p-3 md:flex-row md:items-end md:justify-between">
+    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-bg-surface p-3 shadow-sm md:flex-row md:items-end md:justify-between">
       <div className="grid gap-3 sm:grid-cols-3">
         <FilterSelect
           label="País"
@@ -133,7 +133,7 @@ export function OrderFilters() {
         <Button
           type="button"
           variant="outline"
-          className="border-border bg-bg-surface text-text-primary hover:bg-bg-surface hover:text-text-primary"
+          className="rounded-full border-border bg-bg-surface text-text-primary hover:bg-bg-page hover:text-text-primary"
           onClick={clearFilters}
         >
           Limpiar filtros

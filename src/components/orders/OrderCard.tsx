@@ -23,10 +23,10 @@ const estadoTone: Record<Order["estado_crm"], BadgeTone> = {
 };
 
 const badgeClassName: Record<BadgeTone, string> = {
-  accent: "border-accent-from text-accent-to",
-  muted: "border-border text-text-secondary",
-  success: "border-risk-low text-risk-low",
-  danger: "border-risk-high text-risk-high",
+  accent: "bg-accent/10 text-accent",
+  muted: "bg-bg-page text-text-secondary",
+  success: "bg-risk-low-bg text-risk-low",
+  danger: "bg-risk-high-bg text-risk-high",
 };
 
 const currencyFormatter = {
@@ -96,9 +96,9 @@ export function OrderCard({
   return (
     <article
       className={[
-        "flex min-h-56 flex-col justify-between rounded-lg border bg-bg-base p-4 text-text-primary shadow-sm transition-colors",
+        "flex min-h-56 flex-col justify-between rounded-2xl border bg-bg-surface p-4 text-text-primary shadow-sm transition-colors",
         selected
-          ? "border-accent-to ring-2 ring-accent-to"
+          ? "border-accent ring-2 ring-accent/25"
           : "border-border",
       ].join(" ")}
     >
@@ -116,7 +116,7 @@ export function OrderCard({
             </p>
           </div>
           <span
-            className={`shrink-0 rounded-md border px-2 py-1 font-body text-xs font-medium ${badgeClassName[badgeTone]}`}
+            className={`shrink-0 rounded-full px-3 py-1 font-body text-xs font-medium ${badgeClassName[badgeTone]}`}
           >
             {estadoLabel[order.estado_crm]}
           </span>

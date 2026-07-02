@@ -20,12 +20,22 @@ type OrderDetail = {
   tasks: Task[];
 };
 
+type BadgeTone = "accent" | "muted" | "success" | "warning" | "danger";
+
 const estadoCrmLabel: Record<Order["estado_crm"], string> = {
   nuevo: "Nuevo",
   en_ruta: "En ruta",
   entregado: "Entregado",
   cancelado: "Cancelado",
   devolucion: "Devolución",
+};
+
+const estadoCrmTone: Record<Order["estado_crm"], BadgeTone> = {
+  nuevo: "accent",
+  en_ruta: "muted",
+  entregado: "success",
+  cancelado: "danger",
+  devolucion: "danger",
 };
 
 const taskStateLabel: Record<Task["estado"], string> = {
@@ -35,11 +45,19 @@ const taskStateLabel: Record<Task["estado"], string> = {
   cancelada: "Cancelada",
 };
 
-const taskStateClassName: Record<Task["estado"], string> = {
-  pendiente: "border-risk-medium text-risk-medium",
-  en_progreso: "border-accent-to text-accent-to",
-  completada: "border-risk-low text-risk-low",
-  cancelada: "border-risk-high text-risk-high",
+const badgeClassName: Record<BadgeTone, string> = {
+  accent: "bg-accent/10 text-accent",
+  muted: "bg-bg-page text-text-secondary",
+  success: "bg-risk-low-bg text-risk-low",
+  warning: "bg-risk-medium-bg text-risk-medium",
+  danger: "bg-risk-high-bg text-risk-high",
+};
+
+const taskStateTone: Record<Task["estado"], BadgeTone> = {
+  pendiente: "warning",
+  en_progreso: "accent",
+  completada: "success",
+  cancelada: "danger",
 };
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-CO", {
@@ -161,8 +179,8 @@ export function OrderDetailDrawer() {
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-bg-base/80" />
-        <Dialog.Content className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-border bg-bg-surface text-text-primary shadow-2xl outline-none">
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-bg-page/70" />
+        <Dialog.Content className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-border bg-bg-surface text-text-primary shadow-md outline-none">
           <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
             <div className="min-w-0">
               <Dialog.Title className="font-display text-lg font-semibold text-text-primary">
@@ -177,7 +195,7 @@ export function OrderDetailDrawer() {
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                className="border-border bg-bg-base text-text-primary hover:bg-bg-base hover:text-text-primary"
+                className="rounded-lg border-border bg-bg-surface text-text-primary hover:bg-bg-page hover:text-text-primary"
                 aria-label="Cerrar detalle"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
@@ -188,14 +206,14 @@ export function OrderDetailDrawer() {
           <div className="flex-1 overflow-y-auto px-5 py-5">
             {isLoading ? (
               <div className="space-y-4">
-                <div className="h-20 rounded-lg border border-border bg-bg-base motion-safe:animate-pulse" />
-                <div className="h-40 rounded-lg border border-border bg-bg-base motion-safe:animate-pulse" />
-                <div className="h-40 rounded-lg border border-border bg-bg-base motion-safe:animate-pulse" />
+                <div className="h-20 rounded-2xl border border-border bg-bg-page motion-safe:animate-pulse" />
+                <div className="h-40 rounded-2xl border border-border bg-bg-page motion-safe:animate-pulse" />
+                <div className="h-40 rounded-2xl border border-border bg-bg-page motion-safe:animate-pulse" />
               </div>
             ) : null}
 
             {!isLoading && error ? (
-              <div className="rounded-lg border border-border bg-bg-base p-4 font-body text-sm text-text-secondary">
+              <div className="rounded-2xl border border-border bg-bg-surface p-4 font-body text-sm text-text-secondary shadow-sm">
                 {error}
               </div>
             ) : null}
@@ -215,8 +233,10 @@ export function OrderDetailDrawer() {
 }
 
 function OrderHeader({ order }: { order: Order }) {
+  const badgeTone = estadoCrmTone[order.estado_crm];
+
   return (
-    <section className="rounded-lg border border-border bg-bg-base p-4">
+    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-sm">
       <div className="flex items-start gap-3">
         <div className="pt-1">
           <RiskOrb nivelRiesgo={order.nivel_riesgo} />
@@ -229,7 +249,9 @@ function OrderHeader({ order }: { order: Order }) {
             {getOrderIdentifier(order)}
           </p>
         </div>
-        <span className="rounded-md border border-accent-to px-2 py-1 font-body text-xs font-medium text-accent-to">
+        <span
+          className={`rounded-full px-3 py-1 font-body text-xs font-medium ${badgeClassName[badgeTone]}`}
+        >
           {estadoCrmLabel[order.estado_crm]}
         </span>
       </div>
@@ -270,7 +292,7 @@ function StatusHistorySection({
   statusHistory: StatusHistory[];
 }) {
   return (
-    <section className="rounded-lg border border-border bg-bg-base p-4">
+    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-sm">
       <h3 className="font-display text-base font-semibold text-text-primary">
         Historial de estados
       </h3>
@@ -280,7 +302,7 @@ function StatusHistorySection({
           {statusHistory.map((historyItem) => (
             <li
               key={historyItem.id}
-              className="rounded-md border border-border bg-bg-surface p-3"
+              className="rounded-2xl border border-border bg-bg-page p-3"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -314,7 +336,7 @@ function StatusHistorySection({
 
 function TasksSection({ tasks }: { tasks: Task[] }) {
   return (
-    <section className="rounded-lg border border-border bg-bg-base p-4">
+    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-sm">
       <h3 className="font-display text-base font-semibold text-text-primary">
         Tareas
       </h3>
@@ -322,7 +344,10 @@ function TasksSection({ tasks }: { tasks: Task[] }) {
       {tasks.length > 0 ? (
         <ul className="mt-4 space-y-3">
           {tasks.map((task) => (
-            <li key={task.id} className="rounded-md border border-border bg-bg-surface p-3">
+            <li
+              key={task.id}
+              className="rounded-2xl border border-border bg-bg-page p-3"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-body text-xs uppercase text-text-secondary">
@@ -333,7 +358,7 @@ function TasksSection({ tasks }: { tasks: Task[] }) {
                   </p>
                 </div>
                 <span
-                  className={`shrink-0 rounded-md border px-2 py-1 font-body text-xs font-medium ${taskStateClassName[task.estado]}`}
+                  className={`shrink-0 rounded-full px-3 py-1 font-body text-xs font-medium ${badgeClassName[taskStateTone[task.estado]]}`}
                 >
                   {taskStateLabel[task.estado]}
                 </span>
