@@ -58,7 +58,7 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Se agregaron placeholders server-only `WEBHOOK_SHARED_SECRET` y `CRON_SECRET` en `.env.example`.
 - Pendiente: actualizar los workflows de n8n para llamar el webhook después de persistir cambios de estado; eso se hará vía API REST de n8n, no en este repo.
 
-### [Fase 2] Integración n8n -> webhook — SCRIPT LISTO, PENDIENTE DE EJECUCIÓN
+### [Fase 2] Integración n8n -> webhook — COMPLETADO
 - Se agregó `scripts/n8n/patch-dropi-polling-webhook.mjs` para patchar vía API REST de n8n los workflows Dropi Polling (`9p1gvbDxdYqugkMT`) y Dropi Polling MX (`BQ7G5rSntIoszmJ3`), agregando/actualizando el nodo HTTP `Notificar backend CRM` después de `Actualizar orden Supabase`.
 - Codex no ejecutó el script contra n8n porque este sandbox no tiene acceso de red ni credenciales. Alejo debe correrlo localmente con `N8N_BASE_URL`, `N8N_API_KEY` y `WEBHOOK_SHARED_SECRET`, primero en dry-run y luego con `--confirm`.
 - El script no toca Dropi migracion, Dropi migracion MEX, Shopify Orders ni Shopify Orders MX.
@@ -69,7 +69,8 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Decisión: la reconciliación se hará extendiendo el ciclo existente de n8n (`Dropi Polling`, 5x/día) para comparar `estado_dropi` contra `tarea_generada_para_estado`, no solo detectar cambios desde el último poll. Esto se implementará vía script/API de n8n en `scripts/n8n/`, no como cambio nuevo del backend en este commit.
 - La ruta `/api/cron/reconcile-tasks` sigue existiendo y funcionando; simplemente no está agendada por Vercel ahora. Puede reactivarse si más adelante se adopta Vercel Pro.
 
-### [Fase 2] Reconciliación vía ciclo de polling n8n — SCRIPT LISTO, PENDIENTE DE EJECUCIÓN
+### [Fase 2] Reconciliación vía ciclo de polling n8n — COMPLETADO
 - Se extendió `scripts/n8n/patch-dropi-polling-webhook.mjs` para que también agregue `tarea_generada_para_estado` al `select=` de `Traer ordenes activas Supabase` y parchee `Comparar y filtrar cambios` con un marcador idempotente (`yaProcesado`).
 - Objetivo: cada corrida existente de Dropi Polling (5x/día) funciona como reconciliación natural, re-notificando al backend cuando `orders.estado_dropi` ya coincide con Dropi pero `tarea_generada_para_estado` todavía no fue procesado por el motor de tareas.
 - Codex no ejecutó el script contra n8n; Alejo debe correr dry-run y luego `--confirm` localmente con credenciales reales de n8n.
+- Verificado por Alejo en n8n: ambos workflows (CO y MX) tienen el marcador `yaProcesado` en `Comparar y filtrar cambios` y `tarea_generada_para_estado` en el `select=` de `Traer ordenes activas Supabase`. Aplicado exitosamente vía `--confirm` contra n8n de producción.
