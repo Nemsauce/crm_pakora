@@ -3,10 +3,22 @@ type RiskOrbProps = {
 };
 
 const riskClassName = {
-  bajo: "bg-risk-low",
-  medio: "bg-risk-medium",
-  alto: "bg-risk-high",
-  sin_datos: "bg-text-secondary/40",
+  bajo: {
+    outer: "bg-risk-low-bg",
+    inner: "bg-risk-low",
+  },
+  medio: {
+    outer: "bg-risk-medium-bg",
+    inner: "bg-risk-medium",
+  },
+  alto: {
+    outer: "bg-risk-high-bg",
+    inner: "bg-risk-high",
+  },
+  sin_datos: {
+    outer: "bg-bg-page",
+    inner: "bg-text-secondary",
+  },
 } as const;
 
 function normalizeRisk(nivelRiesgo: string | null) {
@@ -23,11 +35,14 @@ function normalizeRisk(nivelRiesgo: string | null) {
 
 export function RiskOrb({ nivelRiesgo }: RiskOrbProps) {
   const risk = normalizeRisk(nivelRiesgo);
+  const riskClass = riskClassName[risk];
 
   return (
     <span
       aria-label={`Riesgo ${risk === "sin_datos" ? "sin datos" : risk}`}
-      className={`inline-block size-3 shrink-0 rounded-full ${riskClassName[risk]}`}
-    />
+      className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full ${riskClass.outer}`}
+    >
+      <span className={`size-2.5 rounded-full ${riskClass.inner}`} />
+    </span>
   );
 }

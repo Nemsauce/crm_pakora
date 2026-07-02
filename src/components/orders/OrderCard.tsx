@@ -96,7 +96,7 @@ export function OrderCard({
   return (
     <article
       className={[
-        "flex min-h-56 flex-col justify-between rounded-2xl border bg-bg-surface p-4 text-text-primary shadow-sm transition-colors",
+        "flex min-h-56 flex-col justify-between rounded-2xl border bg-bg-surface p-4 text-text-primary shadow-lg transition-colors",
         selected
           ? "border-accent ring-2 ring-accent/25"
           : "border-border",

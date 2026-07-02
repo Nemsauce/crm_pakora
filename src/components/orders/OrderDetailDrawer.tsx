@@ -180,7 +180,7 @@ export function OrderDetailDrawer() {
     >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-bg-page/70" />
-        <Dialog.Content className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-border bg-bg-surface text-text-primary shadow-md outline-none">
+        <Dialog.Content className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-border bg-bg-surface text-text-primary shadow-xl outline-none">
           <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
             <div className="min-w-0">
               <Dialog.Title className="font-display text-lg font-semibold text-text-primary">
@@ -213,7 +213,7 @@ export function OrderDetailDrawer() {
             ) : null}
 
             {!isLoading && error ? (
-              <div className="rounded-2xl border border-border bg-bg-surface p-4 font-body text-sm text-text-secondary shadow-sm">
+              <div className="rounded-2xl border border-border bg-bg-surface p-4 font-body text-sm text-text-secondary shadow-lg">
                 {error}
               </div>
             ) : null}
@@ -236,7 +236,7 @@ function OrderHeader({ order }: { order: Order }) {
   const badgeTone = estadoCrmTone[order.estado_crm];
 
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-sm">
+    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
       <div className="flex items-start gap-3">
         <div className="pt-1">
           <RiskOrb nivelRiesgo={order.nivel_riesgo} />
@@ -292,7 +292,7 @@ function StatusHistorySection({
   statusHistory: StatusHistory[];
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-sm">
+    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
       <h3 className="font-display text-base font-semibold text-text-primary">
         Historial de estados
       </h3>
@@ -336,7 +336,7 @@ function StatusHistorySection({
 
 function TasksSection({ tasks }: { tasks: Task[] }) {
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-sm">
+    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
       <h3 className="font-display text-base font-semibold text-text-primary">
         Tareas
       </h3>

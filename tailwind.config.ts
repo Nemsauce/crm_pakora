@@ -23,6 +23,12 @@ const config: Config = {
           from: "var(--color-accent-from)",
           to: "var(--color-accent-to)",
         },
+        "accent-blue": "#3B82F6",
+        "accent-blue-bg": "#DBEAFE",
+        "accent-pink": "#EC4899",
+        "accent-pink-bg": "#FCE7F3",
+        "accent-orange": "#F97316",
+        "accent-orange-bg": "#FFEDD5",
         border: "var(--color-border)",
         risk: {
           high: "var(--color-risk-high)",

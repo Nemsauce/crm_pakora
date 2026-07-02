@@ -31,7 +31,7 @@ const disabledItems = [
 
 export function Sidebar({ userEmail }: SidebarProps) {
   return (
-    <aside className="flex h-full w-full border-r border-border bg-bg-surface text-text-primary shadow-sm lg:w-72">
+    <aside className="flex h-full w-full border-b border-border bg-bg-surface text-text-primary lg:w-72 lg:border-b-0 lg:border-r">
       <div className="flex min-h-full w-full flex-col">
         <div className="border-b border-border px-5 py-4">
           <p className="font-display text-lg font-semibold tracking-normal">
@@ -72,7 +72,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
         </nav>
 
         <div className="border-t border-border p-3">
-          <div className="rounded-2xl border border-border bg-bg-surface p-3 shadow-sm">
+          <div className="rounded-2xl border border-border bg-bg-surface p-3 shadow-lg">
             <p className="font-body text-xs text-text-secondary">Sesión</p>
             <p className="mt-1 truncate font-mono text-xs text-text-primary">
               {userEmail ?? "Usuario activo"}
