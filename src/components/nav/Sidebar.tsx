@@ -97,7 +97,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
   }
 
   return (
-    <aside className="flex h-full w-full border-b border-border bg-bg-surface text-text-primary lg:w-72 lg:border-b-0 lg:border-r">
+    <aside className="flex h-full w-full border-b border-border bg-bg-surface text-[var(--foreground)] lg:w-72 lg:border-b-0 lg:border-r">
       <div className="flex min-h-full w-full flex-col">
         <div className="border-b border-border px-5 py-4">
           <div className="flex items-center gap-3">
@@ -106,7 +106,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
               <p className="font-display text-lg font-semibold tracking-normal">
                 CRM Pakora
               </p>
-              <p className="mt-1 font-body text-xs text-text-secondary">
+              <p className="mt-1 font-body text-xs text-[var(--muted-foreground)]">
                 Torre de control COD
               </p>
             </div>
@@ -125,8 +125,8 @@ export function Sidebar({ userEmail }: SidebarProps) {
                 aria-current={isActive ? "page" : undefined}
                 className={`flex h-10 items-center gap-3 rounded-2xl px-3 font-body text-sm outline-none transition-all focus-visible:ring-2 focus-visible:ring-ring ${
                   isActive
-                    ? "border border-accent/15 bg-gradient-to-r from-accent-from/15 to-accent-to/25 font-semibold text-[var(--color-accent)] shadow-md shadow-accent/10 hover:from-accent-from/20 hover:to-accent-to/30 dark:border-accent/40 dark:from-accent-from/20 dark:to-accent-to/10 dark:shadow-lg dark:shadow-accent/25 dark:hover:from-accent-from/25 dark:hover:to-accent-to/15"
-                    : "font-medium text-text-secondary hover:text-text-primary"
+                    ? "border border-[var(--color-accent)]/15 bg-gradient-to-r from-accent-from/15 to-accent-to/25 font-semibold text-[var(--color-accent)] shadow-md shadow-[var(--color-accent)]/10 hover:from-accent-from/20 hover:to-accent-to/30 dark:border-[var(--color-accent)]/40 dark:from-accent-from/20 dark:to-accent-to/10 dark:shadow-lg dark:shadow-[var(--color-accent)]/25 dark:hover:from-accent-from/25 dark:hover:to-accent-to/15"
+                    : "font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
                 }`}
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />
@@ -139,8 +139,8 @@ export function Sidebar({ userEmail }: SidebarProps) {
 
         <div className="border-t border-border p-3">
           <div className="rounded-2xl border border-border bg-bg-surface p-3 shadow-lg">
-            <p className="font-body text-xs text-text-secondary">Sesión</p>
-            <p className="mt-1 truncate font-mono text-xs text-text-primary">
+            <p className="font-body text-xs text-[var(--muted-foreground)]">Sesión</p>
+            <p className="mt-1 truncate font-mono text-xs text-[var(--foreground)]">
               {userEmail ?? "Usuario activo"}
             </p>
             <form onSubmit={handleLogout} className="mt-3">
@@ -149,7 +149,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
                 variant="outline"
                 size="sm"
                 disabled={isSigningOut}
-                className="h-8 w-full justify-start gap-2 rounded-lg border-border bg-bg-surface text-text-primary hover:bg-bg-page hover:text-text-primary"
+                className="h-8 w-full justify-start gap-2 rounded-lg border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" />
                 {isSigningOut ? "Cerrando..." : "Cerrar sesión"}

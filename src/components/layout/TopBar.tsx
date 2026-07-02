@@ -30,7 +30,7 @@ export function TopBar({ userEmail }: TopBarProps) {
           type="button"
           variant="ghost"
           size="icon"
-          className="rounded-full text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent"
+          className="rounded-full text-[var(--muted-foreground)] transition-colors hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]"
           aria-label="Buscar"
         >
           <Search className="h-5 w-5" aria-hidden="true" />
@@ -40,7 +40,7 @@ export function TopBar({ userEmail }: TopBarProps) {
           type="button"
           variant="ghost"
           size="icon"
-          className="rounded-full text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent"
+          className="rounded-full text-[var(--muted-foreground)] transition-colors hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]"
           aria-label="Notificaciones"
         >
           <Bell className="h-5 w-5" aria-hidden="true" />
@@ -49,7 +49,7 @@ export function TopBar({ userEmail }: TopBarProps) {
         <ThemeToggle />
 
         <div
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 font-display text-sm font-semibold text-accent ring-1 ring-accent/10"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent)]/10 font-display text-sm font-semibold text-[var(--color-accent)] ring-1 ring-[var(--color-accent)]/10"
           title={userEmail ?? "Usuario activo"}
           aria-label={`Usuario ${userEmail ?? "activo"}`}
         >

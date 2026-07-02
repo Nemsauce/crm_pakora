@@ -46,8 +46,8 @@ const taskStateLabel: Record<Task["estado"], string> = {
 };
 
 const badgeClassName: Record<BadgeTone, string> = {
-  accent: "bg-primary/10 text-primary",
-  muted: "bg-bg-page text-text-primary",
+  accent: "bg-[var(--color-accent)]/10 text-[var(--color-accent)]",
+  muted: "bg-bg-page text-[var(--foreground)]",
   success: "bg-risk-low-bg text-risk-low",
   warning: "bg-risk-medium-bg text-risk-medium",
   danger: "bg-risk-high-bg text-risk-high",
@@ -203,16 +203,16 @@ export function OrderDetailDrawer() {
           }
         `}</style>
         <Dialog.Content
-          className="crm-order-detail-drawer fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-border bg-bg-surface text-text-primary shadow-xl outline-none"
+          className="crm-order-detail-drawer fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-border bg-bg-surface text-[var(--foreground)] shadow-xl outline-none"
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
           <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
             <div className="min-w-0">
-              <Dialog.Title className="font-display text-lg font-semibold text-text-primary">
+              <Dialog.Title className="font-display text-lg font-semibold text-[var(--foreground)]">
                 Detalle de pedido
               </Dialog.Title>
-              <Dialog.Description className="mt-1 font-body text-sm text-text-secondary">
+              <Dialog.Description className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
                 Historial y tareas asociadas
               </Dialog.Description>
             </div>
@@ -221,7 +221,7 @@ export function OrderDetailDrawer() {
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                className="rounded-lg border-border bg-bg-surface text-text-primary hover:bg-bg-page hover:text-text-primary"
+                className="rounded-lg border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
                 aria-label="Cerrar detalle"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
@@ -239,7 +239,7 @@ export function OrderDetailDrawer() {
             ) : null}
 
             {!isLoading && error ? (
-              <div className="rounded-2xl border border-border bg-bg-surface p-4 font-body text-sm text-text-secondary shadow-lg">
+              <div className="rounded-2xl border border-border bg-bg-surface p-4 font-body text-sm text-[var(--muted-foreground)] shadow-lg">
                 {error}
               </div>
             ) : null}
@@ -268,10 +268,10 @@ function OrderHeader({ order }: { order: Order }) {
           <RiskOrb nivelRiesgo={order.nivel_riesgo} />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate font-display text-xl font-semibold text-text-primary">
+          <h2 className="truncate font-display text-xl font-semibold text-[var(--foreground)]">
             {getCustomerName(order)}
           </h2>
-          <p className="mt-1 font-mono text-sm text-text-secondary">
+          <p className="mt-1 font-mono text-sm text-[var(--muted-foreground)]">
             {getOrderIdentifier(order)}
           </p>
         </div>
@@ -284,26 +284,26 @@ function OrderHeader({ order }: { order: Order }) {
 
       <dl className="mt-4 grid gap-3 sm:grid-cols-2">
         <div>
-          <dt className="font-body text-xs text-text-secondary">Producto</dt>
-          <dd className="mt-1 font-body text-sm text-text-primary">
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">Producto</dt>
+          <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
             {order.nombre_producto ?? "Producto sin nombre"}
           </dd>
         </div>
         <div>
-          <dt className="font-body text-xs text-text-secondary">Ubicación</dt>
-          <dd className="mt-1 font-body text-sm text-text-primary">
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">Ubicación</dt>
+          <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
             {getLocation(order)}
           </dd>
         </div>
         <div>
-          <dt className="font-body text-xs text-text-secondary">Estado Dropi</dt>
-          <dd className="mt-1 font-body text-sm text-text-primary">
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">Estado Dropi</dt>
+          <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
             {order.estado_dropi ?? "Sin estado"}
           </dd>
         </div>
         <div>
-          <dt className="font-body text-xs text-text-secondary">Guía</dt>
-          <dd className="mt-1 font-mono text-sm text-text-primary">
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">Guía</dt>
+          <dd className="mt-1 font-mono text-sm text-[var(--foreground)]">
             {order.guia_envio ?? "Sin guía"}
           </dd>
         </div>
@@ -319,7 +319,7 @@ function StatusHistorySection({
 }) {
   return (
     <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
-      <h3 className="font-display text-base font-semibold text-text-primary">
+      <h3 className="font-display text-base font-semibold text-[var(--foreground)]">
         Historial de estados
       </h3>
 
@@ -332,14 +332,14 @@ function StatusHistorySection({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-body text-sm font-medium text-text-primary">
+                  <p className="font-body text-sm font-medium text-[var(--foreground)]">
                     {historyItem.estado}
                   </p>
-                  <p className="mt-1 font-body text-xs text-text-secondary">
+                  <p className="mt-1 font-body text-xs text-[var(--muted-foreground)]">
                     {historyItem.transportadora ?? "Sin transportadora"}
                   </p>
                 </div>
-                <time className="shrink-0 font-mono text-xs text-text-secondary">
+                <time className="shrink-0 font-mono text-xs text-[var(--muted-foreground)]">
                   {formatDateTime(historyItem.registrado_en)}
                 </time>
               </div>
@@ -352,7 +352,7 @@ function StatusHistorySection({
           ))}
         </ol>
       ) : (
-        <p className="mt-4 font-body text-sm text-text-secondary">
+        <p className="mt-4 font-body text-sm text-[var(--muted-foreground)]">
           Sin historial registrado.
         </p>
       )}
@@ -363,7 +363,7 @@ function StatusHistorySection({
 function TasksSection({ tasks }: { tasks: Task[] }) {
   return (
     <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
-      <h3 className="font-display text-base font-semibold text-text-primary">
+      <h3 className="font-display text-base font-semibold text-[var(--foreground)]">
         Tareas
       </h3>
 
@@ -376,10 +376,10 @@ function TasksSection({ tasks }: { tasks: Task[] }) {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-body text-xs uppercase text-text-secondary">
+                  <p className="font-body text-xs uppercase text-[var(--muted-foreground)]">
                     {formatTaskType(task.tipo)}
                   </p>
-                  <p className="mt-1 font-body text-sm font-medium text-text-primary">
+                  <p className="mt-1 font-body text-sm font-medium text-[var(--foreground)]">
                     {task.titulo}
                   </p>
                 </div>
@@ -390,7 +390,7 @@ function TasksSection({ tasks }: { tasks: Task[] }) {
                 </span>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-3 font-mono text-xs text-text-secondary">
+              <div className="mt-3 flex flex-wrap gap-3 font-mono text-xs text-[var(--muted-foreground)]">
                 {task.intento_numero > 1 ? (
                   <span>Intento {task.intento_numero}</span>
                 ) : null}
@@ -400,7 +400,7 @@ function TasksSection({ tasks }: { tasks: Task[] }) {
           ))}
         </ul>
       ) : (
-        <p className="mt-4 font-body text-sm text-text-secondary">
+        <p className="mt-4 font-body text-sm text-[var(--muted-foreground)]">
           Sin tareas asociadas.
         </p>
       )}

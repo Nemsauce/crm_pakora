@@ -72,7 +72,7 @@ const taskStateLabel: Record<TaskState, string> = {
 
 const taskStateClassName: Record<TaskState, string> = {
   pendiente: "bg-risk-medium-bg text-risk-medium",
-  en_progreso: "bg-primary/10 text-primary",
+  en_progreso: "bg-[var(--color-accent)]/10 text-[var(--color-accent)]",
   completada: "bg-risk-low-bg text-risk-low",
   cancelada: "bg-risk-high-bg text-risk-high",
 };
@@ -137,7 +137,7 @@ export function TaskRow({ task }: TaskRowProps) {
   }
 
   return (
-    <article className="rounded-2xl border border-border bg-bg-surface p-4 text-text-primary shadow-lg">
+    <article className="rounded-2xl border border-border bg-bg-surface p-4 text-[var(--foreground)] shadow-lg">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 gap-3">
           <div
@@ -149,7 +149,7 @@ export function TaskRow({ task }: TaskRowProps) {
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-bg-page px-3 py-1 font-body text-xs font-semibold text-text-primary">
+              <span className="rounded-full bg-bg-page px-3 py-1 font-body text-xs font-semibold text-[var(--foreground)]">
                 {taskTone.label}
               </span>
               <span
@@ -164,11 +164,11 @@ export function TaskRow({ task }: TaskRowProps) {
               ) : null}
             </div>
 
-            <h2 className="mt-2 font-display text-lg font-semibold text-text-primary">
+            <h2 className="mt-2 font-display text-lg font-semibold text-[var(--foreground)]">
               {task.titulo}
             </h2>
 
-            <p className="mt-1 font-body text-sm text-text-secondary">
+            <p className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
               {getCustomerName(task.orders)} ·{" "}
               <span className="font-mono tabular-nums">
                 {getOrderIdentifier(task.orders)}
@@ -182,7 +182,7 @@ export function TaskRow({ task }: TaskRowProps) {
             className={`rounded-full px-3 py-1 font-mono text-xs font-semibold tabular-nums ${
               deadline.isOverdue
                 ? "bg-risk-high-bg text-risk-high"
-                : "bg-bg-page text-text-secondary"
+                : "bg-bg-page text-[var(--muted-foreground)]"
             }`}
           >
             {deadline.isOverdue ? "Vencida " : "Vence "}

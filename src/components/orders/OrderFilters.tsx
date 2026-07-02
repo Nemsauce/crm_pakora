@@ -54,39 +54,39 @@ function FilterSelect({
     <label className="grid gap-1.5">
       <Select.Root value={value} onValueChange={onChange}>
         <Select.Trigger
-          className="inline-flex h-14 min-w-44 items-center justify-between gap-3 rounded-2xl border border-border bg-bg-surface px-3 font-body text-sm text-text-primary shadow-sm outline-none transition-colors hover:bg-bg-page focus:ring-2 focus:ring-ring"
+          className="inline-flex h-14 min-w-44 items-center justify-between gap-3 rounded-2xl border border-border bg-bg-surface px-3 font-body text-sm text-[var(--foreground)] shadow-sm outline-none transition-colors hover:bg-bg-page focus:ring-2 focus:ring-ring"
           aria-label={label}
         >
           <span className="flex min-w-0 items-center gap-3">
             <Icon
-              className="h-4 w-4 shrink-0 text-[var(--color-text-secondary)]"
+              className="h-4 w-4 shrink-0 text-[var(--muted-foreground)]"
               aria-hidden="true"
             />
             <span className="grid min-w-0 text-left leading-tight">
-              <span className="font-body text-xs text-[var(--color-text-secondary)]">
+              <span className="font-body text-xs text-[var(--muted-foreground)]">
                 {label}
               </span>
-              <span className="truncate font-body text-sm text-text-primary">
+              <span className="truncate font-body text-sm text-[var(--foreground)]">
                 <Select.Value />
               </span>
             </span>
           </span>
           <Select.Icon>
-            <ChevronDown className="h-4 w-4 text-[var(--color-text-secondary)]" />
+            <ChevronDown className="h-4 w-4 text-[var(--muted-foreground)]" />
           </Select.Icon>
         </Select.Trigger>
         <Select.Portal>
           <Select.Content
             position="popper"
             sideOffset={6}
-            className="z-50 overflow-hidden rounded-2xl border border-border bg-bg-surface text-text-primary shadow-md"
+            className="z-50 overflow-hidden rounded-2xl border border-border bg-bg-surface text-[var(--foreground)] shadow-md"
           >
             <Select.Viewport className="p-1">
               {options.map((option) => (
                 <Select.Item
                   key={option.value}
                   value={option.value}
-                  className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-text-primary outline-none data-[highlighted]:bg-accent/10 data-[highlighted]:text-[var(--color-accent)]"
+                  className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
                 >
                   <Select.ItemText>{option.label}</Select.ItemText>
                 </Select.Item>
@@ -159,7 +159,7 @@ export function OrderFilters() {
         <Button
           type="button"
           variant="outline"
-          className="rounded-full border-border bg-bg-surface text-text-primary hover:bg-bg-page hover:text-text-primary"
+          className="rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
           onClick={clearFilters}
         >
           Limpiar filtros

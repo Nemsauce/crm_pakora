@@ -13,7 +13,7 @@ export function ThemeToggle() {
       type="button"
       variant="outline"
       size="icon"
-      className="relative rounded-full border-border bg-bg-surface text-text-secondary shadow-md transition-colors hover:text-accent"
+      className="relative rounded-full border-border bg-bg-surface text-[var(--muted-foreground)] shadow-md transition-colors hover:text-[var(--color-accent)]"
       aria-label="Cambiar tema"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
     >

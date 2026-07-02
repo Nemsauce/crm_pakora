@@ -25,8 +25,8 @@ const estadoTone: Record<Order["estado_crm"], BadgeTone> = {
 };
 
 const badgeClassName: Record<BadgeTone, string> = {
-  accent: "bg-primary/10 text-primary",
-  muted: "bg-bg-page text-text-primary",
+  accent: "bg-[var(--color-accent)]/10 text-[var(--color-accent)]",
+  muted: "bg-bg-page text-[var(--foreground)]",
   success: "bg-risk-low-bg text-risk-low",
   danger: "bg-risk-high-bg text-risk-high",
 };
@@ -39,7 +39,7 @@ const cornerBlobBackground = {
   alto:
     "radial-gradient(circle at 35% 35%, var(--color-risk-high-bg) 0%, var(--color-risk-high) 48%, transparent 72%)",
   sin_datos:
-    "radial-gradient(circle at 35% 35%, var(--color-bg-page) 0%, var(--color-text-secondary) 48%, transparent 72%)",
+    "radial-gradient(circle at 35% 35%, var(--color-bg-page) 0%, var(--muted-foreground) 48%, transparent 72%)",
 } as const;
 
 function normalizeRisk(nivelRiesgo: string | null) {
@@ -122,7 +122,7 @@ export function OrderCard({
   return (
     <article
       className={[
-        "relative flex min-h-56 flex-col justify-between overflow-hidden rounded-2xl border bg-bg-surface p-4 text-text-primary shadow-lg transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        "relative flex min-h-56 flex-col justify-between overflow-hidden rounded-2xl border bg-bg-surface p-4 text-[var(--foreground)] shadow-lg transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl motion-reduce:transition-none motion-reduce:hover:translate-y-0",
         selected
           ? "border-[var(--color-accent)] shadow-xl ring-2 ring-[var(--color-accent)] ring-offset-2 ring-offset-bg-page"
           : "border-border",
@@ -140,10 +140,10 @@ export function OrderCard({
             <RiskOrb nivelRiesgo={order.nivel_riesgo} />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate font-display text-base font-semibold text-text-primary">
+            <h2 className="truncate font-display text-base font-semibold text-[var(--foreground)]">
               {getCustomerName(order)}
             </h2>
-            <p className="mt-1 truncate font-mono text-xs text-text-secondary">
+            <p className="mt-1 truncate font-mono text-xs text-[var(--muted-foreground)]">
               {getOrderIdentifier(order)}
             </p>
           </div>
@@ -155,14 +155,14 @@ export function OrderCard({
         </div>
 
         <div className="grid gap-2 text-sm">
-          <p className="flex min-w-0 items-center gap-1.5 font-body text-[var(--color-text-secondary)]">
+          <p className="flex min-w-0 items-center gap-1.5 font-body text-[var(--muted-foreground)]">
             <MapPin
               className="h-3.5 w-3.5 shrink-0"
               aria-hidden="true"
             />
             <span className="truncate">{getLocation(order)}</span>
           </p>
-          <p className="line-clamp-2 min-h-10 font-body text-text-primary">
+          <p className="line-clamp-2 min-h-10 font-body text-[var(--foreground)]">
             {order.nombre_producto ?? "Producto sin nombre"}
           </p>
         </div>
@@ -170,20 +170,20 @@ export function OrderCard({
 
       <div className="relative z-10 mt-5 flex items-end justify-between gap-3 border-t border-border pt-3">
         <div>
-          <p className="font-body text-xs text-text-secondary">Total</p>
-          <p className="mt-1 font-mono text-sm font-semibold text-text-primary">
+          <p className="font-body text-xs text-[var(--muted-foreground)]">Total</p>
+          <p className="mt-1 font-mono text-sm font-semibold text-[var(--foreground)]">
             {formatCurrency(order)}
           </p>
         </div>
         <div className="text-right">
-          <p className="flex items-center justify-end gap-1.5 font-body text-xs text-[var(--color-text-secondary)]">
+          <p className="flex items-center justify-end gap-1.5 font-body text-xs text-[var(--muted-foreground)]">
             <Calendar
               className="h-3.5 w-3.5 shrink-0"
               aria-hidden="true"
             />
             Fecha
           </p>
-          <p className="mt-1 font-mono text-xs text-text-primary">
+          <p className="mt-1 font-mono text-xs text-[var(--foreground)]">
             {formatDate(order.fecha)}
           </p>
         </div>

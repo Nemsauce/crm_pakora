@@ -45,13 +45,13 @@ export default async function SetPasswordPage({
 
   if (!hasSession) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-6 py-12 text-text-primary">
+      <main className="flex min-h-screen items-center justify-center px-6 py-12 text-[var(--foreground)]">
         <Card className="w-full max-w-sm rounded-2xl border-border bg-bg-surface shadow-sm">
           <CardHeader>
-            <CardTitle className="font-display text-2xl text-text-primary">
+            <CardTitle className="font-display text-2xl text-[var(--foreground)]">
               Enlace no válido
             </CardTitle>
-            <CardDescription className="font-body text-text-secondary">
+            <CardDescription className="font-body text-[var(--muted-foreground)]">
               El enlace de invitación es inválido o ya expiró.
             </CardDescription>
           </CardHeader>
@@ -69,13 +69,13 @@ export default async function SetPasswordPage({
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-12 text-text-primary">
+    <main className="flex min-h-screen items-center justify-center px-6 py-12 text-[var(--foreground)]">
       <Card className="w-full max-w-sm rounded-2xl border-border bg-bg-surface shadow-sm">
         <CardHeader>
-          <CardTitle className="font-display text-2xl text-text-primary">
+          <CardTitle className="font-display text-2xl text-[var(--foreground)]">
             Define tu contraseña
           </CardTitle>
-          <CardDescription className="font-body text-text-secondary">
+          <CardDescription className="font-body text-[var(--muted-foreground)]">
             Completa la invitación para entrar al CRM.
           </CardDescription>
         </CardHeader>
@@ -87,7 +87,7 @@ export default async function SetPasswordPage({
               </p>
             ) : null}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-text-primary">
+              <Label htmlFor="password" className="text-[var(--foreground)]">
                 Nueva contraseña
               </Label>
               <Input
@@ -95,7 +95,7 @@ export default async function SetPasswordPage({
                 name="password"
                 type="password"
                 autoComplete="new-password"
-                className="rounded-lg border-border bg-bg-surface text-text-primary placeholder:text-text-secondary focus-visible:border-accent focus-visible:ring-accent/20"
+                className="rounded-lg border-border bg-bg-surface text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20"
                 minLength={8}
                 required
               />
@@ -103,7 +103,7 @@ export default async function SetPasswordPage({
             <div className="space-y-2">
               <Label
                 htmlFor="passwordConfirmation"
-                className="text-text-primary"
+                className="text-[var(--foreground)]"
               >
                 Confirmar contraseña
               </Label>
@@ -112,7 +112,7 @@ export default async function SetPasswordPage({
                 name="passwordConfirmation"
                 type="password"
                 autoComplete="new-password"
-                className="rounded-lg border-border bg-bg-surface text-text-primary placeholder:text-text-secondary focus-visible:border-accent focus-visible:ring-accent/20"
+                className="rounded-lg border-border bg-bg-surface text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20"
                 minLength={8}
                 required
               />

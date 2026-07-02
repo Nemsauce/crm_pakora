@@ -26,13 +26,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const error = getSearchParam(params?.error);
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-12 text-text-primary">
+    <main className="flex min-h-screen items-center justify-center px-6 py-12 text-[var(--foreground)]">
       <Card className="w-full max-w-sm rounded-2xl border-border bg-bg-surface shadow-sm">
         <CardHeader>
-          <CardTitle className="font-display text-2xl text-text-primary">
+          <CardTitle className="font-display text-2xl text-[var(--foreground)]">
             CRM Pakora
           </CardTitle>
-          <CardDescription className="font-body text-text-secondary">
+          <CardDescription className="font-body text-[var(--muted-foreground)]">
             Ingresa con tu cuenta invitada.
           </CardDescription>
         </CardHeader>
@@ -44,7 +44,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               </p>
             ) : null}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-text-primary">
+              <Label htmlFor="email" className="text-[var(--foreground)]">
                 Correo
               </Label>
               <Input
@@ -52,12 +52,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 name="email"
                 type="email"
                 autoComplete="email"
-                className="rounded-lg border-border bg-bg-surface text-text-primary placeholder:text-text-secondary focus-visible:border-accent focus-visible:ring-accent/20"
+                className="rounded-lg border-border bg-bg-surface text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-text-primary">
+              <Label htmlFor="password" className="text-[var(--foreground)]">
                 Contraseña
               </Label>
               <Input
@@ -65,7 +65,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 name="password"
                 type="password"
                 autoComplete="current-password"
-                className="rounded-lg border-border bg-bg-surface text-text-primary placeholder:text-text-secondary focus-visible:border-accent focus-visible:ring-accent/20"
+                className="rounded-lg border-border bg-bg-surface text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20"
                 required
               />
             </div>
