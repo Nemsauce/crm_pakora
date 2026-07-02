@@ -237,9 +237,9 @@ function buildPagination(pageSize) {
     paginationCompleteWhen: "other",
     statusCodesWhenComplete: "",
     completeExpression: `={{ !Array.isArray($response.body?.objects) || $response.body.objects.length < ${pageSize} }}`,
-    limitPagesFetched: false,
-    maxRequests: 10000,
-    requestInterval: 0,
+    limitPagesFetched: true,
+    maxRequests: 100,
+    requestInterval: 500,
   };
 }
 
