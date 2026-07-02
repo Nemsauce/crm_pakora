@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+
+import { BackgroundBlobs } from "@/components/layout/BackgroundBlobs";
+
 import "./globals.css";
 
 const display = Space_Grotesk({
@@ -32,8 +35,9 @@ export default function RootLayout({
       lang="es"
       className={`${display.variable} ${body.variable} ${mono.variable} dark h-full`}
     >
-      <body className="flex min-h-full flex-col bg-background text-foreground antialiased">
-        {children}
+      <body className="relative flex min-h-full flex-col overflow-x-hidden bg-background text-foreground antialiased">
+        <BackgroundBlobs />
+        <div className="relative z-10 flex min-h-full flex-col">{children}</div>
       </body>
     </html>
   );
