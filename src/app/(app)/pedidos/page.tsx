@@ -102,6 +102,32 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
 
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
+      <style>{`
+        @keyframes crm-fade-slide-in {
+          from {
+            opacity: 0;
+            transform: translateY(12px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .crm-list-entrance {
+          opacity: 0;
+          animation: crm-fade-slide-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .crm-list-entrance {
+            opacity: 1;
+            transform: none;
+            animation: none;
+          }
+        }
+      `}</style>
+
       <div className="border-b border-border pb-4">
         <p className="font-body text-xs uppercase text-text-secondary">
           Pedidos
@@ -117,12 +143,19 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
 
       {orderList.length > 0 ? (
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {orderList.map((order) => (
-            <OrderCardLink
+          {orderList.map((order, index) => (
+            <div
               key={order.id}
-              order={order}
-              selected={String(order.id) === selectedOrderId}
-            />
+              className="crm-list-entrance"
+              style={{
+                animationDelay: `${Math.min(index * 40, 480)}ms`,
+              }}
+            >
+              <OrderCardLink
+                order={order}
+                selected={String(order.id) === selectedOrderId}
+              />
+            </div>
           ))}
         </div>
       ) : (
