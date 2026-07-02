@@ -46,8 +46,8 @@ const taskStateLabel: Record<Task["estado"], string> = {
 };
 
 const badgeClassName: Record<BadgeTone, string> = {
-  accent: "bg-accent/10 text-accent",
-  muted: "bg-bg-page text-text-secondary",
+  accent: "bg-primary/10 text-primary",
+  muted: "bg-bg-page text-text-primary",
   success: "bg-risk-low-bg text-risk-low",
   warning: "bg-risk-medium-bg text-risk-medium",
   danger: "bg-risk-high-bg text-risk-high",
@@ -250,7 +250,7 @@ function OrderHeader({ order }: { order: Order }) {
           </p>
         </div>
         <span
-          className={`rounded-full px-3 py-1 font-body text-xs font-medium ${badgeClassName[badgeTone]}`}
+          className={`rounded-full px-3 py-1 font-body text-xs font-semibold ${badgeClassName[badgeTone]}`}
         >
           {estadoCrmLabel[order.estado_crm]}
         </span>
@@ -358,7 +358,7 @@ function TasksSection({ tasks }: { tasks: Task[] }) {
                   </p>
                 </div>
                 <span
-                  className={`shrink-0 rounded-full px-3 py-1 font-body text-xs font-medium ${badgeClassName[taskStateTone[task.estado]]}`}
+                  className={`shrink-0 rounded-full px-3 py-1 font-body text-xs font-semibold ${badgeClassName[taskStateTone[task.estado]]}`}
                 >
                   {taskStateLabel[task.estado]}
                 </span>

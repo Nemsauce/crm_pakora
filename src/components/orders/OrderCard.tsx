@@ -23,8 +23,8 @@ const estadoTone: Record<Order["estado_crm"], BadgeTone> = {
 };
 
 const badgeClassName: Record<BadgeTone, string> = {
-  accent: "bg-accent/10 text-accent",
-  muted: "bg-bg-page text-text-secondary",
+  accent: "bg-primary/10 text-primary",
+  muted: "bg-bg-page text-text-primary",
   success: "bg-risk-low-bg text-risk-low",
   danger: "bg-risk-high-bg text-risk-high",
 };
@@ -116,7 +116,7 @@ export function OrderCard({
             </p>
           </div>
           <span
-            className={`shrink-0 rounded-full px-3 py-1 font-body text-xs font-medium ${badgeClassName[badgeTone]}`}
+            className={`shrink-0 rounded-full px-3 py-1 font-body text-xs font-semibold ${badgeClassName[badgeTone]}`}
           >
             {estadoLabel[order.estado_crm]}
           </span>
