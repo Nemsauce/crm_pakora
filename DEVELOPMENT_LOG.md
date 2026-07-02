@@ -148,3 +148,9 @@ Fases 1-4 del roadmap original están completas y verificadas en producción (sc
 6. Borrar data de prueba: `delete from tasks where creado_por = 'seed_test';`
 7. Sweep de seguridad (acordado desde el inicio del proyecto, pendiente antes de producción real).
 8. Deep-link desde una tarea en /tareas hacia /pedidos?detalle={orders.id} con el drawer ya abierto.
+
+### [Fase 3] Sweep visual v3 — tokens + theme toggle — COMPLETADO
+- Se reescribió `DESIGN.md` como fuente de verdad v3 dual-theme (light + dark), basado en los nuevos mockups aprobados por Alejo para Pedidos, Tareas y Command Center.
+- Se agregó `next-themes` y el `ThemeProvider` global con `attribute="class"`, `defaultTheme="light"` y `enableSystem=false`; el toggle será explícito y no seguirá la preferencia del sistema.
+- Se agregaron tokens completos para `:root` y `.dark` en `globals.css`, más tokens Tailwind para positivos/negativos, badges y acentos secundarios.
+- Se creó `ThemeToggle` como componente cliente funcional, todavía sin ubicar en la UI. La aplicación visual de Sidebar/TopBar/cards/tareas/Command Center queda para commits separados del sweep.

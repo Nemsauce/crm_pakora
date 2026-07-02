@@ -50,26 +50,36 @@
 }
 
 :root {
-  --color-bg-page: #FDF4F0;
-  --color-bg-page-mid: #F5EAFB;
-  --color-bg-page-end: #EAF0FB;
+  --color-bg-page: #FFFFFF;
   --color-bg-surface: #FFFFFF;
   --color-accent: #7C3AED;
   --color-accent-from: #8B5CF6;
-  --color-accent-to: #D946EF;
-  --color-text-primary: #1E1B2E;
-  --color-text-secondary: #6B7280;
-  --color-border: #F1EEF9;
-  --color-risk-high: #EF4444;
-  --color-risk-high-bg: #FEE2E2;
+  --color-accent-to: #A78BFA;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
+  --color-border: #E5E7EB;
+  --color-positive: #16A34A;
+  --color-positive-bg: #DCFCE7;
+  --color-negative: #DC2626;
+  --color-negative-bg: #FEE2E2;
+  --color-risk-high: var(--color-negative);
+  --color-risk-high-bg: var(--color-negative-bg);
   --color-risk-medium: #F59E0B;
   --color-risk-medium-bg: #FEF3C7;
-  --color-risk-low: #10B981;
-  --color-risk-low-bg: #D1FAE5;
-  --color-positive: #16A34A;
-  --color-negative: #DC2626;
+  --color-risk-low: var(--color-positive);
+  --color-risk-low-bg: var(--color-positive-bg);
+  --color-badge-nuevo: #7C3AED;
+  --color-badge-nuevo-bg: #EDE9FE;
+  --color-badge-en-ruta: #C2410C;
+  --color-badge-en-ruta-bg: #FFEDD5;
+  --color-accent-blue: #3B82F6;
+  --color-accent-blue-bg: #DBEAFE;
+  --color-accent-pink: #EC4899;
+  --color-accent-pink-bg: #FCE7F3;
+  --color-accent-orange: #F97316;
+  --color-accent-orange-bg: #FFEDD5;
 
-  --background: color-mix(in oklab, var(--color-bg-page) 14%, var(--color-bg-surface));
+  --background: var(--color-bg-page);
   --foreground: var(--color-text-primary);
   --card: var(--color-bg-surface);
   --card-foreground: var(--color-text-primary);
@@ -82,8 +92,8 @@
   --muted: color-mix(in oklab, var(--color-accent) 6%, var(--color-bg-surface));
   --muted-foreground: var(--color-text-secondary);
   --accent: color-mix(in oklab, var(--color-accent) 12%, var(--color-bg-surface));
-  --accent-foreground: var(--color-text-primary);
-  --destructive: var(--color-risk-high);
+  --accent-foreground: var(--color-accent);
+  --destructive: var(--color-negative);
   --border: var(--color-border);
   --input: var(--color-border);
   --ring: var(--color-accent);
@@ -104,7 +114,36 @@
 }
 
 .dark {
-  --background: color-mix(in oklab, var(--color-bg-page) 14%, var(--color-bg-surface));
+  --color-bg-page: #0A0D18;
+  --color-bg-surface: #12151F;
+  --color-accent: #A78BFA;
+  --color-accent-from: #8B5CF6;
+  --color-accent-to: #C4B5FD;
+  --color-text-primary: #F8FAFC;
+  --color-text-secondary: #94A3B8;
+  --color-border: #1E2433;
+  --color-positive: #4ADE80;
+  --color-positive-bg: rgba(34, 197, 94, 0.12);
+  --color-negative: #F87171;
+  --color-negative-bg: rgba(239, 68, 68, 0.12);
+  --color-risk-high: var(--color-negative);
+  --color-risk-high-bg: var(--color-negative-bg);
+  --color-risk-medium: #FBBF24;
+  --color-risk-medium-bg: rgba(245, 158, 11, 0.14);
+  --color-risk-low: var(--color-positive);
+  --color-risk-low-bg: var(--color-positive-bg);
+  --color-badge-nuevo: #C4B5FD;
+  --color-badge-nuevo-bg: rgba(139, 92, 246, 0.18);
+  --color-badge-en-ruta: #FBBF24;
+  --color-badge-en-ruta-bg: rgba(217, 119, 6, 0.16);
+  --color-accent-blue: #60A5FA;
+  --color-accent-blue-bg: rgba(59, 130, 246, 0.16);
+  --color-accent-pink: #F472B6;
+  --color-accent-pink-bg: rgba(236, 72, 153, 0.16);
+  --color-accent-orange: #FB923C;
+  --color-accent-orange-bg: rgba(249, 115, 22, 0.16);
+
+  --background: var(--color-bg-page);
   --foreground: var(--color-text-primary);
   --card: var(--color-bg-surface);
   --card-foreground: var(--color-text-primary);
@@ -117,11 +156,16 @@
   --muted: color-mix(in oklab, var(--color-accent) 6%, var(--color-bg-surface));
   --muted-foreground: var(--color-text-secondary);
   --accent: color-mix(in oklab, var(--color-accent) 12%, var(--color-bg-surface));
-  --accent-foreground: var(--color-text-primary);
-  --destructive: var(--color-risk-high);
+  --accent-foreground: var(--color-accent);
+  --destructive: var(--color-negative);
   --border: var(--color-border);
   --input: var(--color-border);
   --ring: var(--color-accent);
+  --chart-1: var(--color-accent-from);
+  --chart-2: var(--color-accent-to);
+  --chart-3: var(--color-positive);
+  --chart-4: var(--color-risk-medium);
+  --chart-5: var(--color-negative);
   --sidebar: var(--color-bg-surface);
   --sidebar-foreground: var(--color-text-primary);
   --sidebar-primary: var(--color-accent);
@@ -138,16 +182,6 @@
   }
   body {
     @apply bg-background font-body text-foreground;
-    background-image:
-      linear-gradient(
-        135deg,
-        color-mix(in oklab, var(--color-bg-page) 16%, var(--color-bg-surface)) 0%,
-        color-mix(in oklab, var(--color-bg-page-mid) 12%, var(--color-bg-surface)) 52%,
-        color-mix(in oklab, var(--color-bg-page-end) 14%, var(--color-bg-surface)) 100%
-      );
-    background-attachment: fixed;
-    background-repeat: no-repeat;
-    background-size: cover;
     font-variant-numeric: tabular-nums;
   }
   html {
