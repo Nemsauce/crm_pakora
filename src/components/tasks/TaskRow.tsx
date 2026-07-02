@@ -1,7 +1,7 @@
 import {
   AlertTriangle,
-  Bell,
   Check,
+  PackageCheck,
   Phone,
   Truck,
   type LucideIcon,
@@ -34,27 +34,32 @@ const taskTypeTone: Record<TaskType, TaskTone> = {
   llamar_confirmacion: {
     label: "Llamar confirmación",
     icon: Phone,
-    circleClassName: "bg-primary/10 text-primary",
+    circleClassName:
+      "bg-[var(--color-badge-nuevo-bg)] text-[var(--color-badge-nuevo)]",
   },
   notificar_guia: {
     label: "Notificar guía",
     icon: Truck,
-    circleClassName: "bg-accent-blue-bg text-accent-blue",
+    circleClassName:
+      "bg-[var(--color-accent-blue-bg)] text-[var(--color-accent-blue)]",
   },
   presionar_entrega: {
     label: "Presionar entrega",
     icon: AlertTriangle,
-    circleClassName: "bg-risk-medium-bg text-risk-medium",
+    circleClassName:
+      "bg-[var(--color-risk-medium-bg)] text-[var(--color-risk-medium)]",
   },
   notificar_proximo_llegar: {
     label: "Próximo a llegar",
-    icon: Bell,
-    circleClassName: "bg-risk-low-bg text-risk-low",
+    icon: PackageCheck,
+    circleClassName:
+      "bg-[var(--color-positive-bg)] text-[var(--color-positive)]",
   },
   resolver_novedad: {
     label: "Resolver novedad",
     icon: AlertTriangle,
-    circleClassName: "bg-risk-high-bg text-risk-high",
+    circleClassName:
+      "bg-[var(--color-negative-bg)] text-[var(--color-negative)]",
   },
 };
 
@@ -136,10 +141,10 @@ export function TaskRow({ task }: TaskRowProps) {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 gap-3">
           <div
-            className={`flex size-10 shrink-0 items-center justify-center rounded-full ${taskTone.circleClassName}`}
+            className={`flex size-12 shrink-0 items-center justify-center rounded-full ${taskTone.circleClassName}`}
             aria-hidden="true"
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-5 w-5" />
           </div>
 
           <div className="min-w-0">
