@@ -63,3 +63,8 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Codex no ejecutó el script contra n8n porque este sandbox no tiene acceso de red ni credenciales. Alejo debe correrlo localmente con `N8N_BASE_URL`, `N8N_API_KEY` y `WEBHOOK_SHARED_SECRET`, primero en dry-run y luego con `--confirm`.
 - El script no toca Dropi migracion, Dropi migracion MEX, Shopify Orders ni Shopify Orders MX.
 - Pendiente: Alejo debe ejecutar el script, re-testear manualmente ambos workflows en n8n y confirmar que el webhook `/api/webhooks/orders/status-changed` se dispare correctamente.
+
+### [Fase 2] Cron de reconciliación — PAUSADO
+- Se removió la programación Vercel Cron de `/api/cron/reconcile-tasks` porque el plan Hobby solo permite crons diarios y este proyecto todavía no está pagando Vercel Pro.
+- Decisión: la reconciliación se hará extendiendo el ciclo existente de n8n (`Dropi Polling`, 5x/día) para comparar `estado_dropi` contra `tarea_generada_para_estado`, no solo detectar cambios desde el último poll. Esto se implementará vía script/API de n8n en `scripts/n8n/`, no como cambio nuevo del backend en este commit.
+- La ruta `/api/cron/reconcile-tasks` sigue existiendo y funcionando; simplemente no está agendada por Vercel ahora. Puede reactivarse si más adelante se adopta Vercel Pro.
