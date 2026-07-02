@@ -212,12 +212,27 @@ function removeQueryParam(urlValue, name) {
   return parts.length > 0 ? `${base}?${parts.join("&")}${hash}` : `${base}${hash}`;
 }
 
+function ensureExpressionUrlPrefix(urlValue) {
+  if (typeof urlValue !== "string") {
+    return urlValue;
+  }
+
+  const trimmed = urlValue.trimStart();
+
+  if (!trimmed.includes("{{") || trimmed.startsWith("=")) {
+    return urlValue;
+  }
+
+  return `=${urlValue}`;
+}
+
 function patchDropiDateWindowUrl(urlValue, pageSize, untilExpression) {
   let nextUrl = urlValue;
   nextUrl = setQueryParamRaw(nextUrl, "from", HISTORY_FROM_DATE);
   nextUrl = setQueryParamRaw(nextUrl, "until", untilExpression);
   nextUrl = setQueryParamRaw(nextUrl, "result_number", String(pageSize));
   nextUrl = removeQueryParam(nextUrl, "start");
+  nextUrl = ensureExpressionUrlPrefix(nextUrl);
 
   return nextUrl;
 }
@@ -799,6 +814,10 @@ function formatPagination(pagination) {
   return JSON.stringify(pagination, null, 2);
 }
 
+function urlStartsWithExpressionPrefix(urlValue) {
+  return typeof urlValue === "string" && urlValue.trimStart().startsWith("=");
+}
+
 function getUntilExpressionFromTemplate(templateWalletNode) {
   return (
     getQueryParamRaw(getHttpRequestUrl(templateWalletNode), "until") ??
@@ -896,11 +915,17 @@ function patchWorkflow(workflow, templateWorkflow, workflowTarget) {
     historicalOrdersUrlStatus: historicalOrdersPatch.urlStatus,
     historicalOrdersPaginationStatus: historicalOrdersPatch.paginationStatus,
     historicalOrdersUrl: historicalOrdersPatch.url,
+    historicalOrdersUrlStartsWithEquals: urlStartsWithExpressionPrefix(
+      historicalOrdersPatch.url,
+    ),
     historicalOrdersPagination: historicalOrdersPatch.pagination,
     walletHistoricalNodeStatus: walletHistoricalNodeChange.status,
     walletHistoricalUrlStatus: walletHistoricalNodeChange.urlStatus,
     walletHistoricalPaginationStatus: walletHistoricalNodeChange.paginationStatus,
     walletHistoricalUrl: walletHistoricalNodeChange.url,
+    walletHistoricalUrlStartsWithEquals: urlStartsWithExpressionPrefix(
+      walletHistoricalNodeChange.url,
+    ),
     walletHistoricalPagination: walletHistoricalNodeChange.pagination,
     walletMappingNodeStatus: walletMappingNodeChange.status,
     walletInsertNodeStatus: walletInsertNodeChange.status,
@@ -931,6 +956,9 @@ function printChangeSummary(workflow, workflowTarget, patchResult) {
     `- "${DROPI_HISTORICAL_ORDERS_NODE_NAME}" native pagination: ${patchResult.historicalOrdersPaginationStatus}`,
   );
   console.log(`- orders historical url: ${patchResult.historicalOrdersUrl}`);
+  console.log(
+    `- orders historical url starts with '=': ${patchResult.historicalOrdersUrlStartsWithEquals}`,
+  );
   console.log("- orders pagination JSON:");
   console.log(formatPagination(patchResult.historicalOrdersPagination));
   console.log(
@@ -943,6 +971,9 @@ function printChangeSummary(workflow, workflowTarget, patchResult) {
     `- "${DROPI_WALLET_HISTORICAL_NODE_NAME}" native pagination: ${patchResult.walletHistoricalPaginationStatus}`,
   );
   console.log(`- wallet historical url: ${patchResult.walletHistoricalUrl}`);
+  console.log(
+    `- wallet historical url starts with '=': ${patchResult.walletHistoricalUrlStartsWithEquals}`,
+  );
   console.log("- wallet pagination JSON:");
   console.log(formatPagination(patchResult.walletHistoricalPagination));
   console.log(
