@@ -38,7 +38,7 @@ export function DateRangeSelector({ currentRange }: DateRangeSelectorProps) {
             aria-pressed={isActive}
             className={`h-9 rounded-full px-4 font-body text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
               isActive
-                ? "bg-accent/10 text-accent"
+                ? "bg-[var(--color-badge-nuevo-bg)] text-[var(--color-badge-nuevo)]"
                 : "text-text-secondary hover:bg-bg-page hover:text-text-primary"
             }`}
             onClick={() => updateRange(option.value)}
