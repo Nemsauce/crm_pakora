@@ -136,3 +136,15 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - La agregación vive en Supabase vía RPC `wallet_summary(p_date_from, p_date_to)`; la app solo separa por país y hace shaping visual para cards/tablas.
 - La pantalla muestra ganancia neta (`ENTRADA - SALIDA`) por CO/MX, selector 7/30/90 días, y desglose por categoría de movimiento wallet.
 - La fuente es `wallet_movements`, alimentada por el polling continuo reciente; por ahora puede aparecer "Sin movimientos" si el rango no tiene datos. El backfill histórico completo sigue diferido según el PIN anterior, así que esta pantalla se irá poblando hacia adelante o después de la migración final.
+
+### [Checkpoint] plan finalv1.0 — pendientes antes de considerar el proyecto cerrado
+Fases 1-4 del roadmap original están completas y verificadas en producción (schema, motor de tareas + n8n, app completa, Command Center). Esto es lo que queda:
+
+1. Migración histórica completa de wallet_movements (el polling solo captura hacia adelante desde ~1 jul 2026; falta traer todo lo anterior).
+2. Roles más allá de `admin` (operador, finanzas) — RLS no distingue permisos todavía.
+3. Formalizar migraciones de schema vía Supabase CLI (hoy son 8 archivos .sql sueltos corridos manualmente en el SQL Editor, sin versionar en supabase/migrations/).
+4. Confirmar que supabase/.gitignore cubre .temp/ (nunca se confirmó el resultado de ese chequeo).
+5. Regenerar database.types.ts para incluir wallet_summary y eliminar el cast manual en /command-center/page.tsx.
+6. Borrar data de prueba: `delete from tasks where creado_por = 'seed_test';`
+7. Sweep de seguridad (acordado desde el inicio del proyecto, pendiente antes de producción real).
+8. Deep-link desde una tarea en /tareas hacia /pedidos?detalle={orders.id} con el drawer ya abierto.
