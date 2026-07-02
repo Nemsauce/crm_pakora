@@ -122,7 +122,7 @@ export function OrderCard({
   return (
     <article
       className={[
-        "relative flex min-h-56 flex-col justify-between overflow-hidden rounded-2xl border bg-bg-surface p-4 text-text-primary shadow-lg transition-colors",
+        "relative flex min-h-56 flex-col justify-between overflow-hidden rounded-2xl border bg-bg-surface p-4 text-text-primary shadow-lg transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl motion-reduce:transition-none motion-reduce:hover:translate-y-0",
         selected
           ? "border-accent ring-2 ring-accent/25"
           : "border-border",

@@ -119,7 +119,7 @@ export function OrderDetailDrawer() {
   }, [pathname, searchParams]);
 
   function closeDrawer() {
-    router.push(closeHref);
+    router.push(closeHref, { scroll: false });
   }
 
   useEffect(() => {
@@ -180,7 +180,29 @@ export function OrderDetailDrawer() {
       }}
     >
       <Dialog.Portal>
-        <Dialog.Content className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-border bg-bg-surface text-text-primary shadow-xl outline-none">
+        <style>{`
+          @keyframes crm-drawer-enter {
+            from {
+              opacity: 0;
+              transform: translateX(24px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(0);
+            }
+          }
+
+          .crm-order-detail-drawer[data-state="open"] {
+            animation: crm-drawer-enter 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .crm-order-detail-drawer[data-state="open"] {
+              animation: none;
+            }
+          }
+        `}</style>
+        <Dialog.Content className="crm-order-detail-drawer fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-border bg-bg-surface text-text-primary shadow-xl outline-none">
           <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
             <div className="min-w-0">
               <Dialog.Title className="font-display text-lg font-semibold text-text-primary">

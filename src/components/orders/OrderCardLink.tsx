@@ -28,7 +28,7 @@ export function OrderCardLink({ order, selected }: OrderCardLinkProps) {
     }
 
     const query = params.toString();
-    router.push(query ? `${pathname}?${query}` : pathname);
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
