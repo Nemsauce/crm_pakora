@@ -145,6 +145,7 @@
 .sidebar-liquid-blob {
   border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
   animation: sidebar-blob-morph 18s ease-in-out infinite;
+  will-change: border-radius, transform;
 }
 
 .sidebar-liquid-blob--two {
@@ -168,11 +169,11 @@
   }
   33% {
     border-radius: 42% 58% 66% 34% / 38% 58% 42% 62%;
-    transform: translate3d(1.25rem, 2rem, 0) scale(1.08);
+    transform: translate3d(1.75rem, 2.75rem, 0) scale(1.12);
   }
   66% {
     border-radius: 72% 28% 46% 54% / 54% 36% 64% 46%;
-    transform: translate3d(-0.75rem, 3rem, 0) scale(0.94);
+    transform: translate3d(-1.25rem, 4rem, 0) scale(0.96);
   }
 }
 
