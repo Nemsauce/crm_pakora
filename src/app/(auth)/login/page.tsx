@@ -26,9 +26,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const error = getSearchParam(params?.error);
 
   return (
-    <main className="relative isolate flex min-h-screen items-center justify-center overflow-hidden px-6 py-12 text-text-primary">
-      <div className="pointer-events-none absolute inset-x-6 top-16 -z-10 h-48 rounded-full bg-gradient-to-r from-accent-from/20 to-accent-to/20 blur-3xl" />
-      <Card className="w-full max-w-sm border-border bg-bg-surface/75 shadow-2xl shadow-accent-from/10 backdrop-blur-xl">
+    <main className="flex min-h-screen items-center justify-center px-6 py-12 text-text-primary">
+      <Card className="w-full max-w-sm rounded-2xl border-border bg-bg-surface shadow-sm">
         <CardHeader>
           <CardTitle className="font-display text-2xl text-text-primary">
             CRM Pakora
@@ -40,7 +39,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <CardContent>
           <form action={login} className="space-y-4">
             {error ? (
-              <p className="rounded-lg border border-risk-high/40 bg-risk-high/10 px-3 py-2 text-sm text-risk-high">
+              <p className="rounded-full bg-risk-high-bg px-4 py-2 font-body text-sm text-risk-high">
                 {error}
               </p>
             ) : null}
@@ -53,7 +52,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 name="email"
                 type="email"
                 autoComplete="email"
-                className="border-border bg-bg-base/60 text-text-primary placeholder:text-text-secondary focus-visible:border-accent-to focus-visible:ring-accent-to/30"
+                className="rounded-lg border-border bg-bg-surface text-text-primary placeholder:text-text-secondary focus-visible:border-accent focus-visible:ring-accent/20"
                 required
               />
             </div>
@@ -66,12 +65,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 name="password"
                 type="password"
                 autoComplete="current-password"
-                className="border-border bg-bg-base/60 text-text-primary placeholder:text-text-secondary focus-visible:border-accent-to focus-visible:ring-accent-to/30"
+                className="rounded-lg border-border bg-bg-surface text-text-primary placeholder:text-text-secondary focus-visible:border-accent focus-visible:ring-accent/20"
                 required
               />
             </div>
             <Button
-              className="w-full bg-accent-to text-bg-base hover:bg-accent-to/90"
+              className="w-full rounded-full bg-gradient-to-r from-accent-from to-accent-to text-bg-surface shadow-sm hover:opacity-90"
               type="submit"
             >
               Entrar
