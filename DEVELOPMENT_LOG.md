@@ -118,3 +118,9 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Pendiente: borrar data de prueba (`delete from tasks where creado_por = 'seed_test';`) antes de producción real.
 - Pendiente: sweep de seguridad (acordado desde el inicio, aceptable en desarrollo).
 - Próxima prioridad acordada: conectar wallet a n8n primero, después Command Center.
+
+### [Fase 4 prep] Captura completa de wallet_movements — SCRIPT LISTO, PENDIENTE DE EJECUCIÓN
+- Gap resuelto a nivel de script: `wallet_movements` y `wallet_movement_catalog` existían en Supabase, pero ningún workflow de n8n estaba alimentando `wallet_movements`; solo se actualizaban campos agregados en `orders` para liquidación/devolución.
+- Se extendió `scripts/n8n/patch-dropi-polling-webhook.mjs` para agregar una rama paralela desde `Dropi Consultar Wallet`: `Mapear movimientos wallet completo` transforma todos los movimientos con `order_id` y `Insertar movimientos wallet` hace bulk insert en `wallet_movements` con idempotencia por `Prefer: resolution=ignore-duplicates,return=minimal`.
+- La clasificación queda por `identification_code` contra `wallet_movement_catalog`, no por texto libre de `description`.
+- La cadena existente `Procesar movimientos wallet` → `Actualizar liquidacion` / `Actualizar devolucion` queda intacta y sigue corriendo en paralelo. Pendiente: Alejo debe ejecutar dry-run y luego `--confirm` contra n8n de producción y verificar inserts reales antes de construir Fase 4 (Command Center financiero).

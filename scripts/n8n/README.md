@@ -11,6 +11,13 @@ The script adds or updates the `Notificar backend CRM` HTTP Request node after `
 
 It also turns the existing Dropi polling cycle into the free-tier reconciliation mechanism while Vercel Cron is paused on the Hobby plan. The polling schedule remains unchanged (5x/day), but the script patches `Traer ordenes activas Supabase` to fetch `tarea_generada_para_estado` and patches `Comparar y filtrar cambios` so orders are re-notified when `tarea_generada_para_estado` is out of sync with the live Dropi status, even if the status did not newly change since the previous poll.
 
+The script also adds a parallel wallet-capture branch from `Dropi Consultar Wallet`:
+
+- `Mapear movimientos wallet completo`: maps every wallet movement in the Dropi wallet response `objects` array that has `order_id`.
+- `Insertar movimientos wallet`: bulk inserts the mapped array into Supabase `wallet_movements` with `Prefer: resolution=ignore-duplicates,return=minimal`.
+
+This branch runs alongside the existing `Procesar movimientos wallet` → `Actualizar liquidacion` / `Actualizar devolucion` chain. It does not replace or modify that existing order-field update flow. `wallet_movements` classification happens through `identification_code` and `wallet_movement_catalog`, not by matching unstable `description` text.
+
 `/api/cron/reconcile-tasks` remains available in the backend and can be scheduled again later if the Vercel account moves to Pro.
 
 ## Required env vars
@@ -34,6 +41,6 @@ Apply after reviewing the dry-run summary:
 node scripts/n8n/patch-dropi-polling-webhook.mjs --confirm
 ```
 
-This script is manual maintenance, not automatic or scheduled. Re-run it manually if the webhook URL, shared secret, reconciliation field, or target node names ever change.
+This script is manual maintenance, not automatic or scheduled. Re-run it manually if the webhook URL, shared secret, reconciliation field, wallet capture mapping, Supabase wallet endpoint, or target node names ever change.
 
-After applying, manually re-test both workflows in n8n with a manual execution and confirm the new `Notificar backend CRM` node fires correctly.
+After applying, manually re-test both workflows in n8n with a manual execution and confirm the new `Notificar backend CRM` node fires correctly and the new wallet branch inserts `wallet_movements` without duplicating rows on repeat runs.
