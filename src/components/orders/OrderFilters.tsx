@@ -1,6 +1,12 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import {
+  ChevronDown,
+  Globe,
+  PieChart,
+  Shield,
+  type LucideIcon,
+} from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Select } from "radix-ui";
 
@@ -33,23 +39,40 @@ const riskOptions = [
 
 function FilterSelect({
   label,
+  icon: Icon,
   value,
   options,
   onChange,
 }: {
   label: string;
+  icon: LucideIcon;
   value: FilterValue;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
 }) {
   return (
     <label className="grid gap-1.5">
-      <span className="font-body text-xs text-text-secondary">{label}</span>
       <Select.Root value={value} onValueChange={onChange}>
-        <Select.Trigger className="inline-flex h-9 min-w-36 items-center justify-between gap-2 rounded-lg border border-border bg-bg-surface px-3 font-body text-sm text-text-primary shadow-sm outline-none transition-colors hover:bg-bg-page focus:ring-2 focus:ring-ring">
-          <Select.Value />
+        <Select.Trigger
+          className="inline-flex h-14 min-w-44 items-center justify-between gap-3 rounded-2xl border border-border bg-bg-surface px-3 font-body text-sm text-text-primary shadow-sm outline-none transition-colors hover:bg-bg-page focus:ring-2 focus:ring-ring"
+          aria-label={label}
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <Icon
+              className="h-4 w-4 shrink-0 text-[var(--color-text-secondary)]"
+              aria-hidden="true"
+            />
+            <span className="grid min-w-0 text-left leading-tight">
+              <span className="font-body text-xs text-[var(--color-text-secondary)]">
+                {label}
+              </span>
+              <span className="truncate font-body text-sm text-text-primary">
+                <Select.Value />
+              </span>
+            </span>
+          </span>
           <Select.Icon>
-            <ChevronDown className="h-4 w-4 text-text-secondary" />
+            <ChevronDown className="h-4 w-4 text-[var(--color-text-secondary)]" />
           </Select.Icon>
         </Select.Trigger>
         <Select.Portal>
@@ -63,7 +86,7 @@ function FilterSelect({
                 <Select.Item
                   key={option.value}
                   value={option.value}
-                  className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-text-primary outline-none data-[highlighted]:bg-accent/10 data-[highlighted]:text-accent"
+                  className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-text-primary outline-none data-[highlighted]:bg-accent/10 data-[highlighted]:text-[var(--color-accent)]"
                 >
                   <Select.ItemText>{option.label}</Select.ItemText>
                 </Select.Item>
@@ -111,18 +134,21 @@ export function OrderFilters() {
       <div className="grid gap-3 sm:grid-cols-3">
         <FilterSelect
           label="País"
+          icon={Globe}
           value={pais}
           options={countryOptions}
           onChange={(value) => updateFilter("pais", value)}
         />
         <FilterSelect
           label="Estado CRM"
+          icon={PieChart}
           value={estadoCrm}
           options={statusOptions}
           onChange={(value) => updateFilter("estado_crm", value)}
         />
         <FilterSelect
           label="Riesgo"
+          icon={Shield}
           value={nivelRiesgo}
           options={riskOptions}
           onChange={(value) => updateFilter("nivel_riesgo", value)}

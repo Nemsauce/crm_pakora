@@ -1,3 +1,5 @@
+import { Calendar, MapPin } from "lucide-react";
+
 import type { Tables } from "@/lib/supabase/database.types";
 
 import { RiskOrb } from "./RiskOrb";
@@ -27,6 +29,19 @@ const badgeClassName: Record<BadgeTone, string> = {
   muted: "bg-bg-page text-text-primary",
   success: "bg-risk-low-bg text-risk-low",
   danger: "bg-risk-high-bg text-risk-high",
+};
+
+const cornerBlobBackground: Record<Order["estado_crm"], string> = {
+  nuevo:
+    "radial-gradient(circle at 35% 35%, var(--color-badge-nuevo-bg) 0%, var(--color-accent-to) 48%, transparent 72%)",
+  en_ruta:
+    "radial-gradient(circle at 35% 35%, var(--color-positive-bg) 0%, var(--color-positive) 48%, transparent 72%)",
+  entregado:
+    "radial-gradient(circle at 35% 35%, var(--color-positive-bg) 0%, var(--color-positive) 48%, transparent 72%)",
+  cancelado:
+    "radial-gradient(circle at 35% 35%, var(--color-negative-bg) 0%, var(--color-negative) 48%, transparent 72%)",
+  devolucion:
+    "radial-gradient(circle at 35% 35%, var(--color-negative-bg) 0%, var(--color-negative) 48%, transparent 72%)",
 };
 
 const currencyFormatter = {
@@ -96,13 +111,19 @@ export function OrderCard({
   return (
     <article
       className={[
-        "flex min-h-56 flex-col justify-between rounded-2xl border bg-bg-surface p-4 text-text-primary shadow-lg transition-colors",
+        "relative flex min-h-56 flex-col justify-between overflow-hidden rounded-2xl border bg-bg-surface p-4 text-text-primary shadow-lg transition-colors",
         selected
           ? "border-accent ring-2 ring-accent/25"
           : "border-border",
       ].join(" ")}
     >
-      <div className="space-y-3">
+      <div
+        className="pointer-events-none absolute -bottom-10 -right-10 z-0 h-36 w-48 rounded-[62%_38%_46%_54%/48%_44%_56%_52%] opacity-[0.22] dark:opacity-[0.18]"
+        style={{ background: cornerBlobBackground[order.estado_crm] }}
+        aria-hidden="true"
+      />
+
+      <div className="relative z-10 space-y-3">
         <div className="flex items-start gap-3">
           <div className="pt-1">
             <RiskOrb nivelRiesgo={order.nivel_riesgo} />
@@ -123,8 +144,12 @@ export function OrderCard({
         </div>
 
         <div className="grid gap-2 text-sm">
-          <p className="truncate font-body text-text-secondary">
-            {getLocation(order)}
+          <p className="flex min-w-0 items-center gap-1.5 font-body text-[var(--color-text-secondary)]">
+            <MapPin
+              className="h-3.5 w-3.5 shrink-0"
+              aria-hidden="true"
+            />
+            <span className="truncate">{getLocation(order)}</span>
           </p>
           <p className="line-clamp-2 min-h-10 font-body text-text-primary">
             {order.nombre_producto ?? "Producto sin nombre"}
@@ -132,7 +157,7 @@ export function OrderCard({
         </div>
       </div>
 
-      <div className="mt-5 flex items-end justify-between gap-3 border-t border-border pt-3">
+      <div className="relative z-10 mt-5 flex items-end justify-between gap-3 border-t border-border pt-3">
         <div>
           <p className="font-body text-xs text-text-secondary">Total</p>
           <p className="mt-1 font-mono text-sm font-semibold text-text-primary">
@@ -140,7 +165,13 @@ export function OrderCard({
           </p>
         </div>
         <div className="text-right">
-          <p className="font-body text-xs text-text-secondary">Fecha</p>
+          <p className="flex items-center justify-end gap-1.5 font-body text-xs text-[var(--color-text-secondary)]">
+            <Calendar
+              className="h-3.5 w-3.5 shrink-0"
+              aria-hidden="true"
+            />
+            Fecha
+          </p>
           <p className="mt-1 font-mono text-xs text-text-primary">
             {formatDate(order.fecha)}
           </p>
