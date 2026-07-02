@@ -1,5 +1,6 @@
 import { ClipboardList, LayoutDashboard, ListTodo, LogOut } from "lucide-react";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -18,18 +19,52 @@ async function logout() {
   redirect("/login");
 }
 
-const disabledItems = [
+const navItems = [
+  {
+    label: "Pedidos",
+    href: "/pedidos",
+    icon: ClipboardList,
+  },
   {
     label: "Tareas",
+    href: "/tareas",
     icon: ListTodo,
   },
+] as const;
+
+const disabledItems = [
   {
     label: "Command Center",
     icon: LayoutDashboard,
   },
-];
+] as const;
 
-export function Sidebar({ userEmail }: SidebarProps) {
+function getCurrentPathname(requestHeaders: Awaited<ReturnType<typeof headers>>) {
+  const headerValue =
+    requestHeaders.get("x-next-url") ??
+    requestHeaders.get("next-url") ??
+    requestHeaders.get("x-invoke-path") ??
+    requestHeaders.get("x-matched-path") ??
+    "";
+
+  if (!headerValue) {
+    return "";
+  }
+
+  try {
+    return new URL(headerValue).pathname;
+  } catch {
+    return headerValue.startsWith("/") ? headerValue.split("?")[0] : "";
+  }
+}
+
+function isCurrentPath(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export async function Sidebar({ userEmail }: SidebarProps) {
+  const currentPathname = getCurrentPathname(await headers());
+
   return (
     <aside className="flex h-full w-full border-b border-border bg-bg-surface text-text-primary lg:w-72 lg:border-b-0 lg:border-r">
       <div className="flex min-h-full w-full flex-col">
@@ -43,14 +78,26 @@ export function Sidebar({ userEmail }: SidebarProps) {
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4" aria-label="Principal">
-          <Link
-            href="/pedidos"
-            aria-current="page"
-            className="flex h-10 items-center gap-3 rounded-lg border border-accent/10 bg-accent/10 px-3 font-body text-sm font-medium text-accent outline-none transition-colors hover:bg-accent/15 focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <ClipboardList className="h-4 w-4" aria-hidden="true" />
-            <span>Pedidos</span>
-          </Link>
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = isCurrentPath(currentPathname, item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isActive ? "page" : undefined}
+                className={`flex h-10 items-center gap-3 rounded-lg px-3 font-body text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+                  isActive
+                    ? "border border-accent/10 bg-accent/10 text-accent hover:bg-accent/15"
+                    : "text-text-secondary hover:bg-bg-page hover:text-text-primary"
+                }`}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
 
           {disabledItems.map((item) => {
             const Icon = item.icon;

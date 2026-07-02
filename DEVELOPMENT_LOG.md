@@ -99,3 +99,9 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Se completó la migración visual iniciada en el commit de tokens: Sidebar/auth ya estaban migrados y ahora `/pedidos`, filtros, cards, drawer de detalle y skeleton de carga usan superficies blancas, sombras suaves, bordes mínimos y acento violeta.
 - `RiskOrb` dejó de ser un pulso animado y pasó a un indicador plano/estático por color, alineado con `DESIGN.md`: el nuevo tema no usa lenguaje de motion líquido ni glows.
 - El rediseño visual de Fase 3 queda completo en las superficies existentes: Sidebar, auth, pedidos, drawer y estados de carga.
+
+### [Fase 3] Pantalla de Tareas — COMPLETADO
+- Se agregó `/tareas` como lista plana de tareas abiertas (`pendiente`, `en_progreso`) ordenada por urgencia (`fecha_limite` ascendente, nulos al final). La decisión explícita fue lista operativa, no kanban, porque el flujo COD necesita priorizar qué gestionar primero.
+- Cada tarea muestra contexto de pedido (cliente + número de orden), tipo, estado, intentos, vencimiento y tratamiento visual de vencidas con `risk-high`.
+- Se agregó acción directa para completar tareas desde la pantalla vía Server Action RLS-scoped: marca `estado = completada`, `completado_en`, `completado_por` con el email del usuario activo y revalida `/tareas`.
+- El sidebar ahora habilita `Tareas` como navegación real. Pendiente: deep-link desde una tarea hacia `/pedidos?detalle={orders.id}` para abrir el pedido origen.
