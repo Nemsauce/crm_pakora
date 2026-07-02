@@ -14,6 +14,16 @@ const DEFAULT_BACKEND_WEBHOOK_URL =
 const WEBHOOK_JSON_BODY = `={
   "order_id": {{ $('Comparar y filtrar cambios').item.json.supabase_id }}
 }`;
+const ALLOWED_WORKFLOW_SETTINGS_KEYS = new Set([
+  "executionOrder",
+  "saveManualExecutions",
+  "callerPolicy",
+  "errorWorkflow",
+  "timezone",
+  "saveDataErrorExecution",
+  "saveDataSuccessExecution",
+  "saveExecutionProgress",
+]);
 
 function parseArgs(argv) {
   const unknownArgs = argv.filter((arg) => arg !== "--confirm");
@@ -262,12 +272,39 @@ function ensureMainConnection(workflow, sourceNodeName, targetNodeName) {
   return "added";
 }
 
+function getFilteredWorkflowSettings(workflow) {
+  const settings =
+    workflow.settings &&
+    typeof workflow.settings === "object" &&
+    !Array.isArray(workflow.settings)
+      ? workflow.settings
+      : {};
+  const presentKeys = Object.keys(settings).sort();
+  const keptKeys = presentKeys.filter((key) =>
+    ALLOWED_WORKFLOW_SETTINGS_KEYS.has(key),
+  );
+  const droppedKeys = presentKeys.filter(
+    (key) => !ALLOWED_WORKFLOW_SETTINGS_KEYS.has(key),
+  );
+  const filteredSettings = Object.fromEntries(
+    keptKeys.map((key) => [key, settings[key]]),
+  );
+
+  return {
+    settings: filteredSettings,
+    presentKeys,
+    keptKeys,
+    droppedKeys,
+  };
+}
+
 function buildWorkflowUpdatePayload(workflow) {
+  const { settings } = getFilteredWorkflowSettings(workflow);
   const payload = {
     name: workflow.name,
     nodes: workflow.nodes,
     connections: workflow.connections,
-    settings: workflow.settings ?? {},
+    settings,
   };
 
   if (Object.hasOwn(workflow, "staticData")) {
@@ -279,6 +316,10 @@ function buildWorkflowUpdatePayload(workflow) {
   }
 
   return payload;
+}
+
+function formatKeys(keys) {
+  return keys.length > 0 ? keys.join(", ") : "(none)";
 }
 
 function patchWorkflow(workflow, config) {
@@ -309,6 +350,7 @@ function patchWorkflow(workflow, config) {
     nodeStatus: nodeChange.status,
     connectionStatus,
     retryStyle,
+    settingsSummary: getFilteredWorkflowSettings(workflow),
     webhookNodeId: nodeChange.node.id,
   };
 }
@@ -321,6 +363,15 @@ function printChangeSummary(workflow, workflowTarget, patchResult, config) {
     `- connection "${UPDATE_ORDER_NODE_NAME}" -> "${WEBHOOK_NODE_NAME}": ${patchResult.connectionStatus}`,
   );
   console.log(`- retry settings style: ${patchResult.retryStyle}`);
+  console.log(
+    `- workflow.settings keys returned: ${formatKeys(patchResult.settingsSummary.presentKeys)}`,
+  );
+  console.log(
+    `- workflow.settings keys sent: ${formatKeys(patchResult.settingsSummary.keptKeys)}`,
+  );
+  console.log(
+    `- workflow.settings keys dropped: ${formatKeys(patchResult.settingsSummary.droppedKeys)}`,
+  );
   console.log(`- webhook url: ${config.backendWebhookUrl}`);
   console.log("- x-webhook-secret: <from WEBHOOK_SHARED_SECRET>");
   console.log(`- webhook node id: ${patchResult.webhookNodeId}`);
