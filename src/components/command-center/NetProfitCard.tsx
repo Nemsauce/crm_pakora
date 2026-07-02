@@ -1,4 +1,4 @@
-import { TrendingUp, WalletCards } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 
 type Pais = "CO" | "MX";
 
@@ -41,8 +41,41 @@ export function NetProfitCard({
   const netTone = net < 0 ? "text-negative" : "text-positive";
 
   return (
-    <article className="rounded-2xl border border-border bg-bg-surface p-5 text-text-primary shadow-xl">
-      <div className="flex items-start justify-between gap-4">
+    <article className="relative overflow-hidden rounded-2xl border border-border bg-bg-surface p-5 text-text-primary shadow-xl">
+      <svg
+        className="pointer-events-none absolute bottom-0 right-0 z-0 h-[72%] w-[58%] text-[var(--color-positive)] opacity-[0.16] dark:opacity-[0.24]"
+        viewBox="0 0 360 210"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <defs>
+          <linearGradient
+            id={`net-profit-area-${pais}`}
+            x1="180"
+            y1="24"
+            x2="180"
+            y2="210"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="currentColor" stopOpacity="0.7" />
+            <stop offset="1" stopColor="currentColor" stopOpacity="0.08" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M0 210H360V28C334 20 318 25 301 47C282 72 266 69 245 64C219 58 201 72 184 99C166 128 146 128 125 126C98 123 82 143 66 169C48 198 25 201 0 190V210Z"
+          fill={`url(#net-profit-area-${pais})`}
+        />
+        <path
+          d="M0 190C25 201 48 198 66 169C82 143 98 123 125 126C146 128 166 128 184 99C201 72 219 58 245 64C266 69 282 72 301 47C318 25 334 20 360 28"
+          fill="none"
+          stroke="currentColor"
+          strokeOpacity="0.55"
+          strokeWidth="2"
+        />
+      </svg>
+
+      <div className="relative z-10 flex items-start justify-between gap-4">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
             {countryLabel[pais]}
@@ -52,19 +85,15 @@ export function NetProfitCard({
           </h2>
         </div>
         <div
-          className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary"
+          className="flex size-11 items-center justify-center rounded-full bg-[var(--color-badge-nuevo-bg)] text-[var(--color-badge-nuevo)] ring-1 ring-[var(--color-badge-nuevo-bg)]"
           aria-hidden="true"
         >
-          {hasMovements ? (
-            <TrendingUp className="h-5 w-5" />
-          ) : (
-            <WalletCards className="h-5 w-5" />
-          )}
+          <TrendingUp className="h-5 w-5" />
         </div>
       </div>
 
       {hasMovements ? (
-        <>
+        <div className="relative z-10">
           <p
             className={`mt-6 font-mono text-3xl font-semibold tabular-nums ${netTone}`}
           >
@@ -88,9 +117,9 @@ export function NetProfitCard({
               </p>
             </div>
           </div>
-        </>
+        </div>
       ) : (
-        <div className="mt-6 rounded-2xl bg-bg-page p-4">
+        <div className="relative z-10 mt-6 rounded-2xl bg-bg-page p-4">
           <p className="font-body text-sm font-medium text-text-primary">
             Sin movimientos en este rango
           </p>
