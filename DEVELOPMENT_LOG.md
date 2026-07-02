@@ -106,3 +106,15 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Se agregó acción directa para completar tareas desde la pantalla vía Server Action RLS-scoped: marca `estado = completada`, `completado_en`, `completado_por` con el email del usuario activo y revalida `/tareas`.
 - El sidebar ahora habilita `Tareas` como navegación real. Pendiente: deep-link desde una tarea hacia `/pedidos?detalle={orders.id}` para abrir el pedido origen.
 - Nota técnica: al convertir Sidebar.tsx a Client Component (fix de active-state por ruta), el logout se movió de Server Action a supabase.auth.signOut() vía cliente browser directo en el mismo componente, para no tocar otros archivos. Verificado manualmente por Alejo: funciona correctamente end-to-end (sesión se cierra, no se puede volver a /pedidos sin loguear de nuevo). Queda como única excepción al patrón de Server Actions para mutaciones de auth usado en el resto de la app (login, set-password). No es urgente, pero se puede unificar cuando se vuelva a tocar el sidebar.
+
+### [Checkpoint] Estado del proyecto y plan de continuación
+- Completado: Fase 1 (schema), Fase 2 (motor de tareas + integración n8n completa), Fase 3 (app: auth, sidebar, /pedidos con drawer, /tareas con completar, sistema visual Light Blobmorphism).
+- NO iniciado: Fase 4 (Command Center financiero).
+- Gap crítico encontrado: `wallet_movements`/`wallet_movement_catalog` existen en el schema pero NINGÚN workflow de n8n las alimenta — el nodo "Procesar movimientos wallet" de los workflows Dropi Polling nunca fue actualizado (el script de patch solo tocó los nodos de `orders`). Bloqueante para Fase 4 hasta resolverse.
+- Pendiente: terminar de revisar los ~69 estados `sin_clasificar` de `status_catalog` contra datos reales migrados (query ya entregada, no ejecutada hasta el final).
+- Pendiente: roles más allá de `admin` (RLS no distingue permisos todavía).
+- Pendiente: formalizar migraciones de schema vía Supabase CLI (hoy son .sql sueltos corridos manualmente).
+- Pendiente: confirmar `supabase/.gitignore` cubre `.temp/`.
+- Pendiente: borrar data de prueba (`delete from tasks where creado_por = 'seed_test';`) antes de producción real.
+- Pendiente: sweep de seguridad (acordado desde el inicio, aceptable en desarrollo).
+- Próxima prioridad acordada: conectar wallet a n8n primero, después Command Center.
