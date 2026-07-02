@@ -125,7 +125,7 @@ export function Sidebar({ userEmail }: SidebarProps) {
                 aria-current={isActive ? "page" : undefined}
                 className={`flex h-10 items-center gap-3 rounded-2xl px-3 font-body text-sm outline-none transition-all focus-visible:ring-2 focus-visible:ring-ring ${
                   isActive
-                    ? "border border-accent/15 bg-gradient-to-r from-accent-from/15 to-accent-to/25 font-semibold text-accent shadow-md shadow-accent/10 hover:from-accent-from/20 hover:to-accent-to/30 dark:border-accent/40 dark:from-accent-from/20 dark:to-accent-to/10 dark:text-accent dark:shadow-lg dark:shadow-accent/25 dark:hover:from-accent-from/25 dark:hover:to-accent-to/15"
+                    ? "border border-accent/15 bg-gradient-to-r from-accent-from/15 to-accent-to/25 font-semibold text-[var(--color-accent)] shadow-md shadow-accent/10 hover:from-accent-from/20 hover:to-accent-to/30 dark:border-accent/40 dark:from-accent-from/20 dark:to-accent-to/10 dark:shadow-lg dark:shadow-accent/25 dark:hover:from-accent-from/25 dark:hover:to-accent-to/15"
                     : "font-medium text-text-secondary hover:text-text-primary"
                 }`}
               >
