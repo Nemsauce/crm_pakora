@@ -159,3 +159,10 @@ Fases 1-4 del roadmap original están completas y verificadas en producción (sc
 - Se agregó el logo inline SVG de flor de 4 pétalos en degradado violeta junto al wordmark `CRM Pakora` en el sidebar.
 - Se creó `TopBar` compartido para todas las pantallas autenticadas con iconos de búsqueda, notificaciones, `ThemeToggle` y avatar circular con iniciales derivadas del email real del usuario.
 - Los iconos de búsqueda y notificaciones son placeholders visuales sin funcionalidad todavía; quedan listos para conectar en futuros commits.
+
+### [Migración histórica] Script de backfill completo (pedidos + wallet, desde 2026-03-01) — SCRIPT LISTO, PENDIENTE DE EJECUCIÓN
+- Se creó `scripts/n8n/patch-dropi-migracion-historical.mjs` como script one-time para parchear los workflows históricos `Dropi migracion (CO)` (`YrWPu8mLMLCalkFa`) y `Dropi migracion MEX` (`EBAU2dcasgMNFHDV`).
+- El script actualiza `Dropi Consultar Historico` para consultar desde `2026-03-01` hasta hoy y habilita paginación nativa del HTTP Request node, evitando depender de una sola página de 50 resultados.
+- Se agrega una rama nueva de wallet histórico: `Dropi Consultar Wallet Historico` → `Mapear movimientos wallet completo` → `Insertar movimientos wallet`, reutilizando el patrón de mapping/insert del polling continuo y la idempotencia por `on_conflict=pais,id_movimiento_dropi`.
+- No se agrega webhook CRM a estos workflows históricos; la generación de tareas queda para el mecanismo normal de reconciliación después de que la data histórica exista en Supabase.
+- Pendiente antes de ejecutar los workflows en n8n: Alejo debe correr primero `009_wipe_para_migracion_limpia.sql` en Supabase para evitar mezclar data parcial/test con la migración histórica definitiva.
