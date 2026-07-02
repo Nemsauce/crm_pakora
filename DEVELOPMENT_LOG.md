@@ -84,3 +84,8 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Se reemplazó el placeholder de `/pedidos` por una lista server-rendered de pedidos en cards opacas, con filtros por país, estado CRM y nivel de riesgo vía URL/search params.
 - Se agregó el `RiskOrb` de `DESIGN.md`: pulso CSS por `nivel_riesgo` (verde/ámbar/rojo) y fallback estático para `sin_datos` o `prefers-reduced-motion`.
 - La paginación quedó simple con anterior/siguiente a 24 pedidos por página. Pendiente: vista de detalle individual de pedido en un commit futuro.
+
+### [Fase 3] Detalle de pedido (drawer) — COMPLETADO
+- Se agregaron cards clickeables en `/pedidos` con selección persistente por URL (`detalle={orders.id}`) y resaltado visual con token `accent-to`.
+- Se agregó drawer lateral opaco/read-only que carga bajo demanda `/api/orders/[id]` usando el cliente Supabase server/RLS, con datos de la orden, historial de estados y tareas asociadas.
+- Pendiente: acciones de tareas desde UI (completar, editar, reasignar) y una vista dedicada de detalle de pedido.

@@ -84,11 +84,24 @@ function getOrderIdentifier(order: Order) {
   return order.numero_orden ?? `ID ${order.id}`;
 }
 
-export function OrderCard({ order }: { order: Order }) {
+export function OrderCard({
+  order,
+  selected = false,
+}: {
+  order: Order;
+  selected?: boolean;
+}) {
   const badgeTone = estadoTone[order.estado_crm];
 
   return (
-    <article className="flex min-h-56 flex-col justify-between rounded-lg border border-border bg-bg-base p-4 text-text-primary shadow-sm">
+    <article
+      className={[
+        "flex min-h-56 flex-col justify-between rounded-lg border bg-bg-base p-4 text-text-primary shadow-sm transition-colors",
+        selected
+          ? "border-accent-to ring-2 ring-accent-to"
+          : "border-border",
+      ].join(" ")}
+    >
       <div className="space-y-3">
         <div className="flex items-start gap-3">
           <div className="pt-1">

@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { OrderCard } from "@/components/orders/OrderCard";
+import { OrderCardLink } from "@/components/orders/OrderCardLink";
+import { OrderDetailDrawer } from "@/components/orders/OrderDetailDrawer";
 import { OrderFilters } from "@/components/orders/OrderFilters";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
@@ -12,6 +13,7 @@ type SearchParams = {
   pais?: string;
   estado_crm?: string;
   nivel_riesgo?: string;
+  detalle?: string;
   page?: string;
 };
 
@@ -94,6 +96,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
   }
 
   const orderList = orders ?? [];
+  const selectedOrderId = params.detalle ?? null;
   const hasPreviousPage = page > 1;
   const hasNextPage = orderList.length === PAGE_SIZE;
 
@@ -115,7 +118,11 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
       {orderList.length > 0 ? (
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {orderList.map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <OrderCardLink
+              key={order.id}
+              order={order}
+              selected={String(order.id) === selectedOrderId}
+            />
           ))}
         </div>
       ) : (
@@ -155,6 +162,8 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
           )}
         </Button>
       </div>
+
+      <OrderDetailDrawer />
     </section>
   );
 }
