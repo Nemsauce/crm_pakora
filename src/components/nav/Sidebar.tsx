@@ -1,23 +1,16 @@
+"use client";
+
 import { ClipboardList, LayoutDashboard, ListTodo, LogOut } from "lucide-react";
 import Link from "next/link";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 
 type SidebarProps = {
   userEmail: string | null;
 };
-
-async function logout() {
-  "use server";
-
-  const supabase = await createClient();
-  await supabase.auth.signOut({ scope: "local" });
-
-  redirect("/login");
-}
 
 const navItems = [
   {
@@ -39,31 +32,25 @@ const disabledItems = [
   },
 ] as const;
 
-function getCurrentPathname(requestHeaders: Awaited<ReturnType<typeof headers>>) {
-  const headerValue =
-    requestHeaders.get("x-next-url") ??
-    requestHeaders.get("next-url") ??
-    requestHeaders.get("x-invoke-path") ??
-    requestHeaders.get("x-matched-path") ??
-    "";
-
-  if (!headerValue) {
-    return "";
-  }
-
-  try {
-    return new URL(headerValue).pathname;
-  } catch {
-    return headerValue.startsWith("/") ? headerValue.split("?")[0] : "";
-  }
-}
-
 function isCurrentPath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export async function Sidebar({ userEmail }: SidebarProps) {
-  const currentPathname = getCurrentPathname(await headers());
+export function Sidebar({ userEmail }: SidebarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  async function handleLogout(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSigningOut(true);
+
+    const supabase = createClient();
+    await supabase.auth.signOut({ scope: "local" });
+
+    router.replace("/login");
+    router.refresh();
+  }
 
   return (
     <aside className="flex h-full w-full border-b border-border bg-bg-surface text-text-primary lg:w-72 lg:border-b-0 lg:border-r">
@@ -80,7 +67,7 @@ export async function Sidebar({ userEmail }: SidebarProps) {
         <nav className="flex-1 space-y-1 px-3 py-4" aria-label="Principal">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = isCurrentPath(currentPathname, item.href);
+            const isActive = isCurrentPath(pathname, item.href);
 
             return (
               <Link
@@ -124,15 +111,16 @@ export async function Sidebar({ userEmail }: SidebarProps) {
             <p className="mt-1 truncate font-mono text-xs text-text-primary">
               {userEmail ?? "Usuario activo"}
             </p>
-            <form action={logout} className="mt-3">
+            <form onSubmit={handleLogout} className="mt-3">
               <Button
                 type="submit"
                 variant="outline"
                 size="sm"
+                disabled={isSigningOut}
                 className="h-8 w-full justify-start gap-2 rounded-lg border-border bg-bg-surface text-text-primary hover:bg-bg-page hover:text-text-primary"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" />
-                Cerrar sesión
+                {isSigningOut ? "Cerrando..." : "Cerrar sesión"}
               </Button>
             </form>
           </div>
