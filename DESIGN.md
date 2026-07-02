@@ -30,8 +30,14 @@ Sin cambios respecto al sistema anterior:
 - Botones primarios: degradado `accent-from → accent-to`, `rounded-full` o `rounded-lg` según contexto
 - Sidebar: fondo blanco/casi blanco, item activo con fondo violeta pastel (`accent` al 10-15% opacidad) y texto/ícono en `accent`
 
+### Contraste de badges (regla no negociable)
+Cada badge/pill de estado usa fondo pastel + texto en la versión SATURADA/SÓLIDA del mismo color semántico — nunca una versión clara/tenue del color como texto. Ejemplo correcto: fondo `risk-high-bg` (#FEE2E2) + texto `risk-high` (#EF4444, sólido, no aclarado). El texto debe leerse sin esfuerzo a tamaño pequeño. Si un token de color no ofrece suficiente contraste como texto sobre su propio fondo pastel, ese token necesita ajustarse — nunca se resuelve bajando el estándar de legibilidad.
+
+## Fondo con blobs
+El fondo de página (`bg-page`) no es solo un gradiente plano — incluye 3-4 formas orgánicas grandes (blobs), ancladas en las esquinas/bordes del viewport, en tonos del gradiente `accent-from`/`accent-to` y complementarios cálidos, a baja opacidad (suficiente para verse, no para competir con el contenido central). El centro de la pantalla donde vive el contenido principal queda visualmente limpio. Los blobs animan con morphing lento (15-25s de ciclo), nunca rápido ni llamativo.
+
 ## Indicador de riesgo (reemplaza el "orbe líquido" del tema anterior)
 Sigue siendo el elemento de negocio no-negociable: cada pedido muestra su `nivel_riesgo` visualmente. En este tema se expresa como un badge/chip de color sólido (no un blob animado con glow) — punto de color + texto opcional, usando `risk-high/medium/low`. Se mantiene el mapeo semántico exacto (alto/medio/bajo/sin_datos), cambia solo la ejecución visual a algo plano y consistente con el resto del sistema de cards.
 
 ## Motion
-Mínimo y funcional. Sin liquid morphing, sin blobs animados — ese lenguaje pertenece al tema anterior y queda descartado. Transiciones sutiles (hover, focus) son suficientes. Siempre respetar `prefers-reduced-motion`.
+Los blobs de fondo SÍ animan — morphing orgánico lento (border-radius + transform derivando con el tiempo), anclados en las esquinas del viewport, grandes, suaves, de baja opacidad para no competir con el contenido. Esto es el elemento central de "Light Blobmorphism": el fondo se siente vivo sin distraer. Las superficies de datos (cards, drawer, listas) permanecen estáticas — el movimiento vive solo en el fondo ambiental, nunca en elementos que el usuario necesita leer con precisión. Siempre respetar `prefers-reduced-motion` (fallback: blobs estáticos, sin animación).
