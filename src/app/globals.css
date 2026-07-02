@@ -69,7 +69,7 @@
   --color-positive: #16A34A;
   --color-negative: #DC2626;
 
-  --background: var(--color-bg-page);
+  --background: color-mix(in oklab, var(--color-bg-page) 14%, var(--color-bg-surface));
   --foreground: var(--color-text-primary);
   --card: var(--color-bg-surface);
   --card-foreground: var(--color-text-primary);
@@ -104,7 +104,7 @@
 }
 
 .dark {
-  --background: var(--color-bg-page);
+  --background: color-mix(in oklab, var(--color-bg-page) 14%, var(--color-bg-surface));
   --foreground: var(--color-text-primary);
   --card: var(--color-bg-surface);
   --card-foreground: var(--color-text-primary);
@@ -141,9 +141,9 @@
     background-image:
       linear-gradient(
         135deg,
-        var(--color-bg-page) 0%,
-        var(--color-bg-page-mid) 50%,
-        var(--color-bg-page-end) 100%
+        color-mix(in oklab, var(--color-bg-page) 16%, var(--color-bg-surface)) 0%,
+        color-mix(in oklab, var(--color-bg-page-mid) 12%, var(--color-bg-surface)) 52%,
+        color-mix(in oklab, var(--color-bg-page-end) 14%, var(--color-bg-surface)) 100%
       );
     background-attachment: fixed;
     background-repeat: no-repeat;
@@ -155,105 +155,6 @@
   }
 }
 
-.background-blob {
-  position: absolute;
-  aspect-ratio: 1;
-  border-radius: 58% 42% 34% 66% / 54% 36% 64% 46%;
-  opacity: 0.34;
-  filter: saturate(1.18);
-  animation: background-blob-morph 20s ease-in-out infinite;
-  will-change: border-radius, transform;
-}
-
-.background-blob--one {
-  top: -18rem;
-  left: -14rem;
-  width: clamp(26rem, 38vw, 44rem);
-  background:
-    radial-gradient(
-      circle at 35% 34%,
-      color-mix(in oklab, var(--color-accent-from) 74%, transparent),
-      transparent 62%
-    ),
-    radial-gradient(
-      circle at 66% 62%,
-      color-mix(in oklab, var(--color-bg-page-mid) 76%, transparent),
-      transparent 58%
-    );
-}
-
-.background-blob--two {
-  top: -15rem;
-  right: -16rem;
-  width: clamp(28rem, 42vw, 48rem);
-  background:
-    radial-gradient(
-      circle at 38% 42%,
-      color-mix(in oklab, var(--color-accent-to) 56%, transparent),
-      transparent 62%
-    ),
-    radial-gradient(
-      circle at 62% 58%,
-      color-mix(in oklab, var(--color-bg-page-end) 92%, transparent),
-      transparent 60%
-    );
-  animation-duration: 23s;
-  animation-delay: -8s;
-}
-
-.background-blob--three {
-  bottom: -19rem;
-  left: -12rem;
-  width: clamp(24rem, 36vw, 42rem);
-  background:
-    radial-gradient(
-      circle at 42% 36%,
-      color-mix(in oklab, var(--color-bg-page) 88%, transparent),
-      transparent 56%
-    ),
-    radial-gradient(
-      circle at 66% 66%,
-      color-mix(in oklab, var(--color-accent-from) 46%, transparent),
-      transparent 62%
-    );
-  animation-duration: 18s;
-  animation-delay: -5s;
-}
-
-.background-blob--four {
-  right: -10rem;
-  bottom: -20rem;
-  width: clamp(26rem, 40vw, 46rem);
-  background:
-    radial-gradient(
-      circle at 40% 40%,
-      color-mix(in oklab, var(--color-accent-to) 42%, transparent),
-      transparent 58%
-    ),
-    radial-gradient(
-      circle at 70% 62%,
-      color-mix(in oklab, var(--color-bg-page-mid) 88%, transparent),
-      transparent 62%
-    );
-  animation-duration: 25s;
-  animation-delay: -13s;
-}
-
-@keyframes background-blob-morph {
-  0%, 100% {
-    border-radius: 58% 42% 34% 66% / 54% 36% 64% 46%;
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  33% {
-    border-radius: 42% 58% 64% 36% / 38% 62% 40% 60%;
-    transform: translate3d(1.5rem, 1.75rem, 0) scale(1.06);
-  }
-  66% {
-    border-radius: 68% 32% 48% 52% / 62% 42% 58% 38%;
-    transform: translate3d(-1rem, 2.25rem, 0) scale(0.96);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -262,10 +163,5 @@
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
-  }
-
-  .background-blob {
-    animation: none !important;
-    transform: none !important;
   }
 }
