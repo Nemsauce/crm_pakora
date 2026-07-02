@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { TopBar } from "@/components/layout/TopBar";
 import { Sidebar } from "@/components/nav/Sidebar";
 import { createClient } from "@/lib/supabase/server";
 
@@ -34,8 +35,9 @@ export default async function AppLayout({
         <div className="lg:w-72 lg:shrink-0">
           <Sidebar userEmail={user.email ?? null} />
         </div>
-        <main className="min-h-[calc(100vh-2rem)] flex-1 bg-bg-surface md:min-h-[calc(100vh-3rem)]">
-          {children}
+        <main className="flex min-h-[calc(100vh-2rem)] flex-1 flex-col bg-bg-surface md:min-h-[calc(100vh-3rem)]">
+          <TopBar userEmail={user.email ?? null} />
+          <div className="flex-1">{children}</div>
         </main>
       </div>
     </div>

@@ -154,3 +154,8 @@ Fases 1-4 del roadmap original están completas y verificadas en producción (sc
 - Se agregó `next-themes` y el `ThemeProvider` global con `attribute="class"`, `defaultTheme="light"` y `enableSystem=false`; el toggle será explícito y no seguirá la preferencia del sistema.
 - Se agregaron tokens completos para `:root` y `.dark` en `globals.css`, más tokens Tailwind para positivos/negativos, badges y acentos secundarios.
 - Se creó `ThemeToggle` como componente cliente funcional, todavía sin ubicar en la UI. La aplicación visual de Sidebar/TopBar/cards/tareas/Command Center queda para commits separados del sweep.
+
+### [Fase 3] Sweep visual v3 — logo + barra superior — COMPLETADO
+- Se agregó el logo inline SVG de flor de 4 pétalos en degradado violeta junto al wordmark `CRM Pakora` en el sidebar.
+- Se creó `TopBar` compartido para todas las pantallas autenticadas con iconos de búsqueda, notificaciones, `ThemeToggle` y avatar circular con iniciales derivadas del email real del usuario.
+- Los iconos de búsqueda y notificaciones son placeholders visuales sin funcionalidad todavía; quedan listos para conectar en futuros commits.
