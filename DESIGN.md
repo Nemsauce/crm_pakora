@@ -1,43 +1,44 @@
 # DESIGN.md — CRM Pakora Design System
 
 ## Dirección visual
-Reemplaza la dirección anterior (dark liquid-glass). Ahora: SaaS profesional claro, cálido y confiable — fondo con gradiente suave diagonal, cards blancas con sombra suave y esquinas muy redondeadas, acento violeta. Basado en referencia de Figma aprobada por Alejo. Sigue siendo una torre de control operativa: la calidez del fondo no debe sacrificar legibilidad ni densidad de datos donde se necesite escanear rápido (listas de pedidos, montos, estados).
+SaaS profesional claro, cálido, vibrante — "Light Blobmorphism". Fondo con blobs orgánicos grandes y claramente visibles en las esquinas del viewport, shell de la app insertado con margen (flota sobre el fondo, no full-bleed), cards blancas con sombra real y profundidad, acentos de color en círculos/pills recurrentes. Basado en referencia de Figma aprobada por Alejo — cada elemento de esa referencia (color, sombra, forma, acento) es intencional y debe reflejarse, salvo el copy/contenido/ubicación específica de paneles, que es solo demostrativa. Sigue siendo una torre de control operativa: la calidez y el color no deben sacrificar legibilidad ni densidad de datos en listas/montos/estados.
 
 ## Color
-- `--color-bg-page`: gradiente diagonal `#FDF4F0 → #F5EAFB → #EAF0FB` (cálido a lavanda, fondo general de la app)
-- `--color-bg-surface: #FFFFFF` — cards y paneles, opacas, sombra suave (`shadow-sm`/`shadow-md`), sin necesidad de blur
-- `--color-accent: #7C3AED` — violeta primario (texto de acento, iconos activos)
-- `--color-accent-from: #8B5CF6` / `--color-accent-to: #D946EF` — degradado violeta→fucsia, reservado para el logo y botones primarios/CTAs, no para superficies de datos
+- `--color-bg-page`: gradiente diagonal cálido a lavanda `#FDF4F0 → #F5EAFB → #EAF0FB` — visible ÚNICAMENTE en el margen alrededor del shell insertado (ver "Shell insertado" abajo), nunca detrás de contenido opaco de borde a borde
+- `--color-bg-surface: #FFFFFF` — cards y paneles
+- `--color-accent: #7C3AED` — violeta primario
+- `--color-accent-from: #8B5CF6` / `--color-accent-to: #D946EF` — degradado violeta→fucsia, botones primarios y blobs
 - `--color-text-primary: #1E1B2E`
 - `--color-text-secondary: #6B7280`
-- `--color-border: #F1EEF9` — bordes casi invisibles, la separación la da la sombra, no el borde
+- `--color-border: #F1EEF9`
 - `--color-risk-high: #EF4444` / `--color-risk-high-bg: #FEE2E2`
 - `--color-risk-medium: #F59E0B` / `--color-risk-medium-bg: #FEF3C7`
 - `--color-risk-low: #10B981` / `--color-risk-low-bg: #D1FAE5`
-- `--color-positive: #16A34A` (deltas positivos, métricas al alza)
-- `--color-negative: #DC2626` (deltas negativos)
+- `--color-positive: #16A34A`
+- `--color-negative: #DC2626`
+- Colores de acento secundarios para círculos/iconos (inspirados en la referencia, uso libre para categorías/iconos que no sean semánticas de riesgo): azul `#3B82F6`/`#DBEAFE`, rosa `#EC4899`/`#FCE7F3`, naranja `#F97316`/`#FFEDD5` — cada uno con su versión pastel-bg + sólido-texto siguiendo la misma regla de contraste
 
 ## Tipografía
-Sin cambios respecto al sistema anterior:
-- Display (headers): Space Grotesk
-- Body/UI: Inter
-- Datos/números (montos, guías, IDs): JetBrains Mono, tabular-nums
+Sin cambios: Space Grotesk (display), Inter (body/UI), JetBrains Mono tabular-nums (datos/números).
 
-## Superficies y forma
-- Cards: `rounded-2xl`, fondo blanco sólido, `shadow-sm` en reposo, sin bordes marcados, sin blur — nunca glassmorphism en este tema
-- Badges/chips de estado: fondo pastel + texto saturado del mismo color (ej. riesgo alto = texto `risk-high` sobre fondo `risk-high-bg`), `rounded-full`, padding generoso
-- Iconos en cards de métricas: dentro de un círculo con fondo pastel suave del color correspondiente
-- Botones primarios: degradado `accent-from → accent-to`, `rounded-full` o `rounded-lg` según contexto
-- Sidebar: fondo blanco/casi blanco, item activo con fondo violeta pastel (`accent` al 10-15% opacidad) y texto/ícono en `accent`
-
-### Contraste de badges (regla no negociable)
-Cada badge/pill de estado usa fondo pastel + texto en la versión SATURADA/SÓLIDA del mismo color semántico — nunca una versión clara/tenue del color como texto. Ejemplo correcto: fondo `risk-high-bg` (#FEE2E2) + texto `risk-high` (#EF4444, sólido, no aclarado). El texto debe leerse sin esfuerzo a tamaño pequeño. Si un token de color no ofrece suficiente contraste como texto sobre su propio fondo pastel, ese token necesita ajustarse — nunca se resuelve bajando el estándar de legibilidad.
+## Shell insertado (estructural, no negociable)
+El shell completo de la app (sidebar + área de contenido) NO es full-bleed. Vive insertado dentro del viewport con margen visible en los 4 lados (ej. `p-4` a `p-6` alrededor de todo el shell), esquinas redondeadas grandes (`rounded-2xl` o mayor) en el contenedor exterior, y sombra propia (`shadow-xl` o similar) que lo separa del fondo. En ese margen visible es donde se ven los blobs de `bg-page`. Esto aplica a TODAS las pantallas autenticadas (sidebar + pedidos + futuras). Las pantallas de auth (login/set-password) ya tienen esto naturalmente por ser una card centrada sobre el fondo.
 
 ## Fondo con blobs
-El fondo de página (`bg-page`) no es solo un gradiente plano — incluye 3-4 formas orgánicas grandes (blobs), ancladas en las esquinas/bordes del viewport, en tonos del gradiente `accent-from`/`accent-to` y complementarios cálidos, a baja opacidad (suficiente para verse, no para competir con el contenido central). El centro de la pantalla donde vive el contenido principal queda visualmente limpio. Los blobs animan con morphing lento (15-25s de ciclo), nunca rápido ni llamativo.
+3-4 blobs orgánicos grandes, claramente visibles como formas de color (no manchas tímidas) — usar `accent-from`/`accent-to` y los acentos secundarios (azul, rosa, naranja) para variedad, como en la referencia. Opacidad suficiente para leerse como color real, no solo textura. Anclados en/cerca de las esquinas del viewport, con morphing lento (15-25s), respetando `prefers-reduced-motion`.
 
-## Indicador de riesgo (reemplaza el "orbe líquido" del tema anterior)
-Sigue siendo el elemento de negocio no-negociable: cada pedido muestra su `nivel_riesgo` visualmente. En este tema se expresa como un badge/chip de color sólido (no un blob animado con glow) — punto de color + texto opcional, usando `risk-high/medium/low`. Se mantiene el mapeo semántico exacto (alto/medio/bajo/sin_datos), cambia solo la ejecución visual a algo plano y consistente con el resto del sistema de cards.
+## Superficies y forma
+- Cards: `rounded-2xl`, fondo blanco, **sombra con profundidad real** — `shadow-lg` o `shadow-xl` en reposo (no `shadow-sm`, eso quedó demasiado plano), la sombra es parte central del lenguaje visual, no un detalle sutil
+- Badges/chips: fondo pastel + texto sólido/saturado (regla de contraste abajo), `rounded-full`, padding generoso (`px-3 py-1` mínimo)
+- **Círculos de acento**: patrón recurrente de la referencia — cualquier ícono, indicador, o avatar pequeño vive dentro de un círculo con fondo pastel del color correspondiente (ej. el indicador de riesgo, iconos de tipo de tarea a futuro, avatares de cliente). No queda un ícono/punto suelto sin ese círculo contenedor cuando el contexto lo permite
+- Botones primarios: degradado `accent-from → accent-to`, `rounded-full`
+- Sidebar: fondo blanco, dentro del shell insertado, item activo con fondo violeta pastel y texto/ícono en `accent`
+
+### Contraste de badges (regla no negociable)
+Fondo pastel + texto SATURADO/SÓLIDO del mismo color semántico, nunca una versión clara como texto. Ejemplo: fondo `risk-high-bg` + texto `risk-high` sólido. Debe leerse sin esfuerzo a tamaño pequeño.
+
+## Indicador de riesgo
+Badge/círculo de color sólido con el mapeo semántico exacto (alto/medio/bajo/sin_datos), ejecutado con el patrón de "círculo de acento" descrito arriba — no un punto plano aislado, sino un círculo con fondo pastel + el color sólido del riesgo dentro.
 
 ## Motion
-Los blobs de fondo SÍ animan — morphing orgánico lento (border-radius + transform derivando con el tiempo), anclados en las esquinas del viewport, grandes, suaves, de baja opacidad para no competir con el contenido. Esto es el elemento central de "Light Blobmorphism": el fondo se siente vivo sin distraer. Las superficies de datos (cards, drawer, listas) permanecen estáticas — el movimiento vive solo en el fondo ambiental, nunca en elementos que el usuario necesita leer con precisión. Siempre respetar `prefers-reduced-motion` (fallback: blobs estáticos, sin animación).
+Blobs de fondo animan (morphing lento, 15-25s, ver arriba). Superficies de datos permanecen estáticas. Transiciones sutiles de hover/focus en elementos interactivos. Siempre respetar `prefers-reduced-motion`.
