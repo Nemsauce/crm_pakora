@@ -35,7 +35,7 @@ const cornerBlobBackground: Record<Order["estado_crm"], string> = {
   nuevo:
     "radial-gradient(circle at 35% 35%, var(--color-badge-nuevo-bg) 0%, var(--color-accent-to) 48%, transparent 72%)",
   en_ruta:
-    "radial-gradient(circle at 35% 35%, var(--color-positive-bg) 0%, var(--color-positive) 48%, transparent 72%)",
+    "radial-gradient(circle at 35% 35%, var(--color-badge-en-ruta-bg) 0%, var(--color-badge-en-ruta) 48%, transparent 72%)",
   entregado:
     "radial-gradient(circle at 35% 35%, var(--color-positive-bg) 0%, var(--color-positive) 48%, transparent 72%)",
   cancelado:
@@ -118,7 +118,7 @@ export function OrderCard({
       ].join(" ")}
     >
       <div
-        className="pointer-events-none absolute -bottom-10 -right-10 z-0 h-36 w-48 rounded-[62%_38%_46%_54%/48%_44%_56%_52%] opacity-[0.22] dark:opacity-[0.18]"
+        className="pointer-events-none absolute -bottom-8 -right-8 z-0 h-28 w-36 rounded-[62%_38%_46%_54%/48%_44%_56%_52%] opacity-[0.14] dark:opacity-[0.12]"
         style={{ background: cornerBlobBackground[order.estado_crm] }}
         aria-hidden="true"
       />
