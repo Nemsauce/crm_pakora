@@ -18,12 +18,13 @@ const MIGRATION_WORKFLOWS = [
 ];
 
 const HISTORY_FROM_DATE = "2026-03-01";
-const DEFAULT_UNTIL_EXPRESSION = "{{ $now.toFormat('yyyy-MM-dd') }}";
 const ORDERS_PAGE_SIZE = 50;
 const WALLET_PAGE_SIZE = 200;
+const MAX_WINDOW_SPAN_DAYS = 85;
 const DROPI_HISTORICAL_ORDERS_NODE_NAME = "Dropi Consultar Historico";
 const DROPI_WALLET_TEMPLATE_NODE_NAME = "Dropi Consultar Wallet";
 const DROPI_WALLET_HISTORICAL_NODE_NAME = "Dropi Consultar Wallet Historico";
+const PREPARE_HISTORICAL_NODE_NAME = "Preparar datos historico";
 const MAP_WALLET_NODE_NAME = "Mapear movimientos wallet completo";
 const INSERT_WALLET_NODE_NAME = "Insertar movimientos wallet";
 const WALLET_ON_CONFLICT_PARAM = "on_conflict=pais,id_movimiento_dropi";
@@ -136,6 +137,76 @@ function getPositionNear(sourceNode, offsetX = 420, offsetY = 150) {
   return [x + offsetX, y + offsetY];
 }
 
+function getTodayDateString() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return `${byType.year}-${byType.month}-${byType.day}`;
+}
+
+function parseDateString(dateString) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString);
+
+  if (!match) {
+    throw new Error(`Invalid date string "${dateString}". Expected YYYY-MM-DD.`);
+  }
+
+  const [, year, month, day] = match;
+
+  return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+}
+
+function formatDateString(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(date, days) {
+  const nextDate = new Date(date);
+  nextDate.setUTCDate(nextDate.getUTCDate() + days);
+
+  return nextDate;
+}
+
+function daysBetween(startDate, endDate) {
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+
+  return Math.round((endDate.getTime() - startDate.getTime()) / millisecondsPerDay);
+}
+
+function computeDateWindows(fromDateString, toDateString = getTodayDateString()) {
+  const finalDate = parseDateString(toDateString);
+  let currentDate = parseDateString(fromDateString);
+
+  if (currentDate > finalDate) {
+    throw new Error(
+      `Historical from date ${fromDateString} is after target date ${toDateString}.`,
+    );
+  }
+
+  const windows = [];
+
+  while (currentDate <= finalDate) {
+    const maxUntilDate = addDays(currentDate, MAX_WINDOW_SPAN_DAYS);
+    const untilDate = maxUntilDate < finalDate ? maxUntilDate : finalDate;
+
+    windows.push({
+      index: windows.length + 1,
+      from: formatDateString(currentDate),
+      until: formatDateString(untilDate),
+      spanDays: daysBetween(currentDate, untilDate),
+    });
+
+    currentDate = addDays(untilDate, 1);
+  }
+
+  return windows;
+}
+
 function getHttpRequestUrl(node) {
   return typeof node?.parameters?.url === "string" ? node.parameters.url : "";
 }
@@ -218,6 +289,11 @@ function ensureExpressionUrlPrefix(urlValue) {
   }
 
   const trimmed = urlValue.trimStart();
+  const leadingWhitespace = urlValue.slice(0, urlValue.length - trimmed.length);
+
+  if (!trimmed.includes("{{") && trimmed.startsWith("=")) {
+    return `${leadingWhitespace}${trimmed.slice(1)}`;
+  }
 
   if (!trimmed.includes("{{") || trimmed.startsWith("=")) {
     return urlValue;
@@ -226,15 +302,91 @@ function ensureExpressionUrlPrefix(urlValue) {
   return `=${urlValue}`;
 }
 
-function patchDropiDateWindowUrl(urlValue, pageSize, untilExpression) {
+function patchDropiDateWindowUrl(urlValue, pageSize, fromDate, untilDate) {
   let nextUrl = urlValue;
-  nextUrl = setQueryParamRaw(nextUrl, "from", HISTORY_FROM_DATE);
-  nextUrl = setQueryParamRaw(nextUrl, "until", untilExpression);
+  nextUrl = setQueryParamRaw(nextUrl, "from", fromDate);
+  nextUrl = setQueryParamRaw(nextUrl, "until", untilDate);
   nextUrl = setQueryParamRaw(nextUrl, "result_number", String(pageSize));
   nextUrl = removeQueryParam(nextUrl, "start");
   nextUrl = ensureExpressionUrlPrefix(nextUrl);
 
   return nextUrl;
+}
+
+function getWindowNodeName(baseNodeName, windowIndex) {
+  return `${baseNodeName} Ventana ${windowIndex}`;
+}
+
+function getWindowIndexFromNodeName(baseNodeName, nodeName) {
+  const prefix = `${baseNodeName} Ventana `;
+
+  if (!nodeName.startsWith(prefix)) {
+    return undefined;
+  }
+
+  const rawIndex = nodeName.slice(prefix.length);
+
+  return /^\d+$/.test(rawIndex) ? Number(rawIndex) : undefined;
+}
+
+function findFirstWindowNode(workflow, baseNodeName) {
+  return [...workflow.nodes]
+    .filter((node) => getWindowIndexFromNodeName(baseNodeName, node.name) !== undefined)
+    .sort(
+      (left, right) =>
+        getWindowIndexFromNodeName(baseNodeName, left.name) -
+        getWindowIndexFromNodeName(baseNodeName, right.name),
+    )[0];
+}
+
+function getStaleWindowNodeNames(workflow, baseNodeName, desiredNodeNames) {
+  const desired = new Set(desiredNodeNames);
+
+  return workflow.nodes
+    .map((node) => node.name)
+    .filter(
+      (nodeName) =>
+        getWindowIndexFromNodeName(baseNodeName, nodeName) !== undefined &&
+        !desired.has(nodeName),
+    );
+}
+
+function removeNodesAndConnections(workflow, nodeNames) {
+  const namesToRemove = new Set(
+    nodeNames.filter((nodeName) => workflow.nodes.some((node) => node.name === nodeName)),
+  );
+
+  if (namesToRemove.size === 0) {
+    return [];
+  }
+
+  workflow.nodes = workflow.nodes.filter((node) => !namesToRemove.has(node.name));
+
+  for (const sourceNodeName of Object.keys(workflow.connections ?? {})) {
+    if (namesToRemove.has(sourceNodeName)) {
+      delete workflow.connections[sourceNodeName];
+      continue;
+    }
+
+    const mainOutputs = workflow.connections[sourceNodeName]?.main;
+
+    if (!Array.isArray(mainOutputs)) {
+      continue;
+    }
+
+    for (const outputConnections of mainOutputs) {
+      if (!Array.isArray(outputConnections)) {
+        continue;
+      }
+
+      const keptConnections = outputConnections.filter(
+        (connection) => !namesToRemove.has(connection.node),
+      );
+      outputConnections.splice(0, outputConnections.length, ...keptConnections);
+    }
+  }
+
+  return [...namesToRemove];
 }
 
 function buildPagination(pageSize) {
@@ -273,36 +425,142 @@ function ensureNativePagination(node, pageSize) {
   return before === after ? "confirmed" : "updated";
 }
 
-function patchHistoricalOrdersNode(workflow, untilExpression) {
-  const node = findNode(workflow, DROPI_HISTORICAL_ORDERS_NODE_NAME);
+function buildDropiWindowParameters(baseNode, pageSize, window) {
+  const parameters = clone(baseNode.parameters ?? {});
 
-  if (!node) {
-    throw new Error(`Node "${DROPI_HISTORICAL_ORDERS_NODE_NAME}" was not found.`);
+  parameters.url = patchDropiDateWindowUrl(
+    getHttpRequestUrl(baseNode),
+    pageSize,
+    window.from,
+    window.until,
+  );
+  parameters.options ??= {};
+  parameters.options.pagination = {
+    pagination: buildPagination(pageSize),
+  };
+
+  return parameters;
+}
+
+function buildDropiWindowNode({
+  baseNode,
+  sourceNode,
+  nodeName,
+  pageSize,
+  window,
+  offsetX,
+  offsetY,
+}) {
+  const node = clone(baseNode);
+  node.id = randomUUID();
+  node.name = nodeName;
+  node.parameters = buildDropiWindowParameters(baseNode, pageSize, window);
+  node.position = getPositionNear(sourceNode, offsetX, offsetY);
+
+  return node;
+}
+
+function createOrUpdateDropiWindowNode({
+  workflow,
+  baseNode,
+  sourceNode,
+  nodeName,
+  pageSize,
+  window,
+  offsetX,
+  offsetY,
+}) {
+  const existingNode = findNode(workflow, nodeName);
+
+  if (!existingNode) {
+    const newNode = buildDropiWindowNode({
+      baseNode,
+      sourceNode,
+      nodeName,
+      pageSize,
+      window,
+      offsetX,
+      offsetY,
+    });
+    workflow.nodes.push(newNode);
+
+    return {
+      node: newNode,
+      status: "added",
+      urlStatus: "added",
+      paginationStatus: "added",
+      url: newNode.parameters.url,
+      pagination: newNode.parameters.options.pagination.pagination,
+      window,
+    };
   }
 
-  if (node.type !== "n8n-nodes-base.httpRequest") {
+  if (existingNode.type !== "n8n-nodes-base.httpRequest") {
     throw new Error(
-      `"${DROPI_HISTORICAL_ORDERS_NODE_NAME}" is not an HTTP Request node. Found type: ${node.type ?? "(missing)"}.`,
+      `"${nodeName}" exists but is not an HTTP Request node. Found type: ${existingNode.type ?? "(missing)"}.`,
     );
   }
 
-  const beforeUrl = getHttpRequestUrl(node);
-  const nextUrl = patchDropiDateWindowUrl(
-    beforeUrl,
-    ORDERS_PAGE_SIZE,
-    untilExpression,
+  const before = JSON.stringify({
+    parameters: existingNode.parameters,
+    credentials: existingNode.credentials,
+    retryOnFail: existingNode.retryOnFail,
+    maxTries: existingNode.maxTries,
+    waitBetweenTries: existingNode.waitBetweenTries,
+  });
+  const beforeUrl = getHttpRequestUrl(existingNode);
+  const beforePagination = JSON.stringify(
+    existingNode.parameters?.options?.pagination ?? null,
   );
-  node.parameters.url = nextUrl;
-  const urlStatus = beforeUrl === nextUrl ? "confirmed" : "updated";
-  const paginationStatus = ensureNativePagination(node, ORDERS_PAGE_SIZE);
+
+  existingNode.parameters = buildDropiWindowParameters(baseNode, pageSize, window);
+  applyNodeCredentialsFromSource(existingNode, baseNode);
+  applyRetrySettingsFromTemplate(existingNode, baseNode);
+
+  const after = JSON.stringify({
+    parameters: existingNode.parameters,
+    credentials: existingNode.credentials,
+    retryOnFail: existingNode.retryOnFail,
+    maxTries: existingNode.maxTries,
+    waitBetweenTries: existingNode.waitBetweenTries,
+  });
+  const afterPagination = JSON.stringify(
+    existingNode.parameters?.options?.pagination ?? null,
+  );
 
   return {
-    node,
-    urlStatus,
-    paginationStatus,
-    url: nextUrl,
-    pagination: node.parameters.options.pagination.pagination,
+    node: existingNode,
+    status: before === after ? "confirmed" : "updated",
+    urlStatus: beforeUrl === existingNode.parameters.url ? "confirmed" : "updated",
+    paginationStatus: beforePagination === afterPagination ? "confirmed" : "updated",
+    url: existingNode.parameters.url,
+    pagination: existingNode.parameters.options.pagination.pagination,
+    window,
   };
+}
+
+function createOrUpdateDropiWindowNodes({
+  workflow,
+  baseNode,
+  sourceNode,
+  baseNodeName,
+  pageSize,
+  windows,
+  offsetX,
+  offsetY,
+}) {
+  return windows.map((window) =>
+    createOrUpdateDropiWindowNode({
+      workflow,
+      baseNode,
+      sourceNode,
+      nodeName: getWindowNodeName(baseNodeName, window.index),
+      pageSize,
+      window,
+      offsetX,
+      offsetY: offsetY + (window.index - 1) * 180,
+    }),
+  );
 }
 
 function getHeaderParameterList(sourceParameters) {
@@ -418,97 +676,64 @@ function applyRetrySettingsFromTemplate(targetNode, templateNode) {
   }
 }
 
-function buildWalletHistoricalParameters(templateNode, untilExpression) {
-  const parameters = clone(templateNode.parameters ?? {});
+function buildPrepareHistoricalInputAggregationCode(existingCode) {
+  const legacyHeader = `const response = $('Dropi Consultar Historico').item.json;
+const orders = response.objects || [];`;
+  const nextHeader = `const orders = [];
 
-  parameters.url = patchDropiDateWindowUrl(
-    getHttpRequestUrl(templateNode),
-    WALLET_PAGE_SIZE,
-    untilExpression,
-  );
-  parameters.options ??= {};
-  parameters.options.pagination = {
-    pagination: buildPagination(WALLET_PAGE_SIZE),
-  };
-
-  return parameters;
+function getObjects(payload) {
+  if (Array.isArray(payload?.objects)) return payload.objects;
+  if (Array.isArray(payload?.data?.objects)) return payload.data.objects;
+  if (Array.isArray(payload?.body?.objects)) return payload.body.objects;
+  return [];
 }
 
-function buildWalletHistoricalNode(templateNode, sourceNode, untilExpression) {
-  const node = clone(templateNode);
-  node.id = randomUUID();
-  node.name = DROPI_WALLET_HISTORICAL_NODE_NAME;
-  node.parameters = buildWalletHistoricalParameters(templateNode, untilExpression);
-  node.position = getPositionNear(sourceNode, 420, -160);
+for (const item of $input.all()) {
+  orders.push(...getObjects(item.json));
+}`;
 
-  return node;
-}
-
-function createOrUpdateWalletHistoricalNode(
-  workflow,
-  templateNode,
-  sourceNode,
-  untilExpression,
-) {
-  const existingNode = findNode(workflow, DROPI_WALLET_HISTORICAL_NODE_NAME);
-
-  if (!existingNode) {
-    const newNode = buildWalletHistoricalNode(templateNode, sourceNode, untilExpression);
-    workflow.nodes.push(newNode);
-
-    return {
-      node: newNode,
-      status: "added",
-      urlStatus: "added",
-      paginationStatus: "added",
-      url: newNode.parameters.url,
-      pagination: newNode.parameters.options.pagination.pagination,
-    };
+  if (existingCode.includes(nextHeader)) {
+    return existingCode;
   }
 
-  if (existingNode.type !== "n8n-nodes-base.httpRequest") {
+  if (!existingCode.includes(legacyHeader)) {
     throw new Error(
-      `"${DROPI_WALLET_HISTORICAL_NODE_NAME}" exists but is not an HTTP Request node. Found type: ${existingNode.type ?? "(missing)"}.`,
+      `"${PREPARE_HISTORICAL_NODE_NAME}" jsCode does not contain the expected legacy input header.`,
     );
   }
 
-  const before = JSON.stringify({
-    parameters: existingNode.parameters,
-    credentials: existingNode.credentials,
-    retryOnFail: existingNode.retryOnFail,
-    maxTries: existingNode.maxTries,
-    waitBetweenTries: existingNode.waitBetweenTries,
-  });
-  const beforeUrl = getHttpRequestUrl(existingNode);
-  const beforePagination = JSON.stringify(
-    existingNode.parameters?.options?.pagination ?? null,
-  );
+  return existingCode.replace(legacyHeader, nextHeader);
+}
 
-  existingNode.parameters = buildWalletHistoricalParameters(
-    templateNode,
-    untilExpression,
-  );
-  applyNodeCredentialsFromSource(existingNode, templateNode);
-  applyRetrySettingsFromTemplate(existingNode, templateNode);
+function patchPrepareHistoricalNode(workflow) {
+  const node = findNode(workflow, PREPARE_HISTORICAL_NODE_NAME);
 
-  const after = JSON.stringify({
-    parameters: existingNode.parameters,
-    credentials: existingNode.credentials,
-    retryOnFail: existingNode.retryOnFail,
-    maxTries: existingNode.maxTries,
-    waitBetweenTries: existingNode.waitBetweenTries,
-  });
-  const afterPagination = JSON.stringify(
-    existingNode.parameters?.options?.pagination ?? null,
-  );
+  if (!node) {
+    throw new Error(`Node "${PREPARE_HISTORICAL_NODE_NAME}" was not found.`);
+  }
+
+  if (node.type !== "n8n-nodes-base.code") {
+    throw new Error(
+      `"${PREPARE_HISTORICAL_NODE_NAME}" is not a Code node. Found type: ${node.type ?? "(missing)"}.`,
+    );
+  }
+
+  const beforeCode = node.parameters?.jsCode;
+
+  if (typeof beforeCode !== "string") {
+    throw new Error(`"${PREPARE_HISTORICAL_NODE_NAME}" has no jsCode string.`);
+  }
+
+  const nextCode = buildPrepareHistoricalInputAggregationCode(beforeCode);
+  node.parameters = {
+    ...(node.parameters ?? {}),
+    jsCode: nextCode,
+  };
 
   return {
-    node: existingNode,
-    status: before === after ? "confirmed" : "updated",
-    urlStatus: beforeUrl === existingNode.parameters.url ? "confirmed" : "updated",
-    paginationStatus: beforePagination === afterPagination ? "confirmed" : "updated",
-    url: existingNode.parameters.url,
-    pagination: existingNode.parameters.options.pagination.pagination,
+    node,
+    status: beforeCode === nextCode ? "confirmed" : "updated",
+    jsCode: nextCode,
   };
 }
 
@@ -718,6 +943,25 @@ function findSourceNodeNameForTarget(workflow, targetNodeName) {
   return undefined;
 }
 
+function findMigrationSourceNodeName(workflow) {
+  const targetNodeNames = [
+    DROPI_HISTORICAL_ORDERS_NODE_NAME,
+    getWindowNodeName(DROPI_HISTORICAL_ORDERS_NODE_NAME, 1),
+    DROPI_WALLET_HISTORICAL_NODE_NAME,
+    getWindowNodeName(DROPI_WALLET_HISTORICAL_NODE_NAME, 1),
+  ];
+
+  for (const targetNodeName of targetNodeNames) {
+    const sourceNodeName = findSourceNodeNameForTarget(workflow, targetNodeName);
+
+    if (sourceNodeName) {
+      return sourceNodeName;
+    }
+  }
+
+  return findFallbackTriggerNode(workflow)?.name;
+}
+
 function findFallbackTriggerNode(workflow) {
   return workflow.nodes.find((node) => {
     const type = node.type ?? "";
@@ -818,13 +1062,6 @@ function urlStartsWithExpressionPrefix(urlValue) {
   return typeof urlValue === "string" && urlValue.trimStart().startsWith("=");
 }
 
-function getUntilExpressionFromTemplate(templateWalletNode) {
-  return (
-    getQueryParamRaw(getHttpRequestUrl(templateWalletNode), "until") ??
-    DEFAULT_UNTIL_EXPRESSION
-  );
-}
-
 function patchWorkflow(workflow, templateWorkflow, workflowTarget) {
   if (!Array.isArray(workflow.nodes)) {
     throw new Error("Workflow response does not include a nodes array.");
@@ -834,19 +1071,27 @@ function patchWorkflow(workflow, templateWorkflow, workflowTarget) {
     throw new Error("Template workflow response does not include a nodes array.");
   }
 
-  const historicalOrdersNode = findNode(workflow, DROPI_HISTORICAL_ORDERS_NODE_NAME);
+  const historicalOrdersBaseNode =
+    findNode(workflow, DROPI_HISTORICAL_ORDERS_NODE_NAME) ??
+    findFirstWindowNode(workflow, DROPI_HISTORICAL_ORDERS_NODE_NAME);
 
-  if (!historicalOrdersNode) {
-    throw new Error(`Node "${DROPI_HISTORICAL_ORDERS_NODE_NAME}" was not found.`);
+  if (!historicalOrdersBaseNode) {
+    throw new Error(
+      `Node "${DROPI_HISTORICAL_ORDERS_NODE_NAME}" or its windowed replacement was not found.`,
+    );
   }
 
-  const sourceNodeName =
-    findSourceNodeNameForTarget(workflow, DROPI_HISTORICAL_ORDERS_NODE_NAME) ??
-    findFallbackTriggerNode(workflow)?.name;
+  if (historicalOrdersBaseNode.type !== "n8n-nodes-base.httpRequest") {
+    throw new Error(
+      `"${historicalOrdersBaseNode.name}" is not an HTTP Request node. Found type: ${historicalOrdersBaseNode.type ?? "(missing)"}.`,
+    );
+  }
+
+  const sourceNodeName = findMigrationSourceNodeName(workflow);
 
   if (!sourceNodeName) {
     throw new Error(
-      `Could not find the source/manual trigger node for "${DROPI_HISTORICAL_ORDERS_NODE_NAME}".`,
+      "Could not find the source/manual trigger node for the migration branches.",
     );
   }
 
@@ -868,6 +1113,17 @@ function patchWorkflow(workflow, templateWorkflow, workflowTarget) {
     );
   }
 
+  const walletHistoricalBaseNode =
+    findNode(workflow, DROPI_WALLET_HISTORICAL_NODE_NAME) ??
+    findFirstWindowNode(workflow, DROPI_WALLET_HISTORICAL_NODE_NAME) ??
+    templateWalletNode;
+
+  if (walletHistoricalBaseNode.type !== "n8n-nodes-base.httpRequest") {
+    throw new Error(
+      `"${walletHistoricalBaseNode.name}" is not an HTTP Request node. Found type: ${walletHistoricalBaseNode.type ?? "(missing)"}.`,
+    );
+  }
+
   const supabaseSourceNode = findSupabaseRestSourceNode(workflow);
 
   if (!supabaseSourceNode) {
@@ -876,17 +1132,31 @@ function patchWorkflow(workflow, templateWorkflow, workflowTarget) {
     );
   }
 
-  const untilExpression = getUntilExpressionFromTemplate(templateWalletNode);
-  const historicalOrdersPatch = patchHistoricalOrdersNode(workflow, untilExpression);
-  const walletHistoricalNodeChange = createOrUpdateWalletHistoricalNode(
+  const windows = computeDateWindows(HISTORY_FROM_DATE);
+  const prepareHistoricalPatch = patchPrepareHistoricalNode(workflow);
+  const orderWindowChanges = createOrUpdateDropiWindowNodes({
     workflow,
-    templateWalletNode,
+    baseNode: historicalOrdersBaseNode,
     sourceNode,
-    untilExpression,
-  );
+    baseNodeName: DROPI_HISTORICAL_ORDERS_NODE_NAME,
+    pageSize: ORDERS_PAGE_SIZE,
+    windows,
+    offsetX: 420,
+    offsetY: 0,
+  });
+  const walletWindowChanges = createOrUpdateDropiWindowNodes({
+    workflow,
+    baseNode: walletHistoricalBaseNode,
+    sourceNode,
+    baseNodeName: DROPI_WALLET_HISTORICAL_NODE_NAME,
+    pageSize: WALLET_PAGE_SIZE,
+    windows,
+    offsetX: 780,
+    offsetY: -160,
+  });
   const walletMappingNodeChange = createOrUpdateWalletMappingNode(
     workflow,
-    walletHistoricalNodeChange.node,
+    walletWindowChanges[0].node,
     workflowTarget.pais,
   );
   const walletInsertNodeChange = createOrUpdateWalletInsertNode(
@@ -894,53 +1164,101 @@ function patchWorkflow(workflow, templateWorkflow, workflowTarget) {
     walletMappingNodeChange.node,
     supabaseSourceNode,
   );
-  const walletSourceConnectionStatus = ensureMainConnection(
-    workflow,
-    sourceNodeName,
-    DROPI_WALLET_HISTORICAL_NODE_NAME,
-  );
-  const walletMappingConnectionStatus = ensureMainConnection(
-    workflow,
-    DROPI_WALLET_HISTORICAL_NODE_NAME,
-    MAP_WALLET_NODE_NAME,
-  );
+  const orderWindowConnectionStatuses = orderWindowChanges.map((change) => ({
+    nodeName: change.node.name,
+    sourceConnectionStatus: ensureMainConnection(
+      workflow,
+      sourceNodeName,
+      change.node.name,
+    ),
+    prepareConnectionStatus: ensureMainConnection(
+      workflow,
+      change.node.name,
+      PREPARE_HISTORICAL_NODE_NAME,
+    ),
+  }));
+  const walletWindowConnectionStatuses = walletWindowChanges.map((change) => ({
+    nodeName: change.node.name,
+    sourceConnectionStatus: ensureMainConnection(
+      workflow,
+      sourceNodeName,
+      change.node.name,
+    ),
+    mappingConnectionStatus: ensureMainConnection(
+      workflow,
+      change.node.name,
+      MAP_WALLET_NODE_NAME,
+    ),
+  }));
   const walletInsertConnectionStatus = ensureMainConnection(
     workflow,
     MAP_WALLET_NODE_NAME,
     INSERT_WALLET_NODE_NAME,
   );
+  const desiredOrderWindowNodeNames = windows.map((window) =>
+    getWindowNodeName(DROPI_HISTORICAL_ORDERS_NODE_NAME, window.index),
+  );
+  const desiredWalletWindowNodeNames = windows.map((window) =>
+    getWindowNodeName(DROPI_WALLET_HISTORICAL_NODE_NAME, window.index),
+  );
+  const removedNodeNames = removeNodesAndConnections(workflow, [
+    DROPI_HISTORICAL_ORDERS_NODE_NAME,
+    DROPI_WALLET_HISTORICAL_NODE_NAME,
+    ...getStaleWindowNodeNames(
+      workflow,
+      DROPI_HISTORICAL_ORDERS_NODE_NAME,
+      desiredOrderWindowNodeNames,
+    ),
+    ...getStaleWindowNodeNames(
+      workflow,
+      DROPI_WALLET_HISTORICAL_NODE_NAME,
+      desiredWalletWindowNodeNames,
+    ),
+  ]);
 
   return {
     sourceNodeName,
-    historicalOrdersUrlStatus: historicalOrdersPatch.urlStatus,
-    historicalOrdersPaginationStatus: historicalOrdersPatch.paginationStatus,
-    historicalOrdersUrl: historicalOrdersPatch.url,
-    historicalOrdersUrlStartsWithEquals: urlStartsWithExpressionPrefix(
-      historicalOrdersPatch.url,
-    ),
-    historicalOrdersPagination: historicalOrdersPatch.pagination,
-    walletHistoricalNodeStatus: walletHistoricalNodeChange.status,
-    walletHistoricalUrlStatus: walletHistoricalNodeChange.urlStatus,
-    walletHistoricalPaginationStatus: walletHistoricalNodeChange.paginationStatus,
-    walletHistoricalUrl: walletHistoricalNodeChange.url,
-    walletHistoricalUrlStartsWithEquals: urlStartsWithExpressionPrefix(
-      walletHistoricalNodeChange.url,
-    ),
-    walletHistoricalPagination: walletHistoricalNodeChange.pagination,
+    windows,
+    maxWindowSpanDays: MAX_WINDOW_SPAN_DAYS,
+    orderWindowChanges: orderWindowChanges.map((change) => ({
+      nodeName: change.node.name,
+      status: change.status,
+      urlStatus: change.urlStatus,
+      paginationStatus: change.paginationStatus,
+      url: change.url,
+      urlStartsWithEquals: urlStartsWithExpressionPrefix(change.url),
+      pagination: change.pagination,
+      window: change.window,
+      ...orderWindowConnectionStatuses.find(
+        (connection) => connection.nodeName === change.node.name,
+      ),
+    })),
+    walletWindowChanges: walletWindowChanges.map((change) => ({
+      nodeName: change.node.name,
+      status: change.status,
+      urlStatus: change.urlStatus,
+      paginationStatus: change.paginationStatus,
+      url: change.url,
+      urlStartsWithEquals: urlStartsWithExpressionPrefix(change.url),
+      pagination: change.pagination,
+      window: change.window,
+      ...walletWindowConnectionStatuses.find(
+        (connection) => connection.nodeName === change.node.name,
+      ),
+    })),
+    prepareHistoricalStatus: prepareHistoricalPatch.status,
+    prepareHistoricalJsCode: prepareHistoricalPatch.jsCode,
     walletMappingNodeStatus: walletMappingNodeChange.status,
     walletInsertNodeStatus: walletInsertNodeChange.status,
     walletInsertOnConflictStatus: walletInsertNodeChange.onConflictStatus,
     walletInsertUrl: walletInsertNodeChange.node.parameters.url,
-    walletSourceConnectionStatus,
-    walletMappingConnectionStatus,
     walletInsertConnectionStatus,
+    removedNodeNames,
     walletTemplateWorkflowId: workflowTarget.walletTemplateWorkflowId,
     walletTemplateNodeId: templateWalletNode.id,
-    walletHistoricalNodeId: walletHistoricalNodeChange.node.id,
     walletMappingNodeId: walletMappingNodeChange.node.id,
     walletInsertNodeId: walletInsertNodeChange.node.id,
     supabaseAuthSourceNodeName: supabaseSourceNode.name,
-    untilExpression,
     settingsSummary: getFilteredWorkflowSettings(workflow),
   };
 }
@@ -950,32 +1268,38 @@ function printChangeSummary(workflow, workflowTarget, patchResult) {
   console.log(`Workflow: ${workflow.name ?? "(unnamed)"}`);
   console.log(`- source/manual branch node: ${patchResult.sourceNodeName}`);
   console.log(
-    `- "${DROPI_HISTORICAL_ORDERS_NODE_NAME}" date/result URL: ${patchResult.historicalOrdersUrlStatus}`,
+    `- computed windows (${patchResult.windows.length}, max ${patchResult.maxWindowSpanDays} days apart):`,
   );
+  for (const window of patchResult.windows) {
+    console.log(
+      `  - Window ${window.index}: ${window.from} to ${window.until} (${window.spanDays} days apart)`,
+    );
+  }
+  console.log("- orders historical window nodes:");
+  for (const change of patchResult.orderWindowChanges) {
+    console.log(
+      `  - ${change.nodeName}: node=${change.status}; url=${change.urlStatus}; pagination=${change.paginationStatus}; source->node=${change.sourceConnectionStatus}; node->prep=${change.prepareConnectionStatus}; startsWithEquals=${change.urlStartsWithEquals}`,
+    );
+    console.log(`    window: ${change.window.from} to ${change.window.until}`);
+    console.log(`    url: ${change.url}`);
+  }
+  console.log("- orders pagination JSON template:");
+  console.log(formatPagination(patchResult.orderWindowChanges[0]?.pagination ?? {}));
   console.log(
-    `- "${DROPI_HISTORICAL_ORDERS_NODE_NAME}" native pagination: ${patchResult.historicalOrdersPaginationStatus}`,
+    `- "${PREPARE_HISTORICAL_NODE_NAME}" input aggregation patch: ${patchResult.prepareHistoricalStatus}`,
   );
-  console.log(`- orders historical url: ${patchResult.historicalOrdersUrl}`);
-  console.log(
-    `- orders historical url starts with '=': ${patchResult.historicalOrdersUrlStartsWithEquals}`,
-  );
-  console.log("- orders pagination JSON:");
-  console.log(formatPagination(patchResult.historicalOrdersPagination));
-  console.log(
-    `- node "${DROPI_WALLET_HISTORICAL_NODE_NAME}": ${patchResult.walletHistoricalNodeStatus}`,
-  );
-  console.log(
-    `- "${DROPI_WALLET_HISTORICAL_NODE_NAME}" date/result URL: ${patchResult.walletHistoricalUrlStatus}`,
-  );
-  console.log(
-    `- "${DROPI_WALLET_HISTORICAL_NODE_NAME}" native pagination: ${patchResult.walletHistoricalPaginationStatus}`,
-  );
-  console.log(`- wallet historical url: ${patchResult.walletHistoricalUrl}`);
-  console.log(
-    `- wallet historical url starts with '=': ${patchResult.walletHistoricalUrlStartsWithEquals}`,
-  );
-  console.log("- wallet pagination JSON:");
-  console.log(formatPagination(patchResult.walletHistoricalPagination));
+  console.log(`- "${PREPARE_HISTORICAL_NODE_NAME}" jsCode:`);
+  console.log(patchResult.prepareHistoricalJsCode);
+  console.log("- wallet historical window nodes:");
+  for (const change of patchResult.walletWindowChanges) {
+    console.log(
+      `  - ${change.nodeName}: node=${change.status}; url=${change.urlStatus}; pagination=${change.paginationStatus}; source->node=${change.sourceConnectionStatus}; node->map=${change.mappingConnectionStatus}; startsWithEquals=${change.urlStartsWithEquals}`,
+    );
+    console.log(`    window: ${change.window.from} to ${change.window.until}`);
+    console.log(`    url: ${change.url}`);
+  }
+  console.log("- wallet pagination JSON template:");
+  console.log(formatPagination(patchResult.walletWindowChanges[0]?.pagination ?? {}));
   console.log(
     `- node "${MAP_WALLET_NODE_NAME}": ${patchResult.walletMappingNodeStatus}`,
   );
@@ -987,13 +1311,10 @@ function printChangeSummary(workflow, workflowTarget, patchResult) {
   );
   console.log(`- wallet insert url: ${patchResult.walletInsertUrl}`);
   console.log(
-    `- connection "${patchResult.sourceNodeName}" -> "${DROPI_WALLET_HISTORICAL_NODE_NAME}": ${patchResult.walletSourceConnectionStatus}`,
-  );
-  console.log(
-    `- connection "${DROPI_WALLET_HISTORICAL_NODE_NAME}" -> "${MAP_WALLET_NODE_NAME}": ${patchResult.walletMappingConnectionStatus}`,
-  );
-  console.log(
     `- connection "${MAP_WALLET_NODE_NAME}" -> "${INSERT_WALLET_NODE_NAME}": ${patchResult.walletInsertConnectionStatus}`,
+  );
+  console.log(
+    `- removed/replaced old single-window nodes: ${formatKeys(patchResult.removedNodeNames)}`,
   );
   console.log(`- wallet pais literal: ${workflowTarget.pais}`);
   console.log(`- wallet template workflow id: ${patchResult.walletTemplateWorkflowId}`);
@@ -1001,7 +1322,6 @@ function printChangeSummary(workflow, workflowTarget, patchResult) {
   console.log(
     `- Supabase auth/header source node for wallet insert: ${patchResult.supabaseAuthSourceNodeName}`,
   );
-  console.log(`- until expression: ${patchResult.untilExpression}`);
   console.log(
     `- workflow.settings keys returned: ${formatKeys(patchResult.settingsSummary.presentKeys)}`,
   );
@@ -1011,7 +1331,6 @@ function printChangeSummary(workflow, workflowTarget, patchResult) {
   console.log(
     `- workflow.settings keys dropped: ${formatKeys(patchResult.settingsSummary.droppedKeys)}`,
   );
-  console.log(`- wallet historical node id: ${patchResult.walletHistoricalNodeId}`);
   console.log(`- wallet map node id: ${patchResult.walletMappingNodeId}`);
   console.log(`- wallet insert node id: ${patchResult.walletInsertNodeId}`);
 }
