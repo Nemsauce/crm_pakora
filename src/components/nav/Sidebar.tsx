@@ -23,11 +23,9 @@ const navItems = [
     href: "/tareas",
     icon: ListTodo,
   },
-] as const;
-
-const disabledItems = [
   {
     label: "Command Center",
+    href: "/command-center",
     icon: LayoutDashboard,
   },
 ] as const;
@@ -86,23 +84,6 @@ export function Sidebar({ userEmail }: SidebarProps) {
             );
           })}
 
-          {disabledItems.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <div
-                key={item.label}
-                aria-disabled="true"
-                className="flex h-10 cursor-not-allowed items-center gap-3 rounded-lg px-3 font-body text-sm text-text-secondary"
-              >
-                <Icon className="h-4 w-4" aria-hidden="true" />
-                <span className="min-w-0 flex-1">{item.label}</span>
-                <span className="rounded-full border border-border bg-bg-page px-2 py-0.5 font-mono text-[0.625rem] uppercase leading-none text-text-secondary">
-                  próximamente
-                </span>
-              </div>
-            );
-          })}
         </nav>
 
         <div className="border-t border-border p-3">

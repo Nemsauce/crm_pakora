@@ -130,3 +130,9 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Error n8n observado: `invalid JSON` / body inválido al ejecutar `Actualizar orden Supabase` con data real MX que contenía comillas o caracteres especiales. Causa raíz: el `jsonBody` estaba armado con interpolación manual dentro de comillas, sin escape automático. Fix: el script ahora parchea `Actualizar orden Supabase` para usar `JSON.stringify({ ... })` sobre el objeto completo.
 - Error n8n observado: `409 duplicate key value violates unique constraint` al insertar `wallet_movements` repetidos aunque el header `Prefer: resolution=ignore-duplicates,return=minimal` existía. Causa raíz: PostgREST necesita `on_conflict=pais,id_movimiento_dropi` para apuntar a la constraint única compuesta, porque no es la primary key. Fix: el script ahora agrega ese query param a la URL de `Insertar movimientos wallet`.
 - Pendiente: Alejo debe correr dry-run y luego `--confirm` contra n8n de producción para aplicar ambos fixes.
+
+### [Fase 4] Command Center financiero — COMPLETADO
+- Se agregó `/command-center` como dashboard financiero inicial, server-rendered y protegido por el shell autenticado.
+- La agregación vive en Supabase vía RPC `wallet_summary(p_date_from, p_date_to)`; la app solo separa por país y hace shaping visual para cards/tablas.
+- La pantalla muestra ganancia neta (`ENTRADA - SALIDA`) por CO/MX, selector 7/30/90 días, y desglose por categoría de movimiento wallet.
+- La fuente es `wallet_movements`, alimentada por el polling continuo reciente; por ahora puede aparecer "Sin movimientos" si el rango no tiene datos. El backfill histórico completo sigue diferido según el PIN anterior, así que esta pantalla se irá poblando hacia adelante o después de la migración final.
