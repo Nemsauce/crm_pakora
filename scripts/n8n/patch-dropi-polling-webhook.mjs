@@ -9,11 +9,19 @@ const WORKFLOWS = [
 
 const UPDATE_ORDER_NODE_NAME = "Actualizar orden Supabase";
 const WEBHOOK_NODE_NAME = "Notificar backend CRM";
+const ACTIVE_ORDERS_NODE_NAME = "Traer ordenes activas Supabase";
+const COMPARE_FILTER_NODE_NAME = "Comparar y filtrar cambios";
 const DEFAULT_BACKEND_WEBHOOK_URL =
   "https://crm.pakora.online/api/webhooks/orders/status-changed";
 const WEBHOOK_JSON_BODY = `={
   "order_id": {{ $('Comparar y filtrar cambios').item.json.supabase_id }}
 }`;
+const RECONCILIATION_SELECT_COLUMN = "tarea_generada_para_estado";
+const CODE_RECONCILIATION_MARKER =
+  "const yaProcesado = supabase.json.tarea_generada_para_estado === estadoNuevo;";
+const CODE_STATUS_ANCHOR = "if (estadoAnterior === estadoNuevo) continue;";
+const CODE_STATUS_REPLACEMENT = `${CODE_RECONCILIATION_MARKER}
+  if (estadoAnterior === estadoNuevo && yaProcesado) continue;`;
 const ALLOWED_WORKFLOW_SETTINGS_KEYS = new Set([
   "executionOrder",
   "saveManualExecutions",
@@ -272,6 +280,131 @@ function ensureMainConnection(workflow, sourceNodeName, targetNodeName) {
   return "added";
 }
 
+function patchSelectParam(urlValue, columnName) {
+  if (typeof urlValue !== "string") {
+    throw new Error(
+      `"${ACTIVE_ORDERS_NODE_NAME}" does not have a string parameters.url value.`,
+    );
+  }
+
+  const selectMatch = /([?&]select=)([^&]*)/.exec(urlValue);
+
+  if (!selectMatch) {
+    throw new Error(
+      `"${ACTIVE_ORDERS_NODE_NAME}" URL does not contain a select= query parameter.`,
+    );
+  }
+
+  const [matchedSelect, selectPrefix, rawSelectValue] = selectMatch;
+  let decodedSelectValue = rawSelectValue;
+
+  try {
+    decodedSelectValue = decodeURIComponent(rawSelectValue);
+  } catch {
+    decodedSelectValue = rawSelectValue;
+  }
+
+  const selectedColumns = decodedSelectValue
+    .split(",")
+    .map((column) => column.trim())
+    .filter(Boolean);
+
+  if (selectedColumns.includes(columnName)) {
+    return {
+      nextUrl: urlValue,
+      status: "confirmed",
+    };
+  }
+
+  const delimiter = rawSelectValue.includes("%2C") ? "%2C" : ",";
+  const nextSelectValue = rawSelectValue
+    ? `${rawSelectValue}${delimiter}${columnName}`
+    : columnName;
+  const startIndex = selectMatch.index;
+  const endIndex = startIndex + matchedSelect.length;
+
+  return {
+    nextUrl: `${urlValue.slice(0, startIndex)}${selectPrefix}${nextSelectValue}${urlValue.slice(endIndex)}`,
+    status: "added",
+  };
+}
+
+function patchActiveOrdersSelect(workflow) {
+  const node = findNode(workflow, ACTIVE_ORDERS_NODE_NAME);
+
+  if (!node) {
+    return "skipped-not-found";
+  }
+
+  if (node.type !== "n8n-nodes-base.httpRequest") {
+    throw new Error(
+      `"${ACTIVE_ORDERS_NODE_NAME}" is not an HTTP Request node. Found type: ${node.type ?? "(missing)"}.`,
+    );
+  }
+
+  if (
+    !node.parameters ||
+    typeof node.parameters !== "object" ||
+    Array.isArray(node.parameters)
+  ) {
+    throw new Error(`"${ACTIVE_ORDERS_NODE_NAME}" does not have parameters.`);
+  }
+
+  const { nextUrl, status } = patchSelectParam(
+    node.parameters.url,
+    RECONCILIATION_SELECT_COLUMN,
+  );
+
+  node.parameters.url = nextUrl;
+
+  return status;
+}
+
+function patchCompareFilterCode(workflow) {
+  const node = findNode(workflow, COMPARE_FILTER_NODE_NAME);
+
+  if (!node) {
+    return "skipped-not-found";
+  }
+
+  if (node.type !== "n8n-nodes-base.code") {
+    throw new Error(
+      `"${COMPARE_FILTER_NODE_NAME}" is not a Code node. Found type: ${node.type ?? "(missing)"}.`,
+    );
+  }
+
+  if (
+    !node.parameters ||
+    typeof node.parameters !== "object" ||
+    Array.isArray(node.parameters)
+  ) {
+    throw new Error(`"${COMPARE_FILTER_NODE_NAME}" does not have parameters.`);
+  }
+
+  const jsCode = node.parameters.jsCode;
+
+  if (typeof jsCode !== "string") {
+    throw new Error(`"${COMPARE_FILTER_NODE_NAME}" does not have string jsCode.`);
+  }
+
+  if (jsCode.includes("yaProcesado")) {
+    return "already-patched";
+  }
+
+  if (!jsCode.includes(CODE_STATUS_ANCHOR)) {
+    throw new Error(
+      `"${COMPARE_FILTER_NODE_NAME}" jsCode anchor not found. Expected exact line: ${CODE_STATUS_ANCHOR}`,
+    );
+  }
+
+  node.parameters.jsCode = jsCode.replace(
+    CODE_STATUS_ANCHOR,
+    CODE_STATUS_REPLACEMENT,
+  );
+
+  return "added";
+}
+
 function getFilteredWorkflowSettings(workflow) {
   const settings =
     workflow.settings &&
@@ -345,10 +478,14 @@ function patchWorkflow(workflow, config) {
     UPDATE_ORDER_NODE_NAME,
     WEBHOOK_NODE_NAME,
   );
+  const activeOrdersSelectStatus = patchActiveOrdersSelect(workflow);
+  const compareFilterCodeStatus = patchCompareFilterCode(workflow);
 
   return {
     nodeStatus: nodeChange.status,
     connectionStatus,
+    activeOrdersSelectStatus,
+    compareFilterCodeStatus,
     retryStyle,
     settingsSummary: getFilteredWorkflowSettings(workflow),
     webhookNodeId: nodeChange.node.id,
@@ -361,6 +498,12 @@ function printChangeSummary(workflow, workflowTarget, patchResult, config) {
   console.log(`- node "${WEBHOOK_NODE_NAME}": ${patchResult.nodeStatus}`);
   console.log(
     `- connection "${UPDATE_ORDER_NODE_NAME}" -> "${WEBHOOK_NODE_NAME}": ${patchResult.connectionStatus}`,
+  );
+  console.log(
+    `- "${ACTIVE_ORDERS_NODE_NAME}" select ${RECONCILIATION_SELECT_COLUMN}: ${patchResult.activeOrdersSelectStatus}`,
+  );
+  console.log(
+    `- "${COMPARE_FILTER_NODE_NAME}" reconciliation code: ${patchResult.compareFilterCodeStatus}`,
   );
   console.log(`- retry settings style: ${patchResult.retryStyle}`);
   console.log(

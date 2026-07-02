@@ -68,3 +68,8 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Se removió la programación Vercel Cron de `/api/cron/reconcile-tasks` porque el plan Hobby solo permite crons diarios y este proyecto todavía no está pagando Vercel Pro.
 - Decisión: la reconciliación se hará extendiendo el ciclo existente de n8n (`Dropi Polling`, 5x/día) para comparar `estado_dropi` contra `tarea_generada_para_estado`, no solo detectar cambios desde el último poll. Esto se implementará vía script/API de n8n en `scripts/n8n/`, no como cambio nuevo del backend en este commit.
 - La ruta `/api/cron/reconcile-tasks` sigue existiendo y funcionando; simplemente no está agendada por Vercel ahora. Puede reactivarse si más adelante se adopta Vercel Pro.
+
+### [Fase 2] Reconciliación vía ciclo de polling n8n — SCRIPT LISTO, PENDIENTE DE EJECUCIÓN
+- Se extendió `scripts/n8n/patch-dropi-polling-webhook.mjs` para que también agregue `tarea_generada_para_estado` al `select=` de `Traer ordenes activas Supabase` y parchee `Comparar y filtrar cambios` con un marcador idempotente (`yaProcesado`).
+- Objetivo: cada corrida existente de Dropi Polling (5x/día) funciona como reconciliación natural, re-notificando al backend cuando `orders.estado_dropi` ya coincide con Dropi pero `tarea_generada_para_estado` todavía no fue procesado por el motor de tareas.
+- Codex no ejecutó el script contra n8n; Alejo debe correr dry-run y luego `--confirm` localmente con credenciales reales de n8n.

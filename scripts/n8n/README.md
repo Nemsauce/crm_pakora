@@ -9,6 +9,10 @@
 
 The script adds or updates the `Notificar backend CRM` HTTP Request node after `Actualizar orden Supabase`, so n8n keeps extracting data while this backend owns the task decision logic described in `AGENTS.md`.
 
+It also turns the existing Dropi polling cycle into the free-tier reconciliation mechanism while Vercel Cron is paused on the Hobby plan. The polling schedule remains unchanged (5x/day), but the script patches `Traer ordenes activas Supabase` to fetch `tarea_generada_para_estado` and patches `Comparar y filtrar cambios` so orders are re-notified when `tarea_generada_para_estado` is out of sync with the live Dropi status, even if the status did not newly change since the previous poll.
+
+`/api/cron/reconcile-tasks` remains available in the backend and can be scheduled again later if the Vercel account moves to Pro.
+
 ## Required env vars
 
 - `N8N_BASE_URL`: your self-hosted n8n instance base URL.
@@ -30,6 +34,6 @@ Apply after reviewing the dry-run summary:
 node scripts/n8n/patch-dropi-polling-webhook.mjs --confirm
 ```
 
-This script is manual maintenance, not automatic or scheduled. Re-run it manually if the webhook URL, shared secret, or target node names ever change.
+This script is manual maintenance, not automatic or scheduled. Re-run it manually if the webhook URL, shared secret, reconciliation field, or target node names ever change.
 
 After applying, manually re-test both workflows in n8n with a manual execution and confirm the new `Notificar backend CRM` node fires correctly.
