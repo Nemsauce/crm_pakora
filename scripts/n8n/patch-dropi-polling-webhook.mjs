@@ -278,10 +278,6 @@ function buildWorkflowUpdatePayload(workflow) {
     payload.pinData = workflow.pinData;
   }
 
-  if (typeof workflow.active === "boolean") {
-    payload.active = workflow.active;
-  }
-
   return payload;
 }
 
