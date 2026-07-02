@@ -74,3 +74,8 @@ Cada vez que se complete un commit significativo (schema, feature, decisión de 
 - Objetivo: cada corrida existente de Dropi Polling (5x/día) funciona como reconciliación natural, re-notificando al backend cuando `orders.estado_dropi` ya coincide con Dropi pero `tarea_generada_para_estado` todavía no fue procesado por el motor de tareas.
 - Codex no ejecutó el script contra n8n; Alejo debe correr dry-run y luego `--confirm` localmente con credenciales reales de n8n.
 - Verificado por Alejo en n8n: ambos workflows (CO y MX) tienen el marcador `yaProcesado` en `Comparar y filtrar cambios` y `tarea_generada_para_estado` en el `select=` de `Traer ordenes activas Supabase`. Aplicado exitosamente vía `--confirm` contra n8n de producción.
+
+### [Fase 3] Shell autenticado (sidebar) — COMPLETADO
+- Se reemplazó el placeholder de sesión en `/` por un redirect server-side a `/pedidos` para usuarios autenticados.
+- Se agregó el grupo protegido `(app)` con layout de aplicación: sidebar densa con glassmorphism para navegación/chrome, usuario actual y logout; el contenido principal queda opaco sobre `bg-surface` para futuras tablas y datos densos.
+- Se creó `/pedidos` como placeholder mínimo dentro del shell. Pendiente: construir la lista real de pedidos y conectar datos.
