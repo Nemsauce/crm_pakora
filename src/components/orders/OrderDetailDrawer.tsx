@@ -171,6 +171,7 @@ export function OrderDetailDrawer() {
 
   return (
     <Dialog.Root
+      modal={false}
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -179,7 +180,6 @@ export function OrderDetailDrawer() {
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-bg-page/70" />
         <Dialog.Content className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-border bg-bg-surface text-text-primary shadow-xl outline-none">
           <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
             <div className="min-w-0">
