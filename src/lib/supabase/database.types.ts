@@ -172,6 +172,36 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          activo: boolean
+          created_at: string
+          email: string
+          id: string
+          nombre: string | null
+          role: Database["public"]["Enums"]["role_enum"]
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          email: string
+          id: string
+          nombre?: string | null
+          role?: Database["public"]["Enums"]["role_enum"]
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          nombre?: string | null
+          role?: Database["public"]["Enums"]["role_enum"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       status_catalog: {
         Row: {
           activo: boolean
@@ -255,6 +285,7 @@ export type Database = {
       }
       tasks: {
         Row: {
+          asignado_a: string | null
           completado_en: string | null
           completado_por: string | null
           creado_por: string
@@ -264,12 +295,14 @@ export type Database = {
           fecha_limite: string | null
           id: number
           intento_numero: number
+          notas_completado: string | null
           order_id: number
           tipo: Database["public"]["Enums"]["tipo_tarea_enum"]
           titulo: string
           updated_at: string
         }
         Insert: {
+          asignado_a?: string | null
           completado_en?: string | null
           completado_por?: string | null
           creado_por?: string
@@ -279,12 +312,14 @@ export type Database = {
           fecha_limite?: string | null
           id?: never
           intento_numero?: number
+          notas_completado?: string | null
           order_id: number
           tipo: Database["public"]["Enums"]["tipo_tarea_enum"]
           titulo: string
           updated_at?: string
         }
         Update: {
+          asignado_a?: string | null
           completado_en?: string | null
           completado_por?: string | null
           creado_por?: string
@@ -294,12 +329,20 @@ export type Database = {
           fecha_limite?: string | null
           id?: never
           intento_numero?: number
+          notas_completado?: string | null
           order_id?: number
           tipo?: Database["public"]["Enums"]["tipo_tarea_enum"]
           titulo?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_asignado_a_fkey"
+            columns: ["asignado_a"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_order_id_fkey"
             columns: ["order_id"]
@@ -404,7 +447,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_authenticated_active_user: { Args: never; Returns: boolean }
+      wallet_summary: {
+        Args: { p_date_from: string; p_date_to: string }
+        Returns: {
+          categoria: Database["public"]["Enums"]["tipo_movimiento_wallet_enum"]
+          pais: Database["public"]["Enums"]["pais_enum"]
+          tipo: string
+          total: number
+        }[]
+      }
     }
     Enums: {
       categoria_estado_enum:
@@ -418,6 +470,9 @@ export type Database = {
         | "cancelado"
         | "devolucion"
         | "sin_clasificar"
+        | "en_reparto"
+        | "recoger_oficina"
+        | "intento_fallido"
       estado_crm_enum:
         | "nuevo"
         | "en_ruta"
@@ -430,6 +485,7 @@ export type Database = {
         | "completada"
         | "cancelada"
       pais_enum: "CO" | "MX"
+      role_enum: "admin"
       tipo_movimiento_wallet_enum:
         | "ganancia"
         | "costo_flete"
@@ -586,6 +642,9 @@ export const Constants = {
         "cancelado",
         "devolucion",
         "sin_clasificar",
+        "en_reparto",
+        "recoger_oficina",
+        "intento_fallido",
       ],
       estado_crm_enum: [
         "nuevo",
@@ -601,6 +660,7 @@ export const Constants = {
         "cancelada",
       ],
       pais_enum: ["CO", "MX"],
+      role_enum: ["admin"],
       tipo_movimiento_wallet_enum: [
         "ganancia",
         "costo_flete",

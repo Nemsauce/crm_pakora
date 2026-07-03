@@ -41,3 +41,33 @@ export async function completeTask(taskId: number): Promise<CompleteTaskResult> 
 
   return { error: null };
 }
+
+export type ReassignTaskResult = {
+  error: string | null;
+};
+
+export async function reassignTask(
+  taskId: number,
+  userId: string | null,
+): Promise<ReassignTaskResult> {
+  if (!Number.isInteger(taskId) || taskId <= 0) {
+    return { error: "Tarea inválida." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({
+      asignado_a: userId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", taskId);
+
+  if (error) {
+    return { error: "No se pudo reasignar la tarea." };
+  }
+
+  revalidatePath("/tareas");
+
+  return { error: null };
+}

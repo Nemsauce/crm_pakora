@@ -94,6 +94,19 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
     throw new Error(`No se pudieron cargar las tareas: ${error.message}`);
   }
 
+  const { data: profilesData, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id, email")
+    .eq("activo", true)
+    .order("email", { ascending: true });
+
+  if (profilesError) {
+    throw new Error(
+      `No se pudieron cargar los usuarios activos: ${profilesError.message}`,
+    );
+  }
+
+  const assigneeOptions = profilesData ?? [];
   const tasks = (data ?? []) as TaskWithOrderContext[];
   const overdueCount =
     estadoVista === "completadas"
@@ -163,7 +176,7 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
                 animationDelay: `${Math.min(index * 40, 480)}ms`,
               }}
             >
-              <TaskRow task={task} />
+              <TaskRow task={task} assigneeOptions={assigneeOptions} />
             </div>
           ))}
         </div>
