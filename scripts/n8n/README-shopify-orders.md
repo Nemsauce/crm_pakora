@@ -1,6 +1,6 @@
-# Shopify Orders — missing `pais` fix
+# Shopify Orders — `pais` and `fecha` fixes
 
-## The bug
+## Bug 1: missing `pais`
 
 Neither `Shopify Orders (CO)` (`R6yGZIKxVCWfJaq9`) nor `Shopify Orders MX` (`oYYHzqRXCjNfPGks`) ever included a `pais` field in the `jsonBody` of their `Insertar orden Supabase1` node. `orders.pais` is `NOT NULL` in the schema, so every insert attempted by these two workflows fails at that node with:
 
@@ -10,6 +10,18 @@ Neither `Shopify Orders (CO)` (`R6yGZIKxVCWfJaq9`) nor `Shopify Orders MX` (`oYY
 
 Because the webhook node responds to Shopify immediately on receipt (before the downstream Supabase insert runs), Shopify sees a successful delivery regardless of what happens afterward in the workflow — so from Shopify's side the webhook looks delivered while the order never reaches Supabase. This is a day-one bug: the `jsonBody` template for both workflows was built without a `pais` literal from the start, it predates this session's other Shopify-workflow fixes (webhook reactivation, notification wiring, etc.), and it likely went unnoticed because these workflows historically saw little real order traffic until now.
 
+## Bug 2: UTC conversion in `fecha`
+
+The `Mapear orden Shopify` node calculated `fecha` by parsing Shopify's `created_at` / `processed_at` value through `new Date(...)` and then extracting the date from `toISOString()`. Shopify already sends these timestamps with their local offset, for example `2026-06-15T22:46:46-05:00`; converting to UTC before splitting the date can move late-night local orders one day ahead.
+
+The correct CRM `orders.fecha` for Shopify orders is the local calendar date carried by Shopify's raw ISO timestamp. The script now patches `Mapear orden Shopify` in both workflows to use the first 10 characters of the selected ISO string:
+
+```js
+fecha = String(fechaRaw).slice(0, 10);
+```
+
+The final fallback chain is `order.created_at`, then `order.processed_at`, then `new Date().toISOString()`. All three produce ISO-compatible strings where the first 10 characters are the intended `YYYY-MM-DD` date.
+
 ## The fix
 
 `patch-shopify-orders-pais.mjs` patches exactly these two workflows' `Insertar orden Supabase1` node, adding the missing literal field immediately after the existing `"activo": true` field in the `jsonBody` JSON template string:
@@ -17,9 +29,11 @@ Because the webhook node responds to Shopify immediately on receipt (before the 
 - CO: adds `"pais": "CO"`
 - MX: adds `"pais": "MX"`
 
-No other node, mapping, task-creation, or comment-insertion logic in either workflow is touched.
+The same script also patches exactly these two workflows' `Mapear orden Shopify` node, replacing only the `fecha` calculation block so it extracts the local date directly from Shopify's raw ISO string instead of round-tripping through UTC. The matcher handles both current live variants: the CO block with the full fallback chain and the older MX block that only checked `order.created_at`.
 
-The script is idempotent: if `"pais":` is already present in the `jsonBody` with the expected value, it reports `confirmed` and makes no change. If it's present with an unexpected value, the script stops with an error instead of silently overwriting it — that case needs manual review.
+No task-creation, comment-insertion, or unrelated mapping logic in either workflow is touched.
+
+The script is idempotent: if `"pais":` is already present in the `jsonBody` with the expected value, it reports `confirmed` for that part. If the `fecha` calculation is already fixed, it reports `confirmed` / already patched for that part. If either field is present in an unexpected shape, the script stops with an error instead of silently overwriting it — that case needs manual review.
 
 Before writing, the script validates the patched `jsonBody` string structurally (starts with the `={` expression prefix, ends with `}`, balanced brace count, no dangling trailing comma before the closing brace) to catch a bad splice before it ever reaches n8n.
 

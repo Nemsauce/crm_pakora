@@ -6,7 +6,30 @@ const WORKFLOWS = [
 ];
 
 const INSERT_ORDER_NODE_NAME = "Insertar orden Supabase1";
+const MAP_ORDER_NODE_NAME = "Mapear orden Shopify";
 const ACTIVO_ANCHOR = '"activo": true';
+const OLD_FECHA_LOGIC_WITH_FALLBACK = `let fecha;
+try {
+  const fechaRaw = order.created_at || order.processed_at || new Date().toISOString();
+  fecha = new Date(fechaRaw).toISOString().split('T')[0];
+} catch(e) {
+  fecha = new Date().toISOString().split('T')[0];
+}`;
+const OLD_FECHA_LOGIC_CREATED_AT_ONLY = `let fecha = null;
+try {
+  fecha = order.created_at ? new Date(order.created_at).toISOString().split('T')[0] : null;
+} catch(e) { fecha = null; }`;
+const NEW_FECHA_LOGIC = `let fecha;
+try {
+  const fechaRaw = order.created_at || order.processed_at || new Date().toISOString();
+  fecha = String(fechaRaw).slice(0, 10);
+} catch(e) {
+  fecha = new Date().toISOString().split('T')[0];
+}`;
+const OLD_FECHA_LOGIC_VARIANTS = [
+  OLD_FECHA_LOGIC_WITH_FALLBACK,
+  OLD_FECHA_LOGIC_CREATED_AT_ONLY,
+];
 const ALLOWED_WORKFLOW_SETTINGS_KEYS = new Set([
   "executionOrder",
   "saveManualExecutions",
@@ -96,6 +119,18 @@ async function requestJson(url, config, options = {}) {
 
 function findNode(workflow, name) {
   return workflow.nodes?.find((node) => node.name === name);
+}
+
+function countSubstring(value, substring) {
+  let count = 0;
+  let index = value.indexOf(substring);
+
+  while (index !== -1) {
+    count += 1;
+    index = value.indexOf(substring, index + substring.length);
+  }
+
+  return count;
 }
 
 function countOccurrences(value, char) {
@@ -202,6 +237,76 @@ function patchInsertOrderJsonBody(node, pais) {
   };
 }
 
+function buildFechaLogicDiff(oldFechaLogic) {
+  const beforeLines = oldFechaLogic.split("\n").map((line) => `-${line}`);
+  const afterLines = NEW_FECHA_LOGIC.split("\n").map((line) => `+${line}`);
+
+  return [
+    `--- ${MAP_ORDER_NODE_NAME} jsCode BEFORE`,
+    `+++ ${MAP_ORDER_NODE_NAME} jsCode AFTER`,
+    "@@ fecha calculation @@",
+    ...beforeLines,
+    ...afterLines,
+  ].join("\n");
+}
+
+function patchMapOrderJsCode(node) {
+  if (node.type !== "n8n-nodes-base.code") {
+    throw new Error(
+      `"${MAP_ORDER_NODE_NAME}" is not a Code node. Found type: ${node.type ?? "(missing)"}.`,
+    );
+  }
+
+  if (
+    !node.parameters ||
+    typeof node.parameters !== "object" ||
+    Array.isArray(node.parameters)
+  ) {
+    throw new Error(`"${MAP_ORDER_NODE_NAME}" does not have parameters.`);
+  }
+
+  const jsCode = node.parameters.jsCode;
+
+  if (typeof jsCode !== "string") {
+    throw new Error(`"${MAP_ORDER_NODE_NAME}" does not have a string jsCode.`);
+  }
+
+  if (jsCode.includes(NEW_FECHA_LOGIC)) {
+    return {
+      status: "confirmed",
+      before: jsCode,
+      after: jsCode,
+      diff: "(already patched; no jsCode diff)",
+    };
+  }
+
+  const matchingOldLogic = OLD_FECHA_LOGIC_VARIANTS.map((oldLogic) => ({
+    oldLogic,
+    occurrences: countSubstring(jsCode, oldLogic),
+  })).filter((match) => match.occurrences > 0);
+  const totalOldLogicOccurrences = matchingOldLogic.reduce(
+    (total, match) => total + match.occurrences,
+    0,
+  );
+
+  if (totalOldLogicOccurrences !== 1) {
+    throw new Error(
+      `"${MAP_ORDER_NODE_NAME}" jsCode does not contain exactly one expected fecha calculation block. Found ${totalOldLogicOccurrences}. Manual review required.`,
+    );
+  }
+
+  const oldFechaLogic = matchingOldLogic[0].oldLogic;
+  const nextJsCode = jsCode.replace(oldFechaLogic, NEW_FECHA_LOGIC);
+  node.parameters.jsCode = nextJsCode;
+
+  return {
+    status: "fixed",
+    before: jsCode,
+    after: nextJsCode,
+    diff: buildFechaLogicDiff(oldFechaLogic),
+  };
+}
+
 function getFilteredWorkflowSettings(workflow) {
   const settings =
     workflow.settings &&
@@ -257,12 +362,23 @@ function patchWorkflow(workflow, workflowTarget) {
     throw new Error(`Node "${INSERT_ORDER_NODE_NAME}" was not found.`);
   }
 
+  const mapOrderNode = findNode(workflow, MAP_ORDER_NODE_NAME);
+
+  if (!mapOrderNode) {
+    throw new Error(`Node "${MAP_ORDER_NODE_NAME}" was not found.`);
+  }
+
   const jsonBodyPatch = patchInsertOrderJsonBody(insertOrderNode, workflowTarget.pais);
+  const fechaLogicPatch = patchMapOrderJsCode(mapOrderNode);
 
   return {
     jsonBodyStatus: jsonBodyPatch.status,
     jsonBodyBefore: jsonBodyPatch.before,
     jsonBodyAfter: jsonBodyPatch.after,
+    fechaLogicStatus: fechaLogicPatch.status,
+    fechaLogicDiff: fechaLogicPatch.diff,
+    hasChanges:
+      jsonBodyPatch.status !== "confirmed" || fechaLogicPatch.status !== "confirmed",
     settingsSummary: getFilteredWorkflowSettings(workflow),
   };
 }
@@ -278,6 +394,11 @@ function printChangeSummary(workflow, workflowTarget, patchResult) {
   console.log(patchResult.jsonBodyBefore);
   console.log(`- "${INSERT_ORDER_NODE_NAME}" jsonBody AFTER:`);
   console.log(patchResult.jsonBodyAfter);
+  console.log(
+    `- "${MAP_ORDER_NODE_NAME}" fecha calculation: ${patchResult.fechaLogicStatus}`,
+  );
+  console.log(`- "${MAP_ORDER_NODE_NAME}" jsCode diff:`);
+  console.log(patchResult.fechaLogicDiff);
   console.log(
     `- workflow.settings keys returned: ${formatKeys(patchResult.settingsSummary.presentKeys)}`,
   );
@@ -298,7 +419,7 @@ async function processWorkflow(workflowTarget, config, confirm) {
 
   printChangeSummary(workflow, workflowTarget, patchResult);
 
-  if (patchResult.jsonBodyStatus === "confirmed") {
+  if (!patchResult.hasChanges) {
     console.log("Already patched — nothing to write.");
     return confirm ? "confirmed-no-write" : "dry-run-confirmed";
   }
