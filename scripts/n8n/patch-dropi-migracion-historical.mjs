@@ -676,10 +676,8 @@ function applyRetrySettingsFromTemplate(targetNode, templateNode) {
   }
 }
 
-function buildPrepareHistoricalInputAggregationCode(existingCode) {
-  const legacyHeader = `const response = $('Dropi Consultar Historico').item.json;
-const orders = response.objects || [];`;
-  const nextHeader = `const orders = [];
+function buildPrepareHistoricalCode(pais) {
+  return `const orders = [];
 
 function getObjects(payload) {
   if (Array.isArray(payload?.objects)) return payload.objects;
@@ -690,22 +688,90 @@ function getObjects(payload) {
 
 for (const item of $input.all()) {
   orders.push(...getObjects(item.json));
-}`;
-
-  if (existingCode.includes(nextHeader)) {
-    return existingCode;
+}
+const estadosCerrados = ['ENTREGADO', 'CANCELADO', 'DEVOLUCION'];
+const estadosNovedad = ['DESTINATARIO SE REHUSA A RECIBIR', 'Se visita, no se logra entrega', 'PARA NUEVO INTENTO ENTREGA', 'EN CONFIRMACIÓN TELEFÓNICA', 'NOVEDAD', 'CERRADO POR INCIDENCIA, VER CAUSA', 'RECLAME EN OFICINA'];
+const sanitize = (val) => {
+  if (!val) return '';
+  return String(val).replace(/[\\x00-\\x1F\\x7F]/g, ' ').trim();
+};
+return orders.map(o => {
+  const cerrado = estadosCerrados.includes(o.status);
+  const totalPedidos = o.client_total_orders || 0;
+  const devoluciones = o.client_total_orders_returneds || 0;
+  let nivelRiesgo = 'sin_datos';
+  if (totalPedidos > 0) {
+    const tasa = devoluciones / totalPedidos;
+    if (tasa >= 0.5) nivelRiesgo = 'alto';
+    else if (tasa >= 0.25) nivelRiesgo = 'medio';
+    else nivelRiesgo = 'bajo';
+  }
+  let estadoCrm = 'nuevo';
+  if (cerrado) {
+    if (o.status === 'ENTREGADO') estadoCrm = 'entregado';
+    else if ((o.status || '').includes('DEVOLUCION')) estadoCrm = 'devolucion';
+    else estadoCrm = 'cancelado';
+  } else if (o.shipping_guide) {
+    estadoCrm = 'en_ruta';
+  }
+  let accion = null;
+  if (!cerrado) {
+    if (o.status === 'GUIA_GENERADA') accion = 'notificar_guia';
+    else if (estadosNovedad.includes(o.status)) accion = 'presionar_entrega';
+    else if (['PENDIENTE CONFIRMACION', 'PENDIENTE'].includes(o.status)) accion = 'llamar_confirmacion';
   }
 
-  if (!existingCode.includes(legacyHeader)) {
-    throw new Error(
-      `"${PREPARE_HISTORICAL_NODE_NAME}" jsCode does not contain the expected legacy input header.`,
-    );
-  }
+  const orderDetail = (o.orderdetails || [])[0] || {};
+  const costoProducto = parseFloat(orderDetail.supplier_price || 0);
+  const costoEnvio = parseFloat(o.shipping_amount || 0);
 
-  return existingCode.replace(legacyHeader, nextHeader);
+  return {
+    json: {
+      order: {
+        id_orden_dropi: o.id,
+        id_orden_shopify: o.shop_order_id ? String(o.shop_order_id) : null,
+        numero_orden: o.shop_order_number ? '#' + o.shop_order_number : null,
+        fecha: o.created_at ? o.created_at.split('T')[0] : null,
+        nombre: sanitize(o.name),
+        apellido: sanitize(o.surname),
+        telefono: sanitize(o.phone),
+        direccion: sanitize(o.dir),
+        ciudad: sanitize(o.city),
+        departamento: sanitize(o.state),
+        nombre_producto: sanitize(o.notes),
+        total: parseFloat(o.total_order || 0),
+        guia_envio: o.shipping_guide || null,
+        transportadora: o.distribution_company?.name || null,
+        estado_dropi: o.status,
+        estado_crm: estadoCrm,
+        activo: !cerrado,
+        nivel_riesgo: nivelRiesgo,
+        pais: '${pais}',
+        total_pedidos_cliente: o.client_total_orders,
+        pedidos_entregados_cliente: o.client_total_orders_delivered,
+        pedidos_devueltos_cliente: devoluciones,
+        costo_producto: costoProducto,
+        costo_envio: costoEnvio,
+        comision_cod: 0
+      },
+      history: (o.history || []).map(h => ({
+        estado: h.status,
+        transportadora: o.distribution_company?.name || null,
+        registrado_en: h.created_at
+      })),
+      accion,
+      nombre: sanitize(o.name),
+      apellido: sanitize(o.surname),
+      telefono: sanitize(o.phone),
+      guia: o.shipping_guide,
+      transportadora: o.distribution_company?.name || null,
+      numero_orden: o.shop_order_number ? '#' + o.shop_order_number : '#' + o.id
+    }
+  };
+});`;
 }
 
-function patchPrepareHistoricalNode(workflow) {
+function patchPrepareHistoricalNode(workflow, pais) {
   const node = findNode(workflow, PREPARE_HISTORICAL_NODE_NAME);
 
   if (!node) {
@@ -724,7 +790,7 @@ function patchPrepareHistoricalNode(workflow) {
     throw new Error(`"${PREPARE_HISTORICAL_NODE_NAME}" has no jsCode string.`);
   }
 
-  const nextCode = buildPrepareHistoricalInputAggregationCode(beforeCode);
+  const nextCode = buildPrepareHistoricalCode(pais);
   node.parameters = {
     ...(node.parameters ?? {}),
     jsCode: nextCode,
@@ -1133,7 +1199,7 @@ function patchWorkflow(workflow, templateWorkflow, workflowTarget) {
   }
 
   const windows = computeDateWindows(HISTORY_FROM_DATE);
-  const prepareHistoricalPatch = patchPrepareHistoricalNode(workflow);
+  const prepareHistoricalPatch = patchPrepareHistoricalNode(workflow, workflowTarget.pais);
   const orderWindowChanges = createOrUpdateDropiWindowNodes({
     workflow,
     baseNode: historicalOrdersBaseNode,
@@ -1286,7 +1352,7 @@ function printChangeSummary(workflow, workflowTarget, patchResult) {
   console.log("- orders pagination JSON template:");
   console.log(formatPagination(patchResult.orderWindowChanges[0]?.pagination ?? {}));
   console.log(
-    `- "${PREPARE_HISTORICAL_NODE_NAME}" input aggregation patch: ${patchResult.prepareHistoricalStatus}`,
+    `- "${PREPARE_HISTORICAL_NODE_NAME}" patch (input aggregation + costo_producto/costo_envio/comision_cod for pais=${workflowTarget.pais}): ${patchResult.prepareHistoricalStatus}`,
   );
   console.log(`- "${PREPARE_HISTORICAL_NODE_NAME}" jsCode:`);
   console.log(patchResult.prepareHistoricalJsCode);
