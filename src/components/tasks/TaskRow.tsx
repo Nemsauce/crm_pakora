@@ -2,7 +2,6 @@
 
 import {
   AlertTriangle,
-  Check,
   ChevronDown,
   PackageCheck,
   Phone,
@@ -11,11 +10,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { Select } from "radix-ui";
 
-import { completeTask, reassignTask } from "@/app/(app)/tareas/actions";
-import { Button } from "@/components/ui/button";
+import { reassignTask } from "@/app/(app)/tareas/actions";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 
 type Task = Tables<"tasks">;
@@ -231,9 +229,6 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
   const Icon = taskTone.icon;
   const deadline = getDeadline(task.fecha_limite);
   const isCompleted = task.estado === "completada";
-  const [isCompleting, startCompleting] = useTransition();
-  const [isCompleteFormOpen, setIsCompleteFormOpen] = useState(false);
-  const [completionNote, setCompletionNote] = useState("");
 
   const orderId = task.orders?.id ?? null;
   const selected =
@@ -265,15 +260,6 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
 
   function stopKeyPropagation(event: React.KeyboardEvent<HTMLElement>) {
     event.stopPropagation();
-  }
-
-  function handleComplete(notes?: string) {
-    startCompleting(async () => {
-      await completeTask(task.id, notes);
-      setIsCompleteFormOpen(false);
-      setCompletionNote("");
-      router.refresh();
-    });
   }
 
   return (
@@ -346,85 +332,19 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
               {getCompletionLabel(task)}
             </div>
           ) : (
-            <>
-              <div
-                className={`rounded-full px-3 py-1 font-mono text-xs font-semibold tabular-nums ${
-                  deadline.isOverdue
-                    ? "bg-risk-high-bg text-risk-high"
-                    : "bg-bg-page text-[var(--muted-foreground)]"
-                }`}
-              >
-                {deadline.isOverdue ? "Vencida " : "Vence "}
-                {deadline.label}
-              </div>
-
-              {!isCompleteFormOpen ? (
-                <Button
-                  type="button"
-                  disabled={isCompleting}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setIsCompleteFormOpen(true);
-                  }}
-                  onKeyDown={stopKeyPropagation}
-                  className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90 disabled:opacity-60"
-                >
-                  <Check className="h-4 w-4" aria-hidden="true" />
-                  Completar
-                </Button>
-              ) : null}
-            </>
+            <div
+              className={`rounded-full px-3 py-1 font-mono text-xs font-semibold tabular-nums ${
+                deadline.isOverdue
+                  ? "bg-risk-high-bg text-risk-high"
+                  : "bg-bg-page text-[var(--muted-foreground)]"
+              }`}
+            >
+              {deadline.isOverdue ? "Vencida " : "Vence "}
+              {deadline.label}
+            </div>
           )}
         </div>
       </div>
-
-      {!isCompleted && isCompleteFormOpen ? (
-        <div
-          className="mt-4 space-y-3 rounded-2xl border border-border bg-bg-page p-3"
-          onClick={(event) => event.stopPropagation()}
-          onKeyDown={stopKeyPropagation}
-        >
-          <label
-            htmlFor={`completion-note-${task.id}`}
-            className="font-body text-xs text-[var(--muted-foreground)]"
-          >
-            Nota de cierre (opcional)
-          </label>
-          <textarea
-            id={`completion-note-${task.id}`}
-            value={completionNote}
-            onChange={(event) => setCompletionNote(event.target.value)}
-            disabled={isCompleting}
-            rows={2}
-            placeholder="Ej. Cliente confirmó recepción por WhatsApp"
-            className="w-full rounded-lg border border-border bg-bg-surface px-2.5 py-1.5 font-body text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)] focus-visible:border-[var(--color-accent)] focus-visible:ring-3 focus-visible:ring-[var(--color-accent)]/20 disabled:opacity-60"
-          />
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              disabled={isCompleting}
-              onClick={() => handleComplete(completionNote)}
-              className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90 disabled:opacity-60"
-            >
-              <Check className="h-4 w-4" aria-hidden="true" />
-              Confirmar
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isCompleting}
-              onClick={() => {
-                setIsCompleteFormOpen(false);
-                setCompletionNote("");
-              }}
-              className="h-9 rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)] disabled:opacity-60"
-            >
-              Cancelar
-            </Button>
-          </div>
-        </div>
-      ) : null}
     </article>
   );
 }
