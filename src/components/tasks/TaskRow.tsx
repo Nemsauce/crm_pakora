@@ -10,6 +10,7 @@ import {
   User,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { Select } from "radix-ui";
@@ -275,16 +276,36 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
               />
             </div>
 
-            <h2 className="mt-2 font-display text-lg font-semibold text-[var(--foreground)]">
-              {task.titulo}
-            </h2>
+            {task.orders ? (
+              <Link
+                href={`/pedidos?detalle=${task.orders.id}`}
+                className="group/task-link -m-1 block rounded-lg p-1 outline-none transition-colors hover:bg-bg-page focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <h2 className="mt-2 font-display text-lg font-semibold text-[var(--foreground)] transition-colors group-hover/task-link:text-[var(--color-accent)]">
+                  {task.titulo}
+                </h2>
 
-            <p className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
-              {getCustomerName(task.orders)} ·{" "}
-              <span className="font-mono tabular-nums">
-                {getOrderIdentifier(task.orders)}
-              </span>
-            </p>
+                <p className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
+                  {getCustomerName(task.orders)} ·{" "}
+                  <span className="font-mono tabular-nums">
+                    {getOrderIdentifier(task.orders)}
+                  </span>
+                </p>
+              </Link>
+            ) : (
+              <>
+                <h2 className="mt-2 font-display text-lg font-semibold text-[var(--foreground)]">
+                  {task.titulo}
+                </h2>
+
+                <p className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
+                  {getCustomerName(task.orders)} ·{" "}
+                  <span className="font-mono tabular-nums">
+                    {getOrderIdentifier(task.orders)}
+                  </span>
+                </p>
+              </>
+            )}
           </div>
         </div>
 
