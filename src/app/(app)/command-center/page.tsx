@@ -16,14 +16,6 @@ type CommandCenterPageProps = {
 
 type Pais = "CO" | "MX";
 
-type WalletSummaryRpc = (
-  fn: "wallet_summary",
-  args: { p_date_from: string; p_date_to: string },
-) => PromiseLike<{
-  data: WalletSummaryRow[] | null;
-  error: { message: string } | null;
-}>;
-
 const validRanges = new Set(["7", "30", "90"]);
 const countries = ["CO", "MX"] as const;
 
@@ -90,9 +82,7 @@ export default async function CommandCenterPage({
   const range = getRange(params.range);
   const { dateFrom, dateTo } = getDateRange(Number(range));
   const supabase = await createClient();
-  const { data, error } = await (
-    supabase as unknown as { rpc: WalletSummaryRpc }
-  ).rpc("wallet_summary", {
+  const { data, error } = await supabase.rpc("wallet_summary", {
     p_date_from: dateFrom,
     p_date_to: dateTo,
   });
