@@ -23,6 +23,7 @@ type OrderDetail = {
 };
 
 type BadgeTone = "accent" | "muted" | "success" | "warning" | "danger";
+type RiskLevel = "alto" | "medio" | "bajo" | "sin_datos";
 
 const estadoCrmLabel: Record<Order["estado_crm"], string> = {
   nuevo: "Nuevo",
@@ -62,12 +63,31 @@ const taskStateTone: Record<Task["estado"], BadgeTone> = {
   cancelada: "danger",
 };
 
+const riskLabel: Record<RiskLevel, string> = {
+  alto: "Riesgo alto",
+  medio: "Riesgo medio",
+  bajo: "Riesgo bajo",
+  sin_datos: "Sin datos",
+};
+
+const riskBadgeClassName: Record<RiskLevel, string> = {
+  alto: "bg-risk-high-bg text-risk-high",
+  medio: "bg-risk-medium-bg text-risk-medium",
+  bajo: "bg-risk-low-bg text-risk-low",
+  sin_datos: "bg-bg-page text-[var(--muted-foreground)]",
+};
+
 const dateTimeFormatter = new Intl.DateTimeFormat("es-CO", {
   day: "2-digit",
   month: "short",
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+});
+
+const returnRateFormatter = new Intl.NumberFormat("es-CO", {
+  maximumFractionDigits: 1,
+  minimumFractionDigits: 0,
 });
 
 function formatDateTime(value: string | null) {
@@ -100,6 +120,22 @@ function getLocation(order: Order) {
 
 function formatTaskType(value: string) {
   return value.replaceAll("_", " ");
+}
+
+function normalizeRisk(nivelRiesgo: string | null): RiskLevel {
+  if (
+    nivelRiesgo === "alto" ||
+    nivelRiesgo === "medio" ||
+    nivelRiesgo === "bajo"
+  ) {
+    return nivelRiesgo;
+  }
+
+  return "sin_datos";
+}
+
+function formatReturnRate(returnedOrders: number, totalOrders: number) {
+  return `${returnRateFormatter.format((returnedOrders / totalOrders) * 100)}%`;
 }
 
 export function OrderDetailDrawer() {
@@ -249,6 +285,7 @@ export function OrderDetailDrawer() {
             {!isLoading && detail ? (
               <div className="space-y-5">
                 <OrderHeader order={detail.order} />
+                <CustomerRiskProfileSection order={detail.order} />
                 <StatusHistorySection statusHistory={detail.statusHistory} />
                 <TasksSection tasks={detail.tasks} />
                 <ComentariosSection comentarios={detail.comentarios} />
@@ -258,6 +295,75 @@ export function OrderDetailDrawer() {
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+function CustomerRiskProfileSection({ order }: { order: Order }) {
+  const risk = normalizeRisk(order.nivel_riesgo);
+  const totalOrders = order.total_pedidos_cliente ?? 0;
+  const deliveredOrders = order.pedidos_entregados_cliente ?? 0;
+  const returnedOrders = order.pedidos_devueltos_cliente ?? 0;
+  const hasHistory = totalOrders > 0;
+
+  return (
+    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-display text-base font-semibold text-[var(--foreground)]">
+            Perfil de riesgo del cliente
+          </h3>
+          <p className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
+            Historial capturado desde Dropi
+          </p>
+        </div>
+        <span
+          className={`shrink-0 rounded-full px-3 py-1 font-body text-xs font-semibold ${riskBadgeClassName[risk]}`}
+        >
+          {riskLabel[risk]}
+        </span>
+      </div>
+
+      {hasHistory ? (
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-bg-page p-3">
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              Total de pedidos
+            </dt>
+            <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-[var(--foreground)]">
+              {totalOrders}
+            </dd>
+          </div>
+          <div className="rounded-2xl border border-border bg-bg-page p-3">
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              Entregados
+            </dt>
+            <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-risk-low">
+              {deliveredOrders}
+            </dd>
+          </div>
+          <div className="rounded-2xl border border-border bg-bg-page p-3">
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              Devueltos
+            </dt>
+            <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-risk-high">
+              {returnedOrders}
+            </dd>
+          </div>
+          <div className="rounded-2xl border border-border bg-bg-page p-3">
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              Tasa de devolución
+            </dt>
+            <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-[var(--foreground)]">
+              {formatReturnRate(returnedOrders, totalOrders)}
+            </dd>
+          </div>
+        </dl>
+      ) : (
+        <p className="mt-4 rounded-2xl border border-border bg-bg-page p-3 font-body text-sm text-[var(--muted-foreground)]">
+          Cliente sin historial en Dropi
+        </p>
+      )}
+    </section>
   );
 }
 
