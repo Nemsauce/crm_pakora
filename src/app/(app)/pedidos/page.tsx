@@ -76,6 +76,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     .from("orders")
     .select("*")
     .order("fecha", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
     .range(from, to);
 
   if (params.pais && validCountries.has(params.pais)) {
