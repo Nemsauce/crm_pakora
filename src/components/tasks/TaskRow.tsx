@@ -10,8 +10,7 @@ import {
   User,
   type LucideIcon,
 } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { Select } from "radix-ui";
 
@@ -226,11 +225,45 @@ function AssigneeSelect({
 
 export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const taskTone = taskTypeTone[task.tipo];
   const Icon = taskTone.icon;
   const deadline = getDeadline(task.fecha_limite);
   const isCompleted = task.estado === "completada";
   const [isCompleting, startCompleting] = useTransition();
+
+  const orderId = task.orders?.id ?? null;
+  const selected =
+    orderId !== null && searchParams.get("detalle") === String(orderId);
+
+  function toggleDetail() {
+    if (orderId === null) {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams);
+
+    if (selected) {
+      params.delete("detalle");
+    } else {
+      params.set("detalle", String(orderId));
+    }
+
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleDetail();
+    }
+  }
+
+  function stopKeyPropagation(event: React.KeyboardEvent<HTMLElement>) {
+    event.stopPropagation();
+  }
 
   function handleComplete() {
     startCompleting(async () => {
@@ -241,8 +274,17 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
 
   return (
     <article
-      className={`rounded-2xl border border-border bg-bg-surface p-4 text-[var(--foreground)] shadow-lg ${
+      role={orderId !== null ? "button" : undefined}
+      tabIndex={orderId !== null ? 0 : undefined}
+      aria-pressed={orderId !== null ? selected : undefined}
+      onClick={orderId !== null ? toggleDetail : undefined}
+      onKeyDown={orderId !== null ? handleKeyDown : undefined}
+      className={`rounded-2xl border bg-bg-surface p-4 text-[var(--foreground)] shadow-lg transition-[border-color,box-shadow] duration-200 ease-out ${
         isCompleted ? "opacity-70" : ""
+      } ${orderId !== null ? "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring" : ""} ${
+        selected
+          ? "border-[var(--color-accent)] ring-2 ring-[var(--color-accent)] ring-offset-2 ring-offset-bg-page"
+          : "border-border"
       }`}
     >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -269,43 +311,28 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
                   Intento {task.intento_numero}
                 </span>
               ) : null}
-              <AssigneeSelect
-                taskId={task.id}
-                asignadoA={task.asignado_a}
-                assigneeOptions={assigneeOptions}
-              />
+              <div
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={stopKeyPropagation}
+              >
+                <AssigneeSelect
+                  taskId={task.id}
+                  asignadoA={task.asignado_a}
+                  assigneeOptions={assigneeOptions}
+                />
+              </div>
             </div>
 
-            {task.orders ? (
-              <Link
-                href={`/pedidos?detalle=${task.orders.id}`}
-                className="group/task-link -m-1 block rounded-lg p-1 outline-none transition-colors hover:bg-bg-page focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <h2 className="mt-2 font-display text-lg font-semibold text-[var(--foreground)] transition-colors group-hover/task-link:text-[var(--color-accent)]">
-                  {task.titulo}
-                </h2>
+            <h2 className="mt-2 font-display text-lg font-semibold text-[var(--foreground)]">
+              {task.titulo}
+            </h2>
 
-                <p className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
-                  {getCustomerName(task.orders)} ·{" "}
-                  <span className="font-mono tabular-nums">
-                    {getOrderIdentifier(task.orders)}
-                  </span>
-                </p>
-              </Link>
-            ) : (
-              <>
-                <h2 className="mt-2 font-display text-lg font-semibold text-[var(--foreground)]">
-                  {task.titulo}
-                </h2>
-
-                <p className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
-                  {getCustomerName(task.orders)} ·{" "}
-                  <span className="font-mono tabular-nums">
-                    {getOrderIdentifier(task.orders)}
-                  </span>
-                </p>
-              </>
-            )}
+            <p className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
+              {getCustomerName(task.orders)} ·{" "}
+              <span className="font-mono tabular-nums">
+                {getOrderIdentifier(task.orders)}
+              </span>
+            </p>
           </div>
         </div>
 
@@ -330,7 +357,11 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
               <Button
                 type="button"
                 disabled={isCompleting}
-                onClick={handleComplete}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleComplete();
+                }}
+                onKeyDown={stopKeyPropagation}
                 className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90 disabled:opacity-60"
               >
                 <Check className="h-4 w-4" aria-hidden="true" />

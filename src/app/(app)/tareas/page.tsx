@@ -1,3 +1,4 @@
+import { OrderDetailDrawer } from "@/components/orders/OrderDetailDrawer";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
 import { TaskSummaryBar } from "@/components/tasks/TaskSummaryBar";
 import { TaskRow, type TaskWithOrderContext } from "@/components/tasks/TaskRow";
@@ -185,6 +186,8 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
           No hay tareas que coincidan con estos filtros.
         </div>
       )}
+
+      <OrderDetailDrawer />
     </section>
   );
 }
