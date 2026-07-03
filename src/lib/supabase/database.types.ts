@@ -46,6 +46,64 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: number
+          leida: boolean
+          mensaje: string | null
+          order_id: number | null
+          task_id: number | null
+          tipo: Database["public"]["Enums"]["notificacion_tipo_enum"]
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          leida?: boolean
+          mensaje?: string | null
+          order_id?: number | null
+          task_id?: number | null
+          tipo: Database["public"]["Enums"]["notificacion_tipo_enum"]
+          titulo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          leida?: boolean
+          mensaje?: string | null
+          order_id?: number | null
+          task_id?: number | null
+          tipo?: Database["public"]["Enums"]["notificacion_tipo_enum"]
+          titulo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           activo: boolean
@@ -484,6 +542,12 @@ export type Database = {
         | "en_progreso"
         | "completada"
         | "cancelada"
+      notificacion_tipo_enum:
+        | "tarea_urgente_asignada"
+        | "tarea_vencida"
+        | "pedido_nuevo"
+        | "novedad"
+        | "pedido_entregado"
       pais_enum: "CO" | "MX"
       role_enum: "admin"
       tipo_movimiento_wallet_enum:
@@ -658,6 +722,13 @@ export const Constants = {
         "en_progreso",
         "completada",
         "cancelada",
+      ],
+      notificacion_tipo_enum: [
+        "tarea_urgente_asignada",
+        "tarea_vencida",
+        "pedido_nuevo",
+        "novedad",
+        "pedido_entregado",
       ],
       pais_enum: ["CO", "MX"],
       role_enum: ["admin"],

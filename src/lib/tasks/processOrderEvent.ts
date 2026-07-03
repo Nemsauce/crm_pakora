@@ -67,6 +67,11 @@ function getOrderNumber(order: Order) {
   return order.numero_orden ?? String(order.id);
 }
 
+function getCustomerName(order: Order) {
+  const fullName = [order.nombre, order.apellido].filter(Boolean).join(" ");
+  return fullName || "Cliente sin nombre";
+}
+
 async function updateProcessedState(orderId: number, estadoDropi: string | null) {
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -300,6 +305,61 @@ async function closeOpenTasks(order: Order) {
   };
 }
 
+type NotificacionTipo = Database["public"]["Enums"]["notificacion_tipo_enum"];
+
+type NotifyActiveProfilesInput = {
+  tipo: NotificacionTipo;
+  titulo: string;
+  mensaje: string | null;
+  orderId: number;
+  taskId: number | null;
+};
+
+async function notifyActiveProfiles({
+  tipo,
+  titulo,
+  mensaje,
+  orderId,
+  taskId,
+}: NotifyActiveProfilesInput) {
+  try {
+    const supabase = createAdminClient();
+    const { data: activeProfiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("activo", true);
+
+    if (profilesError) {
+      throw profilesError;
+    }
+
+    const recipients = activeProfiles ?? [];
+
+    if (recipients.length === 0) {
+      return;
+    }
+
+    const rows = recipients.map((profile) => ({
+      user_id: profile.id,
+      tipo,
+      titulo,
+      mensaje,
+      order_id: orderId,
+      task_id: taskId,
+    }));
+
+    const { error: insertError } = await supabase
+      .from("notifications")
+      .insert(rows);
+
+    if (insertError) {
+      throw insertError;
+    }
+  } catch (error) {
+    console.error("Failed to insert notifications", error);
+  }
+}
+
 async function executeDecision(
   order: Order,
   categoria: DecisionCategory,
@@ -331,20 +391,43 @@ async function executeDecision(
       });
     case "intento_fallido":
       return updateFailedAttemptTask(order);
-    case "novedad":
-      return ensureOpenTask({
+    case "novedad": {
+      const result = await ensureOpenTask({
         order,
         tipo: "resolver_novedad",
         titulo: "Revisar y gestionar novedad",
         descripcion: await buildNovedadDescription(order),
       });
+
+      await notifyActiveProfiles({
+        tipo: "novedad",
+        titulo: `Novedad en pedido ${getOrderNumber(order)}`,
+        mensaje: `Estado Dropi: ${order.estado_dropi ?? "sin estado"}`,
+        orderId: order.id,
+        taskId: result.taskId ?? null,
+      });
+
+      return result;
+    }
     case "proximo_a_llegar":
       return ensureOpenTask({
         order,
         tipo: "notificar_proximo_llegar",
         titulo: "Avisar al cliente que el paquete está próximo a llegar",
       });
-    case "entregado":
+    case "entregado": {
+      const result = await closeOpenTasks(order);
+
+      await notifyActiveProfiles({
+        tipo: "pedido_entregado",
+        titulo: `Pedido ${getOrderNumber(order)} entregado`,
+        mensaje: `Cliente: ${getCustomerName(order)}`,
+        orderId: order.id,
+        taskId: null,
+      });
+
+      return result;
+    }
     case "cancelado":
     case "devolucion":
       return closeOpenTasks(order);
