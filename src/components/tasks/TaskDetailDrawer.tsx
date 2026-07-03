@@ -618,6 +618,14 @@ export function TaskDetailDrawer() {
                   onCompleted={handleTaskCompleted}
                 />
                 <OtherTasksSection tasks={otherTasks} />
+                <OrderDetailsSection
+                  key={`order-details-${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
+                  order={detail.order}
+                />
+                <NovedadDetailsSection
+                  key={`novedad-details-${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
+                  statusHistory={detail.statusHistory}
+                />
                 <StatusHistorySection
                   key={`${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
                   statusHistory={detail.statusHistory}
@@ -837,6 +845,138 @@ function TaskSummaryItem({ task }: { task: Task }) {
         </span>
       </div>
     </li>
+  );
+}
+
+function OrderDetailsSection({ order }: { order: Order }) {
+  const [open, setOpen] = useState(false);
+  const location = [order.ciudad, order.departamento].filter(Boolean).join(", ");
+
+  return (
+    <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
+      <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+        <Collapsible.Trigger asChild>
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="font-display text-base font-semibold text-[var(--foreground)]">
+              Detalles del pedido
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform ${
+                open ? "rotate-180" : ""
+              }`}
+              aria-hidden="true"
+            />
+          </button>
+        </Collapsible.Trigger>
+
+        <Collapsible.Content>
+          <dl className="mt-4 grid gap-3">
+            <div className="rounded-2xl border border-border bg-bg-page p-3">
+              <dt className="font-body text-xs text-[var(--muted-foreground)]">
+                Producto
+              </dt>
+              <dd className="mt-1 font-body text-sm font-medium text-[var(--foreground)]">
+                {order.nombre_producto?.trim() || "Sin producto registrado"}
+              </dd>
+            </div>
+            <div className="rounded-2xl border border-border bg-bg-page p-3">
+              <dt className="font-body text-xs text-[var(--muted-foreground)]">
+                Ciudad / departamento
+              </dt>
+              <dd className="mt-1 font-body text-sm font-medium text-[var(--foreground)]">
+                {location || "Sin ubicación registrada"}
+              </dd>
+            </div>
+            <div className="rounded-2xl border border-border bg-bg-page p-3">
+              <dt className="font-body text-xs text-[var(--muted-foreground)]">
+                País
+              </dt>
+              <dd className="mt-1 font-body text-sm font-medium text-[var(--foreground)]">
+                {order.pais || "Sin país registrado"}
+              </dd>
+            </div>
+          </dl>
+        </Collapsible.Content>
+      </section>
+    </Collapsible.Root>
+  );
+}
+
+function getLatestNovedadStatus(statusHistory: StatusHistory[]) {
+  return statusHistory.reduce<StatusHistory | null>((latest, historyItem) => {
+    if (!historyItem.novedad?.trim()) {
+      return latest;
+    }
+
+    if (!latest) {
+      return historyItem;
+    }
+
+    const currentTime = new Date(historyItem.registrado_en).getTime();
+    const latestTime = new Date(latest.registrado_en).getTime();
+
+    if (Number.isNaN(currentTime)) {
+      return latest;
+    }
+
+    if (Number.isNaN(latestTime)) {
+      return historyItem;
+    }
+
+    return currentTime > latestTime ? historyItem : latest;
+  }, null);
+}
+
+function NovedadDetailsSection({
+  statusHistory,
+}: {
+  statusHistory: StatusHistory[];
+}) {
+  const [open, setOpen] = useState(false);
+  const latestNovedadStatus = getLatestNovedadStatus(statusHistory);
+
+  return (
+    <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
+      <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+        <Collapsible.Trigger asChild>
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="font-display text-base font-semibold text-[var(--foreground)]">
+              Detalles de novedad
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform ${
+                open ? "rotate-180" : ""
+              }`}
+              aria-hidden="true"
+            />
+          </button>
+        </Collapsible.Trigger>
+
+        <Collapsible.Content>
+          {latestNovedadStatus ? (
+            <div className="mt-4 rounded-2xl border border-border bg-bg-page p-3">
+              <p className="font-body text-sm text-[var(--foreground)]">
+                {latestNovedadStatus.novedad?.trim()}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3 font-mono text-xs tabular-nums text-[var(--muted-foreground)]">
+                <span>{latestNovedadStatus.estado}</span>
+                <time>{formatDateTime(latestNovedadStatus.registrado_en)}</time>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 font-body text-sm text-[var(--muted-foreground)]">
+              Sin novedad registrada
+            </p>
+          )}
+        </Collapsible.Content>
+      </section>
+    </Collapsible.Root>
   );
 }
 
