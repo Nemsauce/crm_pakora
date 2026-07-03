@@ -198,3 +198,9 @@ Pendiente cuando se retome 'notis':
 - El matcher contempla las dos variantes live encontradas: el bloque CO con fallback completo y el bloque MX más viejo que solo miraba `order.created_at`. El resultado final queda normalizado en ambos workflows con fallback `order.created_at`, luego `order.processed_at`, luego `new Date().toISOString()`, tomando la fecha del string ISO original sin round-trip por UTC.
 - El fix de `pais` queda intacto: si ya está aplicado, reporta `confirmed`; si la lógica de `fecha` ya está corregida, reporta `confirmed` / already patched y no reescribe.
 - Pendiente: Alejo debe revisar el dry-run con el diff de jsCode para ambos workflows y luego correr `--confirm` contra n8n de producción.
+
+### [Tareas automáticas] check de pedidos estancados vía Dropi Polling CO — SCRIPT LISTO, PENDIENTE DE EJECUCIÓN
+- Se extendió `scripts/n8n/patch-dropi-polling-webhook.mjs` para agregar el nodo HTTP `Chequear pedidos estancados`, que llama `GET https://crm.pakora.online/api/cron/check-stale-orders` con `Authorization: Bearer <CRON_SECRET>`.
+- El nodo se conecta desde `Dropi Login Final` y corre como rama paralela independiente: no depende de datos live de Dropi, solo usa el polling 5x/día como sustituto de cron mientras Vercel Cron Pro no está activo.
+- Decisión explícita: se agrega solo al workflow `Dropi Polling (CO)` (`9p1gvbDxdYqugkMT`) y NO al de MX. El endpoint escanea todas las órdenes activas sin filtrar por país; ponerlo también en MX duplicaría llamadas cuando ambos pollings corran cerca. La idempotencia del endpoint lo toleraría, pero se evita el ruido operativo.
+- El dry-run del script reporta `added`/`confirmed` para CO y `skipped-co-only` para MX. Pendiente: Alejo debe revisar dry-run y luego correr `--confirm` contra n8n de producción.

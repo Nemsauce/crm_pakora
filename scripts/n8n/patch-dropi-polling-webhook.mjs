@@ -14,8 +14,12 @@ const COMPARE_FILTER_NODE_NAME = "Comparar y filtrar cambios";
 const DROPI_WALLET_NODE_NAME = "Dropi Consultar Wallet";
 const MAP_WALLET_NODE_NAME = "Mapear movimientos wallet completo";
 const INSERT_WALLET_NODE_NAME = "Insertar movimientos wallet";
+const DROPI_LOGIN_FINAL_NODE_NAME = "Dropi Login Final";
+const STALE_ORDERS_NODE_NAME = "Chequear pedidos estancados";
 const DEFAULT_BACKEND_WEBHOOK_URL =
   "https://crm.pakora.online/api/webhooks/orders/status-changed";
+const STALE_ORDERS_CRON_URL =
+  "https://crm.pakora.online/api/cron/check-stale-orders";
 const WEBHOOK_JSON_BODY = `={
   "order_id": {{ $('Comparar y filtrar cambios').item.json.supabase_id }}
 }`;
@@ -61,6 +65,7 @@ function readConfig() {
     "N8N_BASE_URL",
     "N8N_API_KEY",
     "WEBHOOK_SHARED_SECRET",
+    "CRON_SECRET",
   ];
   const missing = requiredEnvNames.filter((name) => !readEnv(name));
 
@@ -91,6 +96,7 @@ function readConfig() {
     n8nBaseUrl,
     apiKey: readEnv("N8N_API_KEY"),
     webhookSharedSecret: readEnv("WEBHOOK_SHARED_SECRET"),
+    cronSecret: readEnv("CRON_SECRET"),
     backendWebhookUrl,
   };
 }
@@ -228,6 +234,78 @@ function buildWebhookNode(updateOrderNode, config, retryStyle) {
   applyRetrySettings(node, retryStyle);
 
   return node;
+}
+
+function buildStaleOrdersParameters(config) {
+  return {
+    method: "GET",
+    url: STALE_ORDERS_CRON_URL,
+    sendHeaders: true,
+    headerParameters: {
+      parameters: [
+        {
+          name: "Authorization",
+          value: `Bearer ${config.cronSecret}`,
+        },
+      ],
+    },
+    options: {},
+  };
+}
+
+function buildStaleOrdersNode(sourceNode, config) {
+  return {
+    parameters: buildStaleOrdersParameters(config),
+    id: randomUUID(),
+    name: STALE_ORDERS_NODE_NAME,
+    type: "n8n-nodes-base.httpRequest",
+    typeVersion: 4.4,
+    position: getPositionNear(sourceNode),
+  };
+}
+
+function createOrUpdateStaleOrdersNode(workflow, sourceNode, config) {
+  const existingNode = findNode(workflow, STALE_ORDERS_NODE_NAME);
+
+  if (!existingNode) {
+    const newNode = buildStaleOrdersNode(sourceNode, config);
+    workflow.nodes.push(newNode);
+
+    return {
+      node: newNode,
+      status: "added",
+    };
+  }
+
+  if (existingNode.type !== "n8n-nodes-base.httpRequest") {
+    throw new Error(
+      `"${STALE_ORDERS_NODE_NAME}" exists but is not an HTTP Request node. Found type: ${existingNode.type ?? "(missing)"}.`,
+    );
+  }
+
+  const before = JSON.stringify({
+    parameters: existingNode.parameters,
+    retryOnFail: existingNode.retryOnFail,
+    maxTries: existingNode.maxTries,
+    waitBetweenTries: existingNode.waitBetweenTries,
+  });
+
+  existingNode.parameters = buildStaleOrdersParameters(config);
+  delete existingNode.retryOnFail;
+  delete existingNode.maxTries;
+  delete existingNode.waitBetweenTries;
+
+  const after = JSON.stringify({
+    parameters: existingNode.parameters,
+    retryOnFail: existingNode.retryOnFail,
+    maxTries: existingNode.maxTries,
+    waitBetweenTries: existingNode.waitBetweenTries,
+  });
+
+  return {
+    node: existingNode,
+    status: before === after ? "confirmed" : "updated",
+  };
 }
 
 function createOrUpdateWebhookNode(workflow, updateOrderNode, config, retryStyle) {
@@ -850,6 +928,31 @@ function patchWorkflow(workflow, workflowTarget, config) {
     MAP_WALLET_NODE_NAME,
     INSERT_WALLET_NODE_NAME,
   );
+  let staleOrdersNodeStatus = "skipped-co-only";
+  let staleOrdersConnectionStatus = "skipped-co-only";
+  let staleOrdersNodeId = null;
+
+  if (workflowTarget.pais === "CO") {
+    const dropiLoginFinalNode = findNode(workflow, DROPI_LOGIN_FINAL_NODE_NAME);
+
+    if (!dropiLoginFinalNode) {
+      throw new Error(`Node "${DROPI_LOGIN_FINAL_NODE_NAME}" was not found.`);
+    }
+
+    const staleOrdersNodeChange = createOrUpdateStaleOrdersNode(
+      workflow,
+      dropiLoginFinalNode,
+      config,
+    );
+
+    staleOrdersNodeStatus = staleOrdersNodeChange.status;
+    staleOrdersConnectionStatus = ensureMainConnection(
+      workflow,
+      DROPI_LOGIN_FINAL_NODE_NAME,
+      STALE_ORDERS_NODE_NAME,
+    );
+    staleOrdersNodeId = staleOrdersNodeChange.node.id;
+  }
 
   return {
     nodeStatus: nodeChange.status,
@@ -862,6 +965,8 @@ function patchWorkflow(workflow, workflowTarget, config) {
     walletInsertOnConflictStatus: walletInsertNodeChange.onConflictStatus,
     walletSourceConnectionStatus,
     walletInsertConnectionStatus,
+    staleOrdersNodeStatus,
+    staleOrdersConnectionStatus,
     walletInsertUrl: walletInsertNodeChange.node.parameters.url,
     supabaseAuthSourceNodeName: supabaseSourceNode.name,
     retryStyle,
@@ -869,6 +974,7 @@ function patchWorkflow(workflow, workflowTarget, config) {
     webhookNodeId: nodeChange.node.id,
     walletMappingNodeId: walletMappingNodeChange.node.id,
     walletInsertNodeId: walletInsertNodeChange.node.id,
+    staleOrdersNodeId,
   };
 }
 
@@ -903,6 +1009,14 @@ function printChangeSummary(workflow, workflowTarget, patchResult, config) {
   console.log(
     `- connection "${MAP_WALLET_NODE_NAME}" -> "${INSERT_WALLET_NODE_NAME}": ${patchResult.walletInsertConnectionStatus}`,
   );
+  console.log(
+    `- node "${STALE_ORDERS_NODE_NAME}" (CO-only): ${patchResult.staleOrdersNodeStatus}`,
+  );
+  console.log(
+    `- connection "${DROPI_LOGIN_FINAL_NODE_NAME}" -> "${STALE_ORDERS_NODE_NAME}" (CO-only): ${patchResult.staleOrdersConnectionStatus}`,
+  );
+  console.log(`- stale orders cron url: ${STALE_ORDERS_CRON_URL}`);
+  console.log("- stale orders Authorization header: Bearer <from CRON_SECRET>");
   console.log(`- wallet pais literal: ${workflowTarget.pais}`);
   console.log(`- wallet insert url: ${patchResult.walletInsertUrl}`);
   console.log(
@@ -923,6 +1037,9 @@ function printChangeSummary(workflow, workflowTarget, patchResult, config) {
   console.log(`- webhook node id: ${patchResult.webhookNodeId}`);
   console.log(`- wallet map node id: ${patchResult.walletMappingNodeId}`);
   console.log(`- wallet insert node id: ${patchResult.walletInsertNodeId}`);
+  console.log(
+    `- stale orders node id: ${patchResult.staleOrdersNodeId ?? "(not added; CO-only)"}`,
+  );
 }
 
 async function processWorkflow(workflowTarget, config, confirm) {

@@ -22,6 +22,12 @@ This branch runs alongside the existing `Procesar movimientos wallet` → `Actua
 
 The `on_conflict` query parameter is required because the idempotency target is the composite unique constraint `(pais, id_movimiento_dropi)`, not the primary key. Without it, PostgREST can still return duplicate-key `409` errors even when the `Prefer` header is present.
 
+The script also adds one CO-only periodic stale-order check:
+
+- `Chequear pedidos estancados`: HTTP GET to `https://crm.pakora.online/api/cron/check-stale-orders` with `Authorization: Bearer <CRON_SECRET>`.
+
+This node is connected from `Dropi Login Final` in the CO polling workflow (`9p1gvbDxdYqugkMT`) and runs in parallel with the other branches. It does not depend on Dropi's live order payload; it only uses the polling schedule as a free-tier cron substitute. The endpoint scans all active orders across both countries, so adding the same node to MX would only double-fire the same idempotent check when both polling workflows run close together. For that reason, the script explicitly skips this node for `Dropi Polling MX` and reports `skipped-co-only` in dry-run output.
+
 `/api/cron/reconcile-tasks` remains available in the backend and can be scheduled again later if the Vercel account moves to Pro.
 
 ## Required env vars
@@ -29,6 +35,7 @@ The `on_conflict` query parameter is required because the idempotency target is 
 - `N8N_BASE_URL`: your self-hosted n8n instance base URL.
 - `N8N_API_KEY`: generated in n8n Settings → n8n API.
 - `WEBHOOK_SHARED_SECRET`: the same secret already configured in Vercel or `.env.local` for the backend webhook.
+- `CRON_SECRET`: the same secret already configured in Vercel or `.env.local` for protected cron endpoints.
 - `BACKEND_WEBHOOK_URL`: optional override for preview/staging tests. Defaults to `https://crm.pakora.online/api/webhooks/orders/status-changed`.
 
 ## Commands
@@ -45,6 +52,6 @@ Apply after reviewing the dry-run summary:
 node scripts/n8n/patch-dropi-polling-webhook.mjs --confirm
 ```
 
-This script is manual maintenance, not automatic or scheduled. Re-run it manually if the webhook URL, shared secret, reconciliation field, wallet capture mapping, Supabase wallet endpoint, or target node names ever change.
+This script is manual maintenance, not automatic or scheduled. Re-run it manually if the webhook URL, shared secret, cron secret, reconciliation field, wallet capture mapping, Supabase wallet endpoint, stale-order cron endpoint, or target node names ever change.
 
-After applying, manually re-test both workflows in n8n with a manual execution and confirm the new `Notificar backend CRM` node fires correctly and the new wallet branch inserts `wallet_movements` without duplicating rows on repeat runs.
+After applying, manually re-test both workflows in n8n with a manual execution. Confirm the new `Notificar backend CRM` node fires correctly, the new wallet branch inserts `wallet_movements` without duplicating rows on repeat runs, and the CO-only `Chequear pedidos estancados` node receives an authorized response from the backend cron endpoint.
