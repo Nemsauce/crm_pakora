@@ -9,7 +9,12 @@ type SearchParams = {
   pais?: string;
   vencidas?: string;
   q?: string;
+  estado_vista?: string;
 };
+
+type EstadoVista = "abiertas" | "completadas" | "todas";
+
+const validVistas = new Set<string>(["abiertas", "completadas", "todas"]);
 
 type TareasPageProps = {
   searchParams: Promise<SearchParams>;
@@ -31,23 +36,33 @@ function escapeIlikeTerm(term: string) {
   return term.replace(/[%,]/g, "");
 }
 
-function isOverdue(fechaLimite: string | null) {
-  if (!fechaLimite) {
+function isOverdue(task: TaskWithOrderContext) {
+  if (task.estado === "completada" || !task.fecha_limite) {
     return false;
   }
 
-  return new Date(fechaLimite).getTime() < Date.now();
+  return new Date(task.fecha_limite).getTime() < Date.now();
 }
 
 export default async function TareasPage({ searchParams }: TareasPageProps) {
   const params = await searchParams;
   const supabase = await createClient();
 
+  const estadoVista: EstadoVista =
+    params.estado_vista && validVistas.has(params.estado_vista)
+      ? (params.estado_vista as EstadoVista)
+      : "abiertas";
+
   let query = supabase
     .from("tasks")
     .select("*, orders!inner(id,nombre,apellido,numero_orden,pais)")
-    .in("estado", ["pendiente", "en_progreso"])
     .order("fecha_limite", { ascending: true, nullsFirst: false });
+
+  if (estadoVista === "abiertas") {
+    query = query.in("estado", ["pendiente", "en_progreso"]);
+  } else if (estadoVista === "completadas") {
+    query = query.eq("estado", "completada");
+  }
 
   if (params.tipo && validTipos.has(params.tipo)) {
     query = query.eq("tipo", params.tipo as TipoTarea);
@@ -80,7 +95,10 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
   }
 
   const tasks = (data ?? []) as TaskWithOrderContext[];
-  const overdueCount = tasks.filter((task) => isOverdue(task.fecha_limite)).length;
+  const overdueCount =
+    estadoVista === "completadas"
+      ? null
+      : tasks.filter((task) => isOverdue(task)).length;
 
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
@@ -128,7 +146,11 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
       </div>
 
       <div className="mt-4">
-        <TaskSummaryBar total={tasks.length} vencidas={overdueCount} />
+        <TaskSummaryBar
+          total={tasks.length}
+          vencidas={overdueCount}
+          view={estadoVista}
+        />
       </div>
 
       {tasks.length > 0 ? (

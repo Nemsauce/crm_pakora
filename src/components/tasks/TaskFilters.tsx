@@ -31,6 +31,47 @@ const vencidasOptions = [
   { value: "false", label: "A tiempo" },
 ];
 
+const vistaOptions = [
+  { value: "abiertas", label: "Abiertas" },
+  { value: "completadas", label: "Completadas" },
+  { value: "todas", label: "Todas" },
+] as const;
+
+function ViewToggle({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div
+      className="inline-flex rounded-full border border-border bg-bg-surface p-1 shadow-lg"
+      aria-label="Vista de tareas"
+    >
+      {vistaOptions.map((option) => {
+        const isActive = option.value === value;
+
+        return (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={isActive}
+            className={`h-9 rounded-full px-4 font-body text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+              isActive
+                ? "bg-[var(--color-badge-nuevo-bg)] text-[var(--color-badge-nuevo)]"
+                : "text-text-secondary hover:bg-bg-page hover:text-text-primary"
+            }`}
+            onClick={() => onChange(option.value)}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function FilterSelect({
   label,
   icon: Icon,
@@ -101,15 +142,20 @@ export function TaskFilters() {
   const tipo = searchParams.get("tipo") ?? "todos";
   const pais = searchParams.get("pais") ?? "todos";
   const vencidas = searchParams.get("vencidas") ?? "todos";
+  const estadoVista = searchParams.get("estado_vista") ?? "abiertas";
   const [searchDraft, setSearchDraft] = useState(searchParams.get("q") ?? "");
   const q = searchParams.get("q") ?? "";
   const hasActiveFilters =
-    tipo !== "todos" || pais !== "todos" || vencidas !== "todos" || q !== "";
+    tipo !== "todos" ||
+    pais !== "todos" ||
+    vencidas !== "todos" ||
+    estadoVista !== "abiertas" ||
+    q !== "";
 
-  function updateFilter(key: string, value: string) {
+  function updateFilter(key: string, value: string, defaultValue = "todos") {
     const params = new URLSearchParams(searchParams);
 
-    if (value === "todos") {
+    if (value === defaultValue) {
       params.delete(key);
     } else {
       params.set(key, value);
@@ -130,64 +176,71 @@ export function TaskFilters() {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-bg-surface p-3 shadow-sm md:flex-row md:items-end md:justify-between">
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        <FilterSelect
-          label="Tipo"
-          icon={Tag}
-          value={tipo}
-          options={tipoOptions}
-          onChange={(value) => updateFilter("tipo", value)}
-        />
-        <FilterSelect
-          label="País"
-          icon={Globe}
-          value={pais}
-          options={paisOptions}
-          onChange={(value) => updateFilter("pais", value)}
-        />
-        <FilterSelect
-          label="Vencimiento"
-          icon={Clock}
-          value={vencidas}
-          options={vencidasOptions}
-          onChange={(value) => updateFilter("vencidas", value)}
-        />
+    <div className="flex flex-col gap-3">
+      <ViewToggle
+        value={estadoVista}
+        onChange={(value) => updateFilter("estado_vista", value, "abiertas")}
+      />
 
-        <form onSubmit={submitSearch} className="grid gap-1.5">
-          <label
-            htmlFor="task-search"
-            className="font-body text-xs text-[var(--muted-foreground)]"
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-bg-surface p-3 shadow-sm md:flex-row md:items-end md:justify-between">
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <FilterSelect
+            label="Tipo"
+            icon={Tag}
+            value={tipo}
+            options={tipoOptions}
+            onChange={(value) => updateFilter("tipo", value)}
+          />
+          <FilterSelect
+            label="País"
+            icon={Globe}
+            value={pais}
+            options={paisOptions}
+            onChange={(value) => updateFilter("pais", value)}
+          />
+          <FilterSelect
+            label="Vencimiento"
+            icon={Clock}
+            value={vencidas}
+            options={vencidasOptions}
+            onChange={(value) => updateFilter("vencidas", value)}
+          />
+
+          <form onSubmit={submitSearch} className="grid gap-1.5">
+            <label
+              htmlFor="task-search"
+              className="font-body text-xs text-[var(--muted-foreground)]"
+            >
+              Buscar
+            </label>
+            <div className="flex h-14 items-center gap-2 rounded-2xl border border-border bg-bg-surface px-3 shadow-sm focus-within:ring-2 focus-within:ring-ring">
+              <Search
+                className="h-4 w-4 shrink-0 text-[var(--muted-foreground)]"
+                aria-hidden="true"
+              />
+              <Input
+                id="task-search"
+                type="text"
+                placeholder="Cliente o número de orden"
+                value={searchDraft}
+                onChange={(event) => setSearchDraft(event.target.value)}
+                className="h-8 border-0 bg-transparent p-0 font-body text-sm text-[var(--foreground)] shadow-none focus-visible:ring-0"
+              />
+            </div>
+          </form>
+        </div>
+
+        {hasActiveFilters ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+            onClick={clearFilters}
           >
-            Buscar
-          </label>
-          <div className="flex h-14 items-center gap-2 rounded-2xl border border-border bg-bg-surface px-3 shadow-sm focus-within:ring-2 focus-within:ring-ring">
-            <Search
-              className="h-4 w-4 shrink-0 text-[var(--muted-foreground)]"
-              aria-hidden="true"
-            />
-            <Input
-              id="task-search"
-              type="text"
-              placeholder="Cliente o número de orden"
-              value={searchDraft}
-              onChange={(event) => setSearchDraft(event.target.value)}
-              className="h-8 border-0 bg-transparent p-0 font-body text-sm text-[var(--foreground)] shadow-none focus-visible:ring-0"
-            />
-          </div>
-        </form>
+            Limpiar filtros
+          </Button>
+        ) : null}
       </div>
-
-      {hasActiveFilters ? (
-        <Button
-          type="button"
-          variant="outline"
-          className="rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
-          onClick={clearFilters}
-        >
-          Limpiar filtros
-        </Button>
-      ) : null}
     </div>
   );
 }

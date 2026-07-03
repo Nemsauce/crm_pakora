@@ -125,10 +125,26 @@ function getDeadline(value: string | null) {
   };
 }
 
+function getCompletionLabel(task: Task) {
+  if (!task.completado_en) {
+    return "Completada";
+  }
+
+  const date = new Date(task.completado_en);
+  const dateLabel = Number.isNaN(date.getTime())
+    ? "Fecha inválida"
+    : dateTimeFormatter.format(date);
+
+  return task.completado_por
+    ? `Completada ${dateLabel} · ${task.completado_por}`
+    : `Completada ${dateLabel}`;
+}
+
 export function TaskRow({ task }: TaskRowProps) {
   const taskTone = taskTypeTone[task.tipo];
   const Icon = taskTone.icon;
   const deadline = getDeadline(task.fecha_limite);
+  const isCompleted = task.estado === "completada";
 
   async function completeTaskAction() {
     "use server";
@@ -137,7 +153,11 @@ export function TaskRow({ task }: TaskRowProps) {
   }
 
   return (
-    <article className="rounded-2xl border border-border bg-bg-surface p-4 text-[var(--foreground)] shadow-lg">
+    <article
+      className={`rounded-2xl border border-border bg-bg-surface p-4 text-[var(--foreground)] shadow-lg ${
+        isCompleted ? "opacity-70" : ""
+      }`}
+    >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 gap-3">
           <div
@@ -178,26 +198,34 @@ export function TaskRow({ task }: TaskRowProps) {
         </div>
 
         <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center lg:justify-end">
-          <div
-            className={`rounded-full px-3 py-1 font-mono text-xs font-semibold tabular-nums ${
-              deadline.isOverdue
-                ? "bg-risk-high-bg text-risk-high"
-                : "bg-bg-page text-[var(--muted-foreground)]"
-            }`}
-          >
-            {deadline.isOverdue ? "Vencida " : "Vence "}
-            {deadline.label}
-          </div>
+          {isCompleted ? (
+            <div className="rounded-full bg-risk-low-bg px-3 py-1 font-mono text-xs font-semibold tabular-nums text-risk-low">
+              {getCompletionLabel(task)}
+            </div>
+          ) : (
+            <>
+              <div
+                className={`rounded-full px-3 py-1 font-mono text-xs font-semibold tabular-nums ${
+                  deadline.isOverdue
+                    ? "bg-risk-high-bg text-risk-high"
+                    : "bg-bg-page text-[var(--muted-foreground)]"
+                }`}
+              >
+                {deadline.isOverdue ? "Vencida " : "Vence "}
+                {deadline.label}
+              </div>
 
-          <form action={completeTaskAction}>
-            <Button
-              type="submit"
-              className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90"
-            >
-              <Check className="h-4 w-4" aria-hidden="true" />
-              Completar
-            </Button>
-          </form>
+              <form action={completeTaskAction}>
+                <Button
+                  type="submit"
+                  className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90"
+                >
+                  <Check className="h-4 w-4" aria-hidden="true" />
+                  Completar
+                </Button>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </article>
