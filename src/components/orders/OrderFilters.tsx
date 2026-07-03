@@ -4,13 +4,16 @@ import {
   ChevronDown,
   Globe,
   PieChart,
+  Search,
   Shield,
   type LucideIcon,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { Select } from "radix-ui";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type FilterValue = "todos" | string;
 
@@ -107,15 +110,20 @@ export function OrderFilters() {
   const pais = searchParams.get("pais") ?? "todos";
   const estadoCrm = searchParams.get("estado_crm") ?? "todos";
   const nivelRiesgo = searchParams.get("nivel_riesgo") ?? "todos";
+  const [searchDraft, setSearchDraft] = useState(searchParams.get("q") ?? "");
+  const q = searchParams.get("q") ?? "";
   const hasActiveFilters =
-    pais !== "todos" || estadoCrm !== "todos" || nivelRiesgo !== "todos";
+    pais !== "todos" ||
+    estadoCrm !== "todos" ||
+    nivelRiesgo !== "todos" ||
+    q !== "";
 
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams);
 
     params.delete("page");
 
-    if (value === "todos") {
+    if (value === "todos" || value === "") {
       params.delete(key);
     } else {
       params.set(key, value);
@@ -125,13 +133,19 @@ export function OrderFilters() {
     router.push(query ? `${pathname}?${query}` : pathname);
   }
 
+  function submitSearch(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    updateFilter("q", searchDraft.trim());
+  }
+
   function clearFilters() {
+    setSearchDraft("");
     router.push(pathname);
   }
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-border bg-bg-surface p-3 shadow-sm md:flex-row md:items-end md:justify-between">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <FilterSelect
           label="País"
           icon={Globe}
@@ -153,6 +167,29 @@ export function OrderFilters() {
           options={riskOptions}
           onChange={(value) => updateFilter("nivel_riesgo", value)}
         />
+
+        <form onSubmit={submitSearch} className="grid gap-1.5">
+          <label
+            htmlFor="order-search"
+            className="font-body text-xs text-[var(--muted-foreground)]"
+          >
+            Buscar
+          </label>
+          <div className="flex h-14 items-center gap-2 rounded-2xl border border-border bg-bg-surface px-3 shadow-sm focus-within:ring-2 focus-within:ring-ring">
+            <Search
+              className="h-4 w-4 shrink-0 text-[var(--muted-foreground)]"
+              aria-hidden="true"
+            />
+            <Input
+              id="order-search"
+              type="text"
+              placeholder="Cliente o número de orden"
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              className="h-8 border-0 bg-transparent p-0 font-body text-sm text-[var(--foreground)] shadow-none focus-visible:ring-0"
+            />
+          </div>
+        </form>
       </div>
 
       {hasActiveFilters ? (

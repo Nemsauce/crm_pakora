@@ -13,6 +13,7 @@ type SearchParams = {
   pais?: string;
   estado_crm?: string;
   nivel_riesgo?: string;
+  q?: string;
   detalle?: string;
   page?: string;
 };
@@ -33,6 +34,10 @@ const validStatuses = new Set<string>([
   "devolucion",
 ]);
 const validRisks = new Set<string>(["alto", "medio", "bajo", "sin_datos"]);
+
+function escapeIlikeTerm(term: string) {
+  return term.replace(/[%,]/g, "");
+}
 
 function getPage(value: string | undefined) {
   const page = Number(value);
@@ -87,6 +92,15 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     } else {
       query = query.eq("nivel_riesgo", params.nivel_riesgo);
     }
+  }
+
+  const searchTerm = params.q?.trim();
+
+  if (searchTerm) {
+    const term = escapeIlikeTerm(searchTerm);
+    query = query.or(
+      `nombre.ilike.%${term}%,apellido.ilike.%${term}%,numero_orden.ilike.%${term}%`,
+    );
   }
 
   const { data: orders, error } = await query;
