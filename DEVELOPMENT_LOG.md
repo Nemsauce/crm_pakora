@@ -183,3 +183,11 @@ Pendiente cuando se retome 'notis':
 - Fase 3: push real del navegador/celular (VAPID + service worker + tabla de suscripciones + envío server-side con la librería web-push) — no iniciado, es la fase más grande.
 - Pendiente general: hoy Fase 2a notifica a TODOS los profiles activos (broadcast), no dirigido — revisar si conviene cambiar a asignado_a como target una vez que haya más de un usuario activo.
 - UI del centro de notificaciones (la campanita del TopBar) todavía no lista/muestra las notificaciones ni marca como leídas — solo existe la tabla y los inserts, falta la lectura.
+
+### [Fix producción] pais faltante en inserts de Shopify Orders — SCRIPT LISTO, PENDIENTE DE EJECUCIÓN
+- Bug de día uno, no introducido en el trabajo de esta sesión: ni `Shopify Orders (CO)` ni `Shopify Orders MX` incluían nunca un campo `pais` en el `jsonBody` del nodo `Insertar orden Supabase1`. Como `orders.pais` es `NOT NULL`, todo insert vía estos dos workflows fallaba con `23502 — null value in column "pais"`.
+- Como el nodo webhook responde a Shopify de inmediato al recibir la llamada (antes de que corra el insert a Supabase más adelante en la cadena), Shopify veía "entrega exitosa" aunque el pedido nunca llegara a Supabase — el síntoma reportado era justo ese: Shopify confirma entrega, pero el pedido nunca aparece.
+- Probablemente nunca se disparó hasta ahora porque estos workflows de Shopify Orders tuvieron poco tráfico real históricamente; se confirmó afectando a ambos países (CO y MX) con el mismo `jsonBody` faltante.
+- Se creó `scripts/n8n/patch-shopify-orders-pais.mjs` como script one-time e idempotente: agrega `"pais": "CO"` / `"pais": "MX"` como campo literal adicional en el `jsonBody`, justo después de `"activo": true`. No toca ningún otro nodo/lógica (mapping, creación de tareas, inserción de comentarios) en ninguno de los dos workflows.
+- Si `"pais"` ya existe con el valor correcto, reporta `confirmed` sin escribir. Si existe con un valor incorrecto, el script se detiene con error en vez de sobrescribir silenciosamente — ese caso requeriría revisión manual.
+- Pendiente: Alejo debe correr dry-run (ya corrido y verificado — ver `scripts/n8n/README-shopify-orders.md`) y luego `--confirm` contra n8n de producción, y confirmar con un pedido real de Shopify en ambos países que el insert llega a `orders` con el `pais` correcto.
