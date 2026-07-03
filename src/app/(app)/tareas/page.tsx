@@ -1,7 +1,10 @@
-import { OrderDetailDrawer } from "@/components/orders/OrderDetailDrawer";
+import {
+  TaskDetailDrawer,
+  TaskDetailRow,
+  type TaskWithOrderContext,
+} from "@/components/tasks/TaskDetailDrawer";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
 import { TaskSummaryBar } from "@/components/tasks/TaskSummaryBar";
-import { TaskRow, type TaskWithOrderContext } from "@/components/tasks/TaskRow";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -11,6 +14,8 @@ type SearchParams = {
   vencidas?: string;
   q?: string;
   estado_vista?: string;
+  detalle?: string;
+  tareaId?: string;
 };
 
 type EstadoVista = "abiertas" | "completadas" | "todas";
@@ -177,7 +182,7 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
                 animationDelay: `${Math.min(index * 40, 480)}ms`,
               }}
             >
-              <TaskRow task={task} assigneeOptions={assigneeOptions} />
+              <TaskDetailRow task={task} assigneeOptions={assigneeOptions} />
             </div>
           ))}
         </div>
@@ -187,7 +192,7 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
         </div>
       )}
 
-      <OrderDetailDrawer />
+      <TaskDetailDrawer />
     </section>
   );
 }
