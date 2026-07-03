@@ -173,3 +173,13 @@ Fases 1-4 del roadmap original están completas y verificadas en producción (sc
 - **PIN importante**: hoy no existe todavía direccionamiento por asignación (`asignado_a`) para notificaciones — cada notificación se inserta como **broadcast**, una fila por cada perfil con `activo = true` en `profiles`. Esto es un default temporal aceptable con un solo rol (`admin`) hoy, pero deja de tener sentido en cuanto haya más de un usuario activo sin distinción de a quién le corresponde cada pedido. El targeting real por asignación queda pendiente para Fase 2b, una vez que la reasignación de tareas (`asignado_a`, ya wireado en `/tareas`) se use como fuente de verdad de a quién notificar.
 - Otros disparadores de notificación (pedido nuevo vía Shopify, tarea urgente asignada, tarea vencida) quedan fuera de este commit — son commits separados.
 - `database.types.ts` se regeneró de nuevo (estaba desactualizado, sin la tabla `notifications` ni el enum `notificacion_tipo_enum`) — mismo patrón que las regeneraciones anteriores, cambio puramente aditivo.
+
+### [Checkpoint] notis — sistema de notificaciones, pausado para atender bug urgente
+Completado: Fase 1 (tabla notifications + RLS), Fase 2a (novedad y pedido_entregado insertan notificación broadcast a todos los profiles activos, desde processOrderEvent.ts), Fase 2b (reassignTask notifica de forma dirigida solo al nuevo asignado, con guards para no-op y desasignación).
+
+Pendiente cuando se retome 'notis':
+- Fase 2c: notificación de 'pedido nuevo' (Shopify) — decisión de arquitectura pendiente: ¿n8n llama a un endpoint nuevo del backend, o inserta directo en notifications como ya hace con orders/tasks?
+- Fase 2d: notificación de 'tarea vencida' — necesita un mecanismo de chequeo periódico, no tiene un evento disparador natural como los demás (a diseñar aparte).
+- Fase 3: push real del navegador/celular (VAPID + service worker + tabla de suscripciones + envío server-side con la librería web-push) — no iniciado, es la fase más grande.
+- Pendiente general: hoy Fase 2a notifica a TODOS los profiles activos (broadcast), no dirigido — revisar si conviene cambiar a asignado_a como target una vez que haya más de un usuario activo.
+- UI del centro de notificaciones (la campanita del TopBar) todavía no lista/muestra las notificaciones ni marca como leídas — solo existe la tabla y los inserts, falta la lectura.
