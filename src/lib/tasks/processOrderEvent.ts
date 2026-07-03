@@ -1,9 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 
-type Order = Tables<"orders">;
+export type Order = Tables<"orders">;
 type Task = Tables<"tasks">;
-type TaskType = Database["public"]["Enums"]["tipo_tarea_enum"];
+export type TaskType = Database["public"]["Enums"]["tipo_tarea_enum"];
 type TaskState = Database["public"]["Enums"]["estado_tarea_enum"];
 
 type DecisionCategory =
@@ -21,13 +21,13 @@ type DecisionCategory =
   | "devolucion"
   | "sin_clasificar";
 
-type ProcessResult = {
+export type ProcessResult = {
   action: string;
   taskId?: number;
   categoria: string;
 };
 
-type EnsureTaskOptions = {
+export type EnsureTaskOptions = {
   order: Order;
   tipo: TaskType;
   titulo: string;
@@ -162,7 +162,7 @@ async function findOpenTask(orderId: number, tipo: TaskType) {
   return data;
 }
 
-async function ensureOpenTask({
+export async function ensureOpenTask({
   order,
   tipo,
   titulo,
