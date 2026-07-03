@@ -1,12 +1,8 @@
 "use client";
 
-import { ClipboardList, LayoutDashboard, ListTodo, LogOut } from "lucide-react";
+import { ClipboardList, LayoutDashboard, ListTodo } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
-
-import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import { usePathname } from "next/navigation";
 
 type SidebarProps = {
   userEmail: string | null;
@@ -80,21 +76,8 @@ function PakoraLogoMark() {
   );
 }
 
-export function Sidebar({ userEmail }: SidebarProps) {
+export function Sidebar(_props: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [isSigningOut, setIsSigningOut] = useState(false);
-
-  async function handleLogout(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsSigningOut(true);
-
-    const supabase = createClient();
-    await supabase.auth.signOut({ scope: "local" });
-
-    router.replace("/login");
-    router.refresh();
-  }
 
   return (
     <aside className="flex h-full w-full border-b border-border bg-bg-surface text-[var(--foreground)] lg:w-72 lg:border-b-0 lg:border-r">
@@ -136,27 +119,6 @@ export function Sidebar({ userEmail }: SidebarProps) {
           })}
 
         </nav>
-
-        <div className="border-t border-border p-3">
-          <div className="rounded-2xl border border-border bg-bg-surface p-3 shadow-lg">
-            <p className="font-body text-xs text-[var(--muted-foreground)]">Sesión</p>
-            <p className="mt-1 truncate font-mono text-xs text-[var(--foreground)]">
-              {userEmail ?? "Usuario activo"}
-            </p>
-            <form onSubmit={handleLogout} className="mt-3">
-              <Button
-                type="submit"
-                variant="outline"
-                size="sm"
-                disabled={isSigningOut}
-                className="h-8 w-full justify-start gap-2 rounded-lg border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
-              >
-                <LogOut className="h-4 w-4" aria-hidden="true" />
-                {isSigningOut ? "Cerrando..." : "Cerrar sesión"}
-              </Button>
-            </form>
-          </div>
-        </div>
       </div>
     </aside>
   );
