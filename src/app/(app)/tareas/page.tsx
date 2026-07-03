@@ -1,19 +1,86 @@
+import { TaskFilters } from "@/components/tasks/TaskFilters";
+import { TaskSummaryBar } from "@/components/tasks/TaskSummaryBar";
 import { TaskRow, type TaskWithOrderContext } from "@/components/tasks/TaskRow";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/database.types";
 
-export default async function TareasPage() {
+type SearchParams = {
+  tipo?: string;
+  pais?: string;
+  vencidas?: string;
+  q?: string;
+};
+
+type TareasPageProps = {
+  searchParams: Promise<SearchParams>;
+};
+
+type TipoTarea = Database["public"]["Enums"]["tipo_tarea_enum"];
+type Pais = Database["public"]["Enums"]["pais_enum"];
+
+const validTipos = new Set<string>([
+  "llamar_confirmacion",
+  "notificar_guia",
+  "presionar_entrega",
+  "notificar_proximo_llegar",
+  "resolver_novedad",
+]);
+const validPaises = new Set<string>(["CO", "MX"]);
+
+function escapeIlikeTerm(term: string) {
+  return term.replace(/[%,]/g, "");
+}
+
+function isOverdue(fechaLimite: string | null) {
+  if (!fechaLimite) {
+    return false;
+  }
+
+  return new Date(fechaLimite).getTime() < Date.now();
+}
+
+export default async function TareasPage({ searchParams }: TareasPageProps) {
+  const params = await searchParams;
   const supabase = await createClient();
-  const { data, error } = await supabase
+
+  let query = supabase
     .from("tasks")
-    .select("*, orders(id,nombre,apellido,numero_orden)")
+    .select("*, orders!inner(id,nombre,apellido,numero_orden,pais)")
     .in("estado", ["pendiente", "en_progreso"])
     .order("fecha_limite", { ascending: true, nullsFirst: false });
+
+  if (params.tipo && validTipos.has(params.tipo)) {
+    query = query.eq("tipo", params.tipo as TipoTarea);
+  }
+
+  if (params.pais && validPaises.has(params.pais)) {
+    query = query.eq("orders.pais", params.pais as Pais);
+  }
+
+  if (params.vencidas === "true") {
+    query = query.lt("fecha_limite", new Date().toISOString());
+  } else if (params.vencidas === "false") {
+    query = query.gte("fecha_limite", new Date().toISOString());
+  }
+
+  const searchTerm = params.q?.trim();
+
+  if (searchTerm) {
+    const term = escapeIlikeTerm(searchTerm);
+    query = query.or(
+      `nombre.ilike.%${term}%,apellido.ilike.%${term}%,numero_orden.ilike.%${term}%`,
+      { foreignTable: "orders" },
+    );
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(`No se pudieron cargar las tareas: ${error.message}`);
   }
 
   const tasks = (data ?? []) as TaskWithOrderContext[];
+  const overdueCount = tasks.filter((task) => isOverdue(task.fecha_limite)).length;
 
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
@@ -56,6 +123,14 @@ export default async function TareasPage() {
         </p>
       </div>
 
+      <div className="mt-5">
+        <TaskFilters />
+      </div>
+
+      <div className="mt-4">
+        <TaskSummaryBar total={tasks.length} vencidas={overdueCount} />
+      </div>
+
       {tasks.length > 0 ? (
         <div className="mt-5 space-y-3">
           {tasks.map((task, index) => (
@@ -72,7 +147,7 @@ export default async function TareasPage() {
         </div>
       ) : (
         <div className="mt-5 rounded-2xl border border-border bg-bg-surface p-6 font-body text-sm text-text-secondary shadow-lg">
-          No hay tareas pendientes.
+          No hay tareas que coincidan con estos filtros.
         </div>
       )}
     </section>
