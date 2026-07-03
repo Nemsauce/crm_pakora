@@ -399,6 +399,13 @@ function TasksSection({ tasks }: { tasks: Task[] }) {
                 ) : null}
                 <span>Vence {formatDateTime(task.fecha_limite)}</span>
               </div>
+
+              {task.estado === "completada" && task.notas_completado ? (
+                <p className="mt-3 font-body text-sm text-[var(--foreground)]">
+                  <span className="font-semibold">Nota:</span>{" "}
+                  {task.notas_completado}
+                </p>
+              ) : null}
             </li>
           ))}
         </ul>

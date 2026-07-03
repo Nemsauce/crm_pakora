@@ -8,7 +8,10 @@ export type CompleteTaskResult = {
   error: string | null;
 };
 
-export async function completeTask(taskId: number): Promise<CompleteTaskResult> {
+export async function completeTask(
+  taskId: number,
+  notes?: string,
+): Promise<CompleteTaskResult> {
   if (!Number.isInteger(taskId) || taskId <= 0) {
     return { error: "Tarea inválida." };
   }
@@ -21,6 +24,7 @@ export async function completeTask(taskId: number): Promise<CompleteTaskResult> 
     return { error: "No se pudo identificar el usuario activo." };
   }
 
+  const trimmedNotes = notes?.trim();
   const completedAt = new Date().toISOString();
   const { error } = await supabase
     .from("tasks")
@@ -28,6 +32,7 @@ export async function completeTask(taskId: number): Promise<CompleteTaskResult> 
       estado: "completada",
       completado_en: completedAt,
       completado_por: userEmail,
+      notas_completado: trimmedNotes ? trimmedNotes : null,
       updated_at: completedAt,
     })
     .eq("id", taskId)
