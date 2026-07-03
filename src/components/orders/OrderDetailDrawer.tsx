@@ -13,11 +13,13 @@ import { RiskOrb } from "./RiskOrb";
 type Order = Tables<"orders">;
 type StatusHistory = Tables<"status_history">;
 type Task = Tables<"tasks">;
+type Comentario = Tables<"comentarios">;
 
 type OrderDetail = {
   order: Order;
   statusHistory: StatusHistory[];
   tasks: Task[];
+  comentarios: Comentario[];
 };
 
 type BadgeTone = "accent" | "muted" | "success" | "warning" | "danger";
@@ -249,6 +251,7 @@ export function OrderDetailDrawer() {
                 <OrderHeader order={detail.order} />
                 <StatusHistorySection statusHistory={detail.statusHistory} />
                 <TasksSection tasks={detail.tasks} />
+                <ComentariosSection comentarios={detail.comentarios} />
               </div>
             ) : null}
           </div>
@@ -402,6 +405,43 @@ function TasksSection({ tasks }: { tasks: Task[] }) {
       ) : (
         <p className="mt-4 font-body text-sm text-[var(--muted-foreground)]">
           Sin tareas asociadas.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function ComentariosSection({ comentarios }: { comentarios: Comentario[] }) {
+  return (
+    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+      <h3 className="font-display text-base font-semibold text-[var(--foreground)]">
+        Comentarios
+      </h3>
+
+      {comentarios.length > 0 ? (
+        <ul className="mt-4 space-y-3">
+          {comentarios.map((comentario) => (
+            <li
+              key={comentario.id}
+              className="rounded-2xl border border-border bg-bg-page p-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <p className="font-body text-xs uppercase text-[var(--muted-foreground)]">
+                  {comentario.origen}
+                </p>
+                <time className="shrink-0 font-mono text-xs text-[var(--muted-foreground)]">
+                  {formatDateTime(comentario.created_at)}
+                </time>
+              </div>
+              <p className="mt-2 font-body text-sm text-[var(--foreground)]">
+                {comentario.comentario}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-4 font-body text-sm text-[var(--muted-foreground)]">
+          Sin comentarios.
         </p>
       )}
     </section>

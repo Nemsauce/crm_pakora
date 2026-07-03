@@ -52,6 +52,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   const [
     { data: statusHistory, error: statusHistoryError },
     { data: tasks, error: tasksError },
+    { data: comentarios, error: comentariosError },
   ] = await Promise.all([
     supabase
       .from("status_history")
@@ -63,9 +64,14 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       .select("*")
       .eq("order_id", orderId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("comentarios")
+      .select("*")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: false }),
   ]);
 
-  if (statusHistoryError || tasksError) {
+  if (statusHistoryError || tasksError || comentariosError) {
     return NextResponse.json(
       { error: "Failed to load order detail" },
       { status: 500 },
@@ -76,5 +82,6 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     order,
     statusHistory: statusHistory ?? [],
     tasks: tasks ?? [],
+    comentarios: comentarios ?? [],
   });
 }
