@@ -86,7 +86,8 @@ function formatDate(dateValue: string | null) {
     return "Sin fecha";
   }
 
-  const date = new Date(dateValue);
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
 
   if (Number.isNaN(date.getTime())) {
     return "Fecha inválida";
