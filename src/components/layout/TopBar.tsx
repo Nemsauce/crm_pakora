@@ -1,9 +1,10 @@
 "use client";
 
-import { Bell, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
 type TopBarProps = {
@@ -91,15 +91,7 @@ export function TopBar({ profile }: TopBarProps) {
   return (
     <header className="flex h-20 shrink-0 items-center justify-end border-b border-border bg-bg-surface px-6 sm:px-8">
       <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="rounded-full text-[var(--muted-foreground)] transition-colors hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]"
-          aria-label="Notificaciones"
-        >
-          <Bell className="h-5 w-5" aria-hidden="true" />
-        </Button>
+        <NotificationBell />
 
         <ThemeToggle />
 
