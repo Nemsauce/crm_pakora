@@ -27,6 +27,12 @@ Explicitly pinned to `America/Bogota` (matching the script's own `getTodayDateSt
 
 In the dry-run/`--confirm` output, the computed-windows summary marks the last window's `until` as "static reference only" and shows the dynamic expression that actually gets embedded in the node URL; the per-node URL printed below it shows the real, patched value.
 
+### Fecha historica en hora local de Alejo
+
+Dropi returns order `created_at` values as UTC timestamps with a `Z` suffix, for example `2026-07-04T01:44:45.000000Z`. Splitting that raw value at `T` stores the UTC calendar day, which can be one day ahead of Alejo's local Colombia date for late-night orders.
+
+`Preparar datos historico` now normalizes `orders.fecha` to Alejo's local date reference for both countries by applying a fixed UTC-5 offset before extracting `YYYY-MM-DD`. This is intentional for both CO and MX: the CRM uses one consistent Colombia-local business date, not each customer's local timezone.
+
 It also adds a new wallet historical branch that did not exist in these migration workflows:
 
 ```text

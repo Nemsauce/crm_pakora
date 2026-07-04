@@ -717,6 +717,21 @@ const sanitize = (val) => {
   if (!val) return '';
   return String(val).replace(/[\\x00-\\x1F\\x7F]/g, ' ').trim();
 };
+const ALEJO_LOCAL_UTC_OFFSET_HOURS = -5;
+const ALEJO_LOCAL_UTC_OFFSET_MS = ALEJO_LOCAL_UTC_OFFSET_HOURS * 60 * 60 * 1000;
+function getAlejoLocalDateFromDropiCreatedAt(value) {
+  if (!value) return null;
+
+  const utcDate = new Date(value);
+  if (Number.isNaN(utcDate.getTime())) return null;
+
+  const shiftedDate = new Date(utcDate.getTime() + ALEJO_LOCAL_UTC_OFFSET_MS);
+  const year = shiftedDate.getUTCFullYear();
+  const month = String(shiftedDate.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(shiftedDate.getUTCDate()).padStart(2, '0');
+
+  return \`\${year}-\${month}-\${day}\`;
+}
 return orders.map(o => {
   const cerrado = estadosCerrados.includes(o.status);
   const totalPedidos = o.client_total_orders || 0;
@@ -753,7 +768,7 @@ return orders.map(o => {
         id_orden_dropi: o.id,
         id_orden_shopify: o.shop_order_id ? String(o.shop_order_id) : null,
         numero_orden: o.shop_order_number ? '#' + o.shop_order_number : null,
-        fecha: o.created_at ? o.created_at.split('T')[0] : null,
+        fecha: getAlejoLocalDateFromDropiCreatedAt(o.created_at),
         nombre: sanitize(o.name),
         apellido: sanitize(o.surname),
         telefono: sanitize(o.phone),
@@ -821,7 +836,8 @@ function patchPrepareHistoricalNode(workflow, pais) {
   return {
     node,
     status: beforeCode === nextCode ? "confirmed" : "updated",
-    jsCode: nextCode,
+    beforeJsCode: beforeCode,
+    afterJsCode: nextCode,
   };
 }
 
@@ -1335,7 +1351,8 @@ function patchWorkflow(workflow, templateWorkflow, workflowTarget) {
       ),
     })),
     prepareHistoricalStatus: prepareHistoricalPatch.status,
-    prepareHistoricalJsCode: prepareHistoricalPatch.jsCode,
+    prepareHistoricalJsCodeBefore: prepareHistoricalPatch.beforeJsCode,
+    prepareHistoricalJsCodeAfter: prepareHistoricalPatch.afterJsCode,
     walletMappingNodeStatus: walletMappingNodeChange.status,
     walletInsertNodeStatus: walletInsertNodeChange.status,
     walletInsertOnConflictStatus: walletInsertNodeChange.onConflictStatus,
@@ -1377,10 +1394,12 @@ function printChangeSummary(workflow, workflowTarget, patchResult) {
   console.log("- orders pagination JSON template:");
   console.log(formatPagination(patchResult.orderWindowChanges[0]?.pagination ?? {}));
   console.log(
-    `- "${PREPARE_HISTORICAL_NODE_NAME}" patch (input aggregation + costo_producto/costo_envio/comision_cod for pais=${workflowTarget.pais}): ${patchResult.prepareHistoricalStatus}`,
+    `- "${PREPARE_HISTORICAL_NODE_NAME}" patch (input aggregation + costo_producto/costo_envio/comision_cod + fecha UTC-5 for pais=${workflowTarget.pais}): ${patchResult.prepareHistoricalStatus}`,
   );
-  console.log(`- "${PREPARE_HISTORICAL_NODE_NAME}" jsCode:`);
-  console.log(patchResult.prepareHistoricalJsCode);
+  console.log(`- "${PREPARE_HISTORICAL_NODE_NAME}" jsCode before:`);
+  console.log(patchResult.prepareHistoricalJsCodeBefore);
+  console.log(`- "${PREPARE_HISTORICAL_NODE_NAME}" jsCode after:`);
+  console.log(patchResult.prepareHistoricalJsCodeAfter);
   console.log("- wallet historical window nodes:");
   for (const change of patchResult.walletWindowChanges) {
     console.log(

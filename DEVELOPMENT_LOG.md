@@ -217,3 +217,9 @@ Pendiente cuando se retome 'notis':
 - Esto aplica automáticamente tanto a la rama de pedidos históricos como a la rama de wallet histórico, porque ambas reutilizan el mismo array de ventanas calculado una sola vez.
 - Verificado en dry-run contra n8n de producción: la ventana 1 permanece `startsWithEquals=false` (sin cambios), la ventana 2 (última) ahora es `startsWithEquals=true` con `until={{ $now.setZone('America/Bogota').toFormat('yyyy-MM-dd') }}` en las 4 URLs afectadas (pedidos CO, wallet CO, pedidos MX, wallet MX).
 - Pendiente: Alejo debe revisar el dry-run y correr `--confirm` contra n8n de producción. Después de esto, los workflows de migración histórica pueden re-ejecutarse cualquier día futuro sin necesitar re-parchear primero.
+
+### [Fix migración histórica] fecha Dropi en hora local Colombia — SCRIPT LISTO, PENDIENTE DE EJECUCIÓN
+- Diagnóstico confirmado en `Dropi migracion (CO)`: Dropi devuelve `created_at` como UTC con sufijo `Z` (`2026-07-04T01:44:45.000000Z` para Daniela Arias / `#1076`), no con offset local como Shopify. El `split('T')[0]` anterior guardaba el día UTC (`2026-07-04`) en vez del día local de Alejo en Colombia (`2026-07-03`).
+- Se extendió `scripts/n8n/patch-dropi-migracion-historical.mjs` para cambiar solo el cálculo de `fecha` dentro del `jsCode` generado para `Preparar datos historico`: ahora convierte el timestamp UTC aplicando un offset fijo de `-5` horas y extrae `YYYY-MM-DD` con getters UTC, sin depender de la timezone del runtime de n8n.
+- Decisión explícita de producto: el mismo offset Colombia UTC-5 aplica para CO y MX. La fecha operativa del CRM se referencia al día local de Alejo, no a la timezone del cliente o del país del pedido.
+- Pendiente: Alejo debe revisar el dry-run con el before/after del `jsCode` para ambos workflows y luego correr `--confirm` contra n8n de producción.
