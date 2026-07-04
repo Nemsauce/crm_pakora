@@ -12,6 +12,8 @@ const REGISTER_HISTORY_NODE_NAME = "Registrar historial";
 const WEBHOOK_NODE_NAME = "Notificar backend CRM";
 const ACTIVE_ORDERS_NODE_NAME = "Traer ordenes activas Supabase";
 const COMPARE_FILTER_NODE_NAME = "Comparar y filtrar cambios";
+const FILTER_HISTORY_NODE_NAME = "Filtrar historial faltante";
+const PROCESS_HISTORY_NODE_NAME = "Procesar historial completo";
 const DROPI_WALLET_NODE_NAME = "Dropi Consultar Wallet";
 const MAP_WALLET_NODE_NAME = "Mapear movimientos wallet completo";
 const INSERT_WALLET_NODE_NAME = "Insertar movimientos wallet";
@@ -19,21 +21,28 @@ const DROPI_LOGIN_FINAL_NODE_NAME = "Dropi Login Final";
 const STALE_ORDERS_NODE_NAME = "Chequear pedidos estancados";
 const DEFAULT_BACKEND_WEBHOOK_URL =
   "https://crm.pakora.online/api/webhooks/orders/status-changed";
+const DEFAULT_PROCESS_HISTORY_WEBHOOK_URL =
+  "https://crm.pakora.online/api/webhooks/orders/process-history";
 const STALE_ORDERS_CRON_URL =
   "https://crm.pakora.online/api/cron/check-stale-orders";
 const WEBHOOK_JSON_BODY = `={
   "order_id": {{ $('Comparar y filtrar cambios').item.json.supabase_id }}
 }`;
+const PROCESS_HISTORY_JSON_BODY = `={{ JSON.stringify({ order_id: $json.supabase_id, history: ($json.historiaFaltante || []).map((entry) => ({ estado: entry.estado, transportadora: entry.transportadora ?? null, novedad: entry.novedad ?? null, registrado_en: entry.registrado_en })) }) }}`;
 const UPDATE_ORDER_JSON_BODY = `={{ JSON.stringify({ id_orden_dropi: $json.dropi_id, estado_dropi: $json.estado_nuevo, estado_crm: $json.estado_crm, guia_envio: $json.guia, transportadora: $json.transportadora, nivel_riesgo: $json.nivel_riesgo, total_pedidos_cliente: $json.total_pedidos_cliente ?? 0, pedidos_entregados_cliente: $json.pedidos_entregados_cliente ?? 0, pedidos_devueltos_cliente: $json.pedidos_devueltos_cliente ?? 0, activo: $json.cerrar ? false : true, costo_producto: $json.costo_producto ?? 0, costo_envio: $json.costo_envio ?? 0, comision_cod: $json.comision_cod ?? 0, fecha_entrega_real: $json.estado_nuevo === "ENTREGADO" ? $json.registrado_en : null }) }}`;
 const REGISTER_HISTORY_JSON_BODY = `={{ JSON.stringify({ order_id: $('Comparar y filtrar cambios').item.json.supabase_id, estado: $('Comparar y filtrar cambios').item.json.estado_nuevo, transportadora: $('Comparar y filtrar cambios').item.json.transportadora, registrado_en: $('Comparar y filtrar cambios').item.json.registrado_en, novedad: $('Comparar y filtrar cambios').item.json.novedad }) }}`;
 const UPDATE_ORDER_JSON_BODY_MARKER = "={{ JSON.stringify(";
 const WALLET_ON_CONFLICT_PARAM = "on_conflict=pais,id_movimiento_dropi";
 const RECONCILIATION_SELECT_COLUMN = "tarea_generada_para_estado";
+const LATEST_HISTORY_SELECT_COLUMN = "status_history(registrado_en)";
+const LATEST_HISTORY_ORDER_PARAM = "status_history.order";
+const LATEST_HISTORY_ORDER_VALUE = "registrado_en.desc";
+const LATEST_HISTORY_LIMIT_PARAM = "status_history.limit";
+const LATEST_HISTORY_LIMIT_VALUE = "1";
 const CODE_RECONCILIATION_MARKER =
   "const yaProcesado = supabase.json.tarea_generada_para_estado === estadoNuevo;";
-const CODE_STATUS_ANCHOR = "if (estadoAnterior === estadoNuevo) continue;";
-const CODE_STATUS_REPLACEMENT = `${CODE_RECONCILIATION_MARKER}
-  if (estadoAnterior === estadoNuevo && yaProcesado) continue;`;
+const CODE_HISTORY_REPLAY_MARKER =
+  "function getMissingHistoryEntries(history, latestKnownRegisteredAt, fallbackTransportadora, fallbackNovedad)";
 const ALLOWED_WORKFLOW_SETTINGS_KEYS = new Set([
   "executionOrder",
   "saveManualExecutions",
@@ -81,6 +90,8 @@ function readConfig() {
   const n8nBaseUrl = readEnv("N8N_BASE_URL").replace(/\/+$/, "");
   const backendWebhookUrl =
     readEnv("BACKEND_WEBHOOK_URL") ?? DEFAULT_BACKEND_WEBHOOK_URL;
+  const processHistoryWebhookUrl =
+    readEnv("PROCESS_HISTORY_WEBHOOK_URL") ?? DEFAULT_PROCESS_HISTORY_WEBHOOK_URL;
 
   try {
     new URL(n8nBaseUrl);
@@ -94,12 +105,21 @@ function readConfig() {
     throw new Error("BACKEND_WEBHOOK_URL must be a full URL when provided.");
   }
 
+  try {
+    new URL(processHistoryWebhookUrl);
+  } catch {
+    throw new Error(
+      "PROCESS_HISTORY_WEBHOOK_URL must be a full URL when provided.",
+    );
+  }
+
   return {
     n8nBaseUrl,
     apiKey: readEnv("N8N_API_KEY"),
     webhookSharedSecret: readEnv("WEBHOOK_SHARED_SECRET"),
     cronSecret: readEnv("CRON_SECRET"),
     backendWebhookUrl,
+    processHistoryWebhookUrl,
   };
 }
 
@@ -236,6 +256,92 @@ function buildWebhookNode(updateOrderNode, config, retryStyle) {
   applyRetrySettings(node, retryStyle);
 
   return node;
+}
+
+function buildProcessHistoryParameters(config) {
+  return {
+    method: "POST",
+    url: config.processHistoryWebhookUrl,
+    sendHeaders: true,
+    headerParameters: {
+      parameters: [
+        {
+          name: "x-webhook-secret",
+          value: config.webhookSharedSecret,
+        },
+        {
+          name: "Content-Type",
+          value: "application/json",
+        },
+      ],
+    },
+    sendBody: true,
+    specifyBody: "json",
+    jsonBody: PROCESS_HISTORY_JSON_BODY,
+    options: {},
+  };
+}
+
+function buildProcessHistoryNode(historyFilterNode, config, retryStyle) {
+  const node = {
+    parameters: buildProcessHistoryParameters(config),
+    id: randomUUID(),
+    name: PROCESS_HISTORY_NODE_NAME,
+    type: "n8n-nodes-base.httpRequest",
+    typeVersion: 4.4,
+    position: getPositionNear(historyFilterNode),
+  };
+
+  applyRetrySettings(node, retryStyle);
+
+  return node;
+}
+
+function createOrUpdateProcessHistoryNode(
+  workflow,
+  historyFilterNode,
+  config,
+  retryStyle,
+) {
+  const existingNode = findNode(workflow, PROCESS_HISTORY_NODE_NAME);
+
+  if (!existingNode) {
+    const newNode = buildProcessHistoryNode(historyFilterNode, config, retryStyle);
+    workflow.nodes.push(newNode);
+
+    return {
+      node: newNode,
+      status: "added",
+    };
+  }
+
+  if (existingNode.type !== "n8n-nodes-base.httpRequest") {
+    throw new Error(
+      `"${PROCESS_HISTORY_NODE_NAME}" exists but is not an HTTP Request node. Found type: ${existingNode.type ?? "(missing)"}.`,
+    );
+  }
+
+  const before = JSON.stringify({
+    parameters: existingNode.parameters,
+    retryOnFail: existingNode.retryOnFail,
+    maxTries: existingNode.maxTries,
+    waitBetweenTries: existingNode.waitBetweenTries,
+  });
+
+  existingNode.parameters = buildProcessHistoryParameters(config);
+  applyRetrySettings(existingNode, retryStyle);
+
+  const after = JSON.stringify({
+    parameters: existingNode.parameters,
+    retryOnFail: existingNode.retryOnFail,
+    maxTries: existingNode.maxTries,
+    waitBetweenTries: existingNode.waitBetweenTries,
+  });
+
+  return {
+    node: existingNode,
+    status: before === after ? "confirmed" : "updated",
+  };
 }
 
 function buildStaleOrdersParameters(config) {
@@ -710,6 +816,64 @@ function createOrUpdateWalletInsertNode(
   };
 }
 
+function buildHistoryFilterCode() {
+  return `return $input.all().filter((item) =>
+  Array.isArray(item.json.historiaFaltante) && item.json.historiaFaltante.length > 0,
+);
+`;
+}
+
+function buildHistoryFilterNode(compareFilterNode) {
+  return {
+    parameters: {
+      jsCode: buildHistoryFilterCode(),
+    },
+    id: randomUUID(),
+    name: FILTER_HISTORY_NODE_NAME,
+    type: "n8n-nodes-base.code",
+    typeVersion: 2,
+    position: getPositionNear(compareFilterNode),
+  };
+}
+
+function createOrUpdateHistoryFilterNode(workflow, compareFilterNode) {
+  const existingNode = findNode(workflow, FILTER_HISTORY_NODE_NAME);
+
+  if (!existingNode) {
+    const newNode = buildHistoryFilterNode(compareFilterNode);
+    workflow.nodes.push(newNode);
+
+    return {
+      node: newNode,
+      status: "added",
+    };
+  }
+
+  if (existingNode.type !== "n8n-nodes-base.code") {
+    throw new Error(
+      `"${FILTER_HISTORY_NODE_NAME}" exists but is not a Code node. Found type: ${existingNode.type ?? "(missing)"}.`,
+    );
+  }
+
+  const before = JSON.stringify({
+    parameters: existingNode.parameters,
+  });
+
+  existingNode.parameters = {
+    ...(existingNode.parameters ?? {}),
+    jsCode: buildHistoryFilterCode(),
+  };
+
+  const after = JSON.stringify({
+    parameters: existingNode.parameters,
+  });
+
+  return {
+    node: existingNode,
+    status: before === after ? "confirmed" : "updated",
+  };
+}
+
 function ensureMainConnection(workflow, sourceNodeName, targetNodeName) {
   workflow.connections ??= {};
   workflow.connections[sourceNodeName] ??= {};
@@ -738,6 +902,86 @@ function ensureMainConnection(workflow, sourceNodeName, targetNodeName) {
   return "added";
 }
 
+function assertMainConnection(workflow, sourceNodeName, targetNodeName) {
+  const outputConnections = workflow.connections?.[sourceNodeName]?.main?.[0];
+  const hasConnection =
+    Array.isArray(outputConnections) &&
+    outputConnections.some((connection) => connection.node === targetNodeName);
+
+  if (!hasConnection) {
+    throw new Error(
+      `Expected existing connection "${sourceNodeName}" -> "${targetNodeName}" was not found.`,
+    );
+  }
+
+  return "confirmed";
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function decodeQueryValue(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function patchQueryParam(urlValue, paramName, paramValue) {
+  if (typeof urlValue !== "string") {
+    throw new Error(
+      `"${ACTIVE_ORDERS_NODE_NAME}" does not have a string parameters.url value.`,
+    );
+  }
+
+  const paramPattern = new RegExp(`([?&]${escapeRegExp(paramName)}=)([^&]*)`);
+  const paramMatch = paramPattern.exec(urlValue);
+
+  if (paramMatch) {
+    const [matchedParam, paramPrefix, rawValue] = paramMatch;
+
+    if (decodeQueryValue(rawValue) === paramValue) {
+      return {
+        nextUrl: urlValue,
+        status: "confirmed",
+      };
+    }
+
+    const startIndex = paramMatch.index;
+    const endIndex = startIndex + matchedParam.length;
+
+    return {
+      nextUrl: `${urlValue.slice(0, startIndex)}${paramPrefix}${paramValue}${urlValue.slice(endIndex)}`,
+      status: "updated",
+    };
+  }
+
+  const separator = urlValue.includes("?") ? "&" : "?";
+
+  return {
+    nextUrl: `${urlValue}${separator}${paramName}=${paramValue}`,
+    status: "added",
+  };
+}
+
+function combinePatchStatuses(statuses) {
+  if (statuses.includes("updated")) {
+    return "updated";
+  }
+
+  if (statuses.includes("added")) {
+    return "added";
+  }
+
+  if (statuses.includes("already-patched")) {
+    return "already-patched";
+  }
+
+  return "confirmed";
+}
+
 function patchSelectParam(urlValue, columnName) {
   if (typeof urlValue !== "string") {
     throw new Error(
@@ -754,13 +998,7 @@ function patchSelectParam(urlValue, columnName) {
   }
 
   const [matchedSelect, selectPrefix, rawSelectValue] = selectMatch;
-  let decodedSelectValue = rawSelectValue;
-
-  try {
-    decodedSelectValue = decodeURIComponent(rawSelectValue);
-  } catch {
-    decodedSelectValue = rawSelectValue;
-  }
+  const decodedSelectValue = decodeQueryValue(rawSelectValue);
 
   const selectedColumns = decodedSelectValue
     .split(",")
@@ -808,14 +1046,235 @@ function patchActiveOrdersSelect(workflow) {
     throw new Error(`"${ACTIVE_ORDERS_NODE_NAME}" does not have parameters.`);
   }
 
-  const { nextUrl, status } = patchSelectParam(
+  const reconciliationPatch = patchSelectParam(
     node.parameters.url,
     RECONCILIATION_SELECT_COLUMN,
   );
+  const latestHistorySelectPatch = patchSelectParam(
+    reconciliationPatch.nextUrl,
+    LATEST_HISTORY_SELECT_COLUMN,
+  );
+  const latestHistoryOrderPatch = patchQueryParam(
+    latestHistorySelectPatch.nextUrl,
+    LATEST_HISTORY_ORDER_PARAM,
+    LATEST_HISTORY_ORDER_VALUE,
+  );
+  const latestHistoryLimitPatch = patchQueryParam(
+    latestHistoryOrderPatch.nextUrl,
+    LATEST_HISTORY_LIMIT_PARAM,
+    LATEST_HISTORY_LIMIT_VALUE,
+  );
 
-  node.parameters.url = nextUrl;
+  node.parameters.url = latestHistoryLimitPatch.nextUrl;
 
-  return status;
+  return {
+    reconciliationStatus: reconciliationPatch.status,
+    latestHistoryStatus: combinePatchStatuses([
+      latestHistorySelectPatch.status,
+      latestHistoryOrderPatch.status,
+      latestHistoryLimitPatch.status,
+    ]),
+  };
+}
+
+function buildCompareFilterCode() {
+  return `const dropiResponse = $('Dropi Consultar Pedidos').item.json;
+const dropiOrders = Array.isArray(dropiResponse.objects) ? dropiResponse.objects : [];
+const supabaseOrders = $('Traer ordenes activas Supabase').all();
+
+const estadosCerrados = ['ENTREGADO', 'CANCELADO', 'DEVOLUCION'];
+
+const estadosNovedad = [
+  'DESTINATARIO SE REHUSA A RECIBIR',
+  'Se visita, no se logra entrega',
+  'No contesta Cliente',
+  'PARA NUEVO INTENTO ENTREGA',
+  'EN CONFIRMACIÓN TELEFÓNICA',
+  'NOVEDAD',
+  'CERRADO POR INCIDENCIA, VER CAUSA',
+  'RECLAME EN OFICINA'
+];
+
+const generaTarea = (estadoNuevo, novedad) => {
+  if (estadoNuevo === 'GUIA_GENERADA') return 'notificar_guia';
+  if (estadoNuevo === 'PENDIENTE CONFIRMACION') return 'llamar_confirmacion';
+  if (estadosNovedad.includes(estadoNuevo)) return 'presionar_entrega';
+  if (novedad && estadosNovedad.some(e => novedad.toLowerCase().includes(e.toLowerCase()))) return 'presionar_entrega';
+  return null;
+};
+
+function normalizeId(value) {
+  return value === null || value === undefined || value === '' ? null : String(value);
+}
+
+function getLatestKnownRegisteredAt(supabaseOrder) {
+  const history = supabaseOrder.status_history;
+
+  if (Array.isArray(history) && history.length > 0) {
+    return history[0]?.registrado_en ?? null;
+  }
+
+  if (history && typeof history === 'object') {
+    return history.registrado_en ?? null;
+  }
+
+  return null;
+}
+
+function getHistoryEstado(historyEntry) {
+  return historyEntry?.status ?? historyEntry?.estado ?? null;
+}
+
+function getHistoryRegisteredAt(historyEntry) {
+  return historyEntry?.created_at ?? historyEntry?.registrado_en ?? historyEntry?.updated_at ?? null;
+}
+
+function getHistoryNovedad(historyEntry, fallbackNovedad) {
+  return (
+    historyEntry?.novedad ??
+    historyEntry?.observacion ??
+    historyEntry?.observation ??
+    historyEntry?.description ??
+    historyEntry?.notes ??
+    fallbackNovedad ??
+    null
+  );
+}
+
+function isStrictlyAfterKnownRegisteredAt(registradoEn, latestKnownRegisteredAt) {
+  if (!latestKnownRegisteredAt) return true;
+  if (!registradoEn) return false;
+
+  const registeredTime = Date.parse(registradoEn);
+  const latestKnownTime = Date.parse(latestKnownRegisteredAt);
+
+  if (Number.isFinite(registeredTime) && Number.isFinite(latestKnownTime)) {
+    return registeredTime > latestKnownTime;
+  }
+
+  return String(registradoEn) > String(latestKnownRegisteredAt);
+}
+
+function getMissingHistoryEntries(history, latestKnownRegisteredAt, fallbackTransportadora, fallbackNovedad) {
+  if (!Array.isArray(history)) return [];
+
+  return history
+    .map((historyEntry) => {
+      const estado = getHistoryEstado(historyEntry);
+      const registradoEn = getHistoryRegisteredAt(historyEntry);
+
+      if (!estado || !registradoEn) {
+        return null;
+      }
+
+      return {
+        estado,
+        transportadora:
+          historyEntry?.transportadora ??
+          historyEntry?.distribution_company?.name ??
+          fallbackTransportadora ??
+          null,
+        novedad: getHistoryNovedad(historyEntry, fallbackNovedad),
+        registrado_en: registradoEn,
+      };
+    })
+    .filter(Boolean)
+    .filter((historyEntry) =>
+      isStrictlyAfterKnownRegisteredAt(historyEntry.registrado_en, latestKnownRegisteredAt),
+    );
+}
+
+const results = [];
+
+for (const dropi of dropiOrders) {
+  const dropiShopOrderId = normalizeId(dropi.shop_order_id);
+  const dropiId = normalizeId(dropi.id);
+  const supabase = supabaseOrders.find((s) =>
+    (dropiShopOrderId && normalizeId(s.json.id_orden_shopify) === dropiShopOrderId) ||
+    (dropiId && normalizeId(s.json.id_orden_dropi) === dropiId)
+  );
+
+  if (!supabase) continue;
+
+  const estadoAnterior = supabase.json.estado_dropi;
+  const estadoNuevo = dropi.status;
+  const yaProcesado = supabase.json.tarea_generada_para_estado === estadoNuevo;
+  const cerrar = estadosCerrados.includes(estadoNuevo);
+  const history = Array.isArray(dropi.history) ? dropi.history : [];
+  const historyMatch = [...history].reverse().find((h) => getHistoryEstado(h) === estadoNuevo);
+  const registradoEn = historyMatch ? getHistoryRegisteredAt(historyMatch) : dropi.updated_at;
+  const novedad = dropi.novedad_servientrega || null;
+  const transportadora = dropi.distribution_company?.name || null;
+  const latestKnownStatusRegisteredAt = getLatestKnownRegisteredAt(supabase.json);
+  const historiaFaltante = getMissingHistoryEntries(
+    history,
+    latestKnownStatusRegisteredAt,
+    transportadora,
+    novedad,
+  );
+  const debeActualizarEstado = !(estadoAnterior === estadoNuevo && yaProcesado);
+
+  if (!debeActualizarEstado && historiaFaltante.length === 0) continue;
+
+  const accion = generaTarea(estadoNuevo, novedad);
+
+  const totalPedidos = dropi.client_total_orders || 0;
+  const devoluciones = dropi.client_total_orders_returneds || 0;
+  let nivelRiesgo = 'sin_datos';
+  if (totalPedidos > 0) {
+    const tasa = devoluciones / totalPedidos;
+    if (tasa >= 0.5) nivelRiesgo = 'alto';
+    else if (tasa >= 0.25) nivelRiesgo = 'medio';
+    else nivelRiesgo = 'bajo';
+  }
+
+  let estadoCrm;
+  if (cerrar) {
+    if (estadoNuevo === 'ENTREGADO') estadoCrm = 'entregado';
+    else if (estadoNuevo.includes('DEVOLUCION')) estadoCrm = 'devolucion';
+    else estadoCrm = 'cancelado';
+  } else if (estadoNuevo === 'PENDIENTE CONFIRMACION') {
+    estadoCrm = 'nuevo';
+  } else {
+    estadoCrm = 'en_ruta';
+  }
+
+  const orderDetail = (dropi.orderdetails || [])[0] || {};
+  const costoProducto = parseFloat(orderDetail.supplier_price || 0);
+  const costoEnvio = parseFloat(dropi.shipping_amount || 0);
+
+  results.push({
+    json: {
+      supabase_id: supabase.json.id,
+      dropi_id: dropi.id,
+      numero_orden: supabase.json.numero_orden,
+      estado_anterior: estadoAnterior,
+      estado_nuevo: estadoNuevo,
+      estado_crm: estadoCrm,
+      registrado_en: registradoEn,
+      novedad,
+      cerrar,
+      accion,
+      nombre: dropi.name,
+      telefono: String(dropi.phone),
+      guia: dropi.shipping_guide,
+      transportadora,
+      nivel_riesgo: nivelRiesgo,
+      total_pedidos_cliente: dropi.client_total_orders,
+      pedidos_entregados_cliente: dropi.client_total_orders_delivered,
+      pedidos_devueltos_cliente: devoluciones,
+      costo_producto: costoProducto,
+      costo_envio: costoEnvio,
+      comision_cod: 0,
+      latest_status_history_registrado_en: latestKnownStatusRegisteredAt,
+      historiaFaltante,
+      debe_actualizar_estado: debeActualizarEstado
+    }
+  });
+}
+
+return results.length > 0 ? results : [];
+`;
 }
 
 function patchCompareFilterCode(workflow) {
@@ -845,22 +1304,19 @@ function patchCompareFilterCode(workflow) {
     throw new Error(`"${COMPARE_FILTER_NODE_NAME}" does not have string jsCode.`);
   }
 
-  if (jsCode.includes("yaProcesado")) {
+  if (jsCode.includes(CODE_HISTORY_REPLAY_MARKER)) {
     return "already-patched";
   }
 
-  if (!jsCode.includes(CODE_STATUS_ANCHOR)) {
+  if (!jsCode.includes("const dropiResponse") || !jsCode.includes("results.push")) {
     throw new Error(
-      `"${COMPARE_FILTER_NODE_NAME}" jsCode anchor not found. Expected exact line: ${CODE_STATUS_ANCHOR}`,
+      `"${COMPARE_FILTER_NODE_NAME}" jsCode does not match the expected Dropi comparison shape.`,
     );
   }
 
-  node.parameters.jsCode = jsCode.replace(
-    CODE_STATUS_ANCHOR,
-    CODE_STATUS_REPLACEMENT,
-  );
+  node.parameters.jsCode = buildCompareFilterCode();
 
-  return "added";
+  return jsCode.includes(CODE_RECONCILIATION_MARKER) ? "updated" : "added";
 }
 
 function getFilteredWorkflowSettings(workflow) {
@@ -943,6 +1399,12 @@ function patchWorkflow(workflow, workflowTarget, config) {
     throw new Error(`Node "${UPDATE_ORDER_NODE_NAME}" was not found.`);
   }
 
+  const compareFilterNode = findNode(workflow, COMPARE_FILTER_NODE_NAME);
+
+  if (!compareFilterNode) {
+    throw new Error(`Node "${COMPARE_FILTER_NODE_NAME}" was not found.`);
+  }
+
   const walletSourceNode = findNode(workflow, DROPI_WALLET_NODE_NAME);
 
   if (!walletSourceNode) {
@@ -960,6 +1422,11 @@ function patchWorkflow(workflow, workflowTarget, config) {
   const retryStyle = getRetryStyle(workflow);
   const updateOrderJsonBodyStatus = patchUpdateOrderJsonBody(updateOrderNode);
   const registerHistoryJsonBodyPatch = patchRegisterHistoryJsonBody(workflow);
+  const singleStateConnectionStatus = assertMainConnection(
+    workflow,
+    COMPARE_FILTER_NODE_NAME,
+    UPDATE_ORDER_NODE_NAME,
+  );
   const nodeChange = createOrUpdateWebhookNode(
     workflow,
     updateOrderNode,
@@ -971,8 +1438,28 @@ function patchWorkflow(workflow, workflowTarget, config) {
     UPDATE_ORDER_NODE_NAME,
     WEBHOOK_NODE_NAME,
   );
-  const activeOrdersSelectStatus = patchActiveOrdersSelect(workflow);
+  const activeOrdersSelectPatch = patchActiveOrdersSelect(workflow);
   const compareFilterCodeStatus = patchCompareFilterCode(workflow);
+  const historyFilterNodeChange = createOrUpdateHistoryFilterNode(
+    workflow,
+    compareFilterNode,
+  );
+  const processHistoryNodeChange = createOrUpdateProcessHistoryNode(
+    workflow,
+    historyFilterNodeChange.node,
+    config,
+    retryStyle,
+  );
+  const historyFilterConnectionStatus = ensureMainConnection(
+    workflow,
+    COMPARE_FILTER_NODE_NAME,
+    FILTER_HISTORY_NODE_NAME,
+  );
+  const processHistoryConnectionStatus = ensureMainConnection(
+    workflow,
+    FILTER_HISTORY_NODE_NAME,
+    PROCESS_HISTORY_NODE_NAME,
+  );
   const walletMappingNodeChange = createOrUpdateWalletMappingNode(
     workflow,
     walletSourceNode,
@@ -1023,8 +1510,14 @@ function patchWorkflow(workflow, workflowTarget, config) {
   return {
     nodeStatus: nodeChange.status,
     connectionStatus,
-    activeOrdersSelectStatus,
+    singleStateConnectionStatus,
+    activeOrdersSelectStatus: activeOrdersSelectPatch.reconciliationStatus,
+    activeOrdersLatestHistoryStatus: activeOrdersSelectPatch.latestHistoryStatus,
     compareFilterCodeStatus,
+    historyFilterNodeStatus: historyFilterNodeChange.status,
+    processHistoryNodeStatus: processHistoryNodeChange.status,
+    historyFilterConnectionStatus,
+    processHistoryConnectionStatus,
     updateOrderJsonBodyStatus,
     registerHistoryJsonBodyStatus: registerHistoryJsonBodyPatch.status,
     registerHistoryJsonBodyBefore: registerHistoryJsonBodyPatch.beforeJsonBody,
@@ -1041,6 +1534,8 @@ function patchWorkflow(workflow, workflowTarget, config) {
     retryStyle,
     settingsSummary: getFilteredWorkflowSettings(workflow),
     webhookNodeId: nodeChange.node.id,
+    historyFilterNodeId: historyFilterNodeChange.node.id,
+    processHistoryNodeId: processHistoryNodeChange.node.id,
     walletMappingNodeId: walletMappingNodeChange.node.id,
     walletInsertNodeId: walletInsertNodeChange.node.id,
     staleOrdersNodeId,
@@ -1060,13 +1555,31 @@ function printChangeSummary(workflow, workflowTarget, patchResult, config) {
   console.log(`  after:\n${indentBlock(patchResult.registerHistoryJsonBodyAfter)}`);
   console.log(`- node "${WEBHOOK_NODE_NAME}": ${patchResult.nodeStatus}`);
   console.log(
+    `- existing connection "${COMPARE_FILTER_NODE_NAME}" -> "${UPDATE_ORDER_NODE_NAME}": ${patchResult.singleStateConnectionStatus}`,
+  );
+  console.log(
     `- connection "${UPDATE_ORDER_NODE_NAME}" -> "${WEBHOOK_NODE_NAME}": ${patchResult.connectionStatus}`,
   );
   console.log(
     `- "${ACTIVE_ORDERS_NODE_NAME}" select ${RECONCILIATION_SELECT_COLUMN}: ${patchResult.activeOrdersSelectStatus}`,
   );
   console.log(
-    `- "${COMPARE_FILTER_NODE_NAME}" reconciliation code: ${patchResult.compareFilterCodeStatus}`,
+    `- "${ACTIVE_ORDERS_NODE_NAME}" latest status_history.registrado_en: ${patchResult.activeOrdersLatestHistoryStatus}`,
+  );
+  console.log(
+    `- "${COMPARE_FILTER_NODE_NAME}" full-history comparison code: ${patchResult.compareFilterCodeStatus}`,
+  );
+  console.log(
+    `- node "${FILTER_HISTORY_NODE_NAME}": ${patchResult.historyFilterNodeStatus}`,
+  );
+  console.log(
+    `- node "${PROCESS_HISTORY_NODE_NAME}": ${patchResult.processHistoryNodeStatus}`,
+  );
+  console.log(
+    `- connection "${COMPARE_FILTER_NODE_NAME}" -> "${FILTER_HISTORY_NODE_NAME}": ${patchResult.historyFilterConnectionStatus}`,
+  );
+  console.log(
+    `- connection "${FILTER_HISTORY_NODE_NAME}" -> "${PROCESS_HISTORY_NODE_NAME}": ${patchResult.processHistoryConnectionStatus}`,
   );
   console.log(
     `- node "${MAP_WALLET_NODE_NAME}": ${patchResult.walletMappingNodeStatus}`,
@@ -1108,7 +1621,11 @@ function printChangeSummary(workflow, workflowTarget, patchResult, config) {
   );
   console.log(`- webhook url: ${config.backendWebhookUrl}`);
   console.log("- x-webhook-secret: <from WEBHOOK_SHARED_SECRET>");
+  console.log(`- process-history webhook url: ${config.processHistoryWebhookUrl}`);
+  console.log("- process-history x-webhook-secret: <from WEBHOOK_SHARED_SECRET>");
   console.log(`- webhook node id: ${patchResult.webhookNodeId}`);
+  console.log(`- history filter node id: ${patchResult.historyFilterNodeId}`);
+  console.log(`- process history node id: ${patchResult.processHistoryNodeId}`);
   console.log(`- wallet map node id: ${patchResult.walletMappingNodeId}`);
   console.log(`- wallet insert node id: ${patchResult.walletInsertNodeId}`);
   console.log(

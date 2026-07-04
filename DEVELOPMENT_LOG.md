@@ -223,3 +223,11 @@ Pendiente cuando se retome 'notis':
 - Se extendió `scripts/n8n/patch-dropi-migracion-historical.mjs` para cambiar solo el cálculo de `fecha` dentro del `jsCode` generado para `Preparar datos historico`: ahora convierte el timestamp UTC aplicando un offset fijo de `-5` horas y extrae `YYYY-MM-DD` con getters UTC, sin depender de la timezone del runtime de n8n.
 - Decisión explícita de producto: el mismo offset Colombia UTC-5 aplica para CO y MX. La fecha operativa del CRM se referencia al día local de Alejo, no a la timezone del cliente o del país del pedido.
 - Pendiente: Alejo debe revisar el dry-run con el before/after del `jsCode` para ambos workflows y luego correr `--confirm` contra n8n de producción.
+
+### [Fix producción] replay de historial Dropi entre ciclos de polling — SCRIPT LISTO, PENDIENTE DE EJECUCIÓN
+- Problema: el polling de Dropi podía ver solo el estado final de una orden si varios cambios ocurrían entre ciclos. En ese caso se saltaban estados intermedios que sí disparan tareas (`nuevo`, `guia_generada`, `novedad`, etc.) y el backend solo procesaba el estado actual.
+- Se extendió `scripts/n8n/patch-dropi-polling-webhook.mjs` para que `Traer ordenes activas Supabase` traiga, en la misma llamada PostgREST, el último `status_history.registrado_en` de cada orden activa (`status_history(registrado_en)` con order desc + limit 1).
+- `Comparar y filtrar cambios` ahora calcula `historiaFaltante` comparando `dropi.history[]` contra ese último timestamp conocido, sin reordenar el array: se confía en el orden cronológico que manda n8n/Dropi.
+- Se agrega la rama nueva `Comparar y filtrar cambios` → `Filtrar historial faltante` → `Procesar historial completo`, que llama `POST /api/webhooks/orders/process-history` solo cuando `historiaFaltante` no está vacío. El body manda `{ order_id, history }` con `{ estado, transportadora, novedad, registrado_en }`.
+- La cadena existente `Comparar y filtrar cambios` → `Actualizar orden Supabase` → `Notificar backend CRM` queda conectada y funcionando en paralelo para el mecanismo normal de estado actual/reconciliación (`yaProcesado`).
+- Pendiente: Alejo debe revisar el dry-run y luego correr `--confirm` contra n8n de producción.

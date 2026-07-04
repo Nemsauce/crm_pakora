@@ -11,6 +11,15 @@ The script adds or updates the `Notificar backend CRM` HTTP Request node after `
 
 It also turns the existing Dropi polling cycle into the free-tier reconciliation mechanism while Vercel Cron is paused on the Hobby plan. The polling schedule remains unchanged (5x/day), but the script patches `Traer ordenes activas Supabase` to fetch `tarea_generada_para_estado` and patches `Comparar y filtrar cambios` so orders are re-notified when `tarea_generada_para_estado` is out of sync with the live Dropi status, even if the status did not newly change since the previous poll.
 
+The script also patches the same polling workflows to catch fast status transitions that happen between polling cycles. `Traer ordenes activas Supabase` now embeds the latest `status_history.registrado_en` row for each active order using a single PostgREST request (`status_history(registrado_en)` ordered desc and limited to 1). `Comparar y filtrar cambios` compares Dropi's `history[]` against that timestamp and emits `historiaFaltante`, preserving the existing single-state output fields.
+
+The full-history branch is additive and does not replace the existing single-state chain:
+
+- Existing chain, kept connected: `Comparar y filtrar cambios` → `Actualizar orden Supabase` → `Notificar backend CRM`.
+- New branch: `Comparar y filtrar cambios` → `Filtrar historial faltante` → `Procesar historial completo`.
+
+`Filtrar historial faltante` drops items with no missing history entries so `Procesar historial completo` only calls `POST https://crm.pakora.online/api/webhooks/orders/process-history` when there is a non-empty sequence to replay. The request body is `{ order_id, history }`, where each history item is mapped to `{ estado, transportadora, novedad, registrado_en }`. The backend replays the sequence chronologically and closes any generated tasks if the sequence ends in a closing state.
+
 It patches `Actualizar orden Supabase` to send its JSON body through `JSON.stringify(...)` instead of manual string interpolation. This avoids production failures when real Dropi values contain quotes, backslashes, line breaks, or other characters that would otherwise produce invalid JSON.
 
 It also patches `Registrar historial` to use the same `JSON.stringify(...)` body pattern and to persist `novedad` from `Comparar y filtrar cambios`. The compare node already computes that field, but the history insert previously dropped it before Supabase, so status history rows could not surface the latest novelty detail in the app.
@@ -39,6 +48,7 @@ This node is connected from `Dropi Login Final` in the CO polling workflow (`9p1
 - `WEBHOOK_SHARED_SECRET`: the same secret already configured in Vercel or `.env.local` for the backend webhook.
 - `CRON_SECRET`: the same secret already configured in Vercel or `.env.local` for protected cron endpoints.
 - `BACKEND_WEBHOOK_URL`: optional override for preview/staging tests. Defaults to `https://crm.pakora.online/api/webhooks/orders/status-changed`.
+- `PROCESS_HISTORY_WEBHOOK_URL`: optional override for preview/staging tests. Defaults to `https://crm.pakora.online/api/webhooks/orders/process-history`.
 
 ## Commands
 
@@ -54,6 +64,6 @@ Apply after reviewing the dry-run summary:
 node scripts/n8n/patch-dropi-polling-webhook.mjs --confirm
 ```
 
-This script is manual maintenance, not automatic or scheduled. Re-run it manually if the webhook URL, shared secret, cron secret, reconciliation field, wallet capture mapping, Supabase wallet endpoint, stale-order cron endpoint, `Registrar historial` history payload, or target node names ever change.
+This script is manual maintenance, not automatic or scheduled. Re-run it manually if the webhook URL, process-history webhook URL, shared secret, cron secret, reconciliation field, active-order history select, wallet capture mapping, Supabase wallet endpoint, stale-order cron endpoint, `Registrar historial` history payload, or target node names ever change.
 
-After applying, manually re-test both workflows in n8n with a manual execution. Confirm the new `Notificar backend CRM` node fires correctly, `Registrar historial` inserts `status_history.novedad` when Dropi provides it, the new wallet branch inserts `wallet_movements` without duplicating rows on repeat runs, and the CO-only `Chequear pedidos estancados` node receives an authorized response from the backend cron endpoint.
+After applying, manually re-test both workflows in n8n with a manual execution. Confirm the new `Notificar backend CRM` node fires correctly, `Registrar historial` inserts `status_history.novedad` when Dropi provides it, `Procesar historial completo` calls the backend only for items with non-empty `historiaFaltante`, the new wallet branch inserts `wallet_movements` without duplicating rows on repeat runs, and the CO-only `Chequear pedidos estancados` node receives an authorized response from the backend cron endpoint.
