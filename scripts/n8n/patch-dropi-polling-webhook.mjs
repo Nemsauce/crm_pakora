@@ -8,6 +8,7 @@ const WORKFLOWS = [
 ];
 
 const UPDATE_ORDER_NODE_NAME = "Actualizar orden Supabase";
+const REGISTER_HISTORY_NODE_NAME = "Registrar historial";
 const WEBHOOK_NODE_NAME = "Notificar backend CRM";
 const ACTIVE_ORDERS_NODE_NAME = "Traer ordenes activas Supabase";
 const COMPARE_FILTER_NODE_NAME = "Comparar y filtrar cambios";
@@ -24,6 +25,7 @@ const WEBHOOK_JSON_BODY = `={
   "order_id": {{ $('Comparar y filtrar cambios').item.json.supabase_id }}
 }`;
 const UPDATE_ORDER_JSON_BODY = `={{ JSON.stringify({ id_orden_dropi: $json.dropi_id, estado_dropi: $json.estado_nuevo, estado_crm: $json.estado_crm, guia_envio: $json.guia, transportadora: $json.transportadora, nivel_riesgo: $json.nivel_riesgo, total_pedidos_cliente: $json.total_pedidos_cliente ?? 0, pedidos_entregados_cliente: $json.pedidos_entregados_cliente ?? 0, pedidos_devueltos_cliente: $json.pedidos_devueltos_cliente ?? 0, activo: $json.cerrar ? false : true, costo_producto: $json.costo_producto ?? 0, costo_envio: $json.costo_envio ?? 0, comision_cod: $json.comision_cod ?? 0, fecha_entrega_real: $json.estado_nuevo === "ENTREGADO" ? $json.registrado_en : null }) }}`;
+const REGISTER_HISTORY_JSON_BODY = `={{ JSON.stringify({ order_id: $('Comparar y filtrar cambios').item.json.supabase_id, estado: $('Comparar y filtrar cambios').item.json.estado_nuevo, transportadora: $('Comparar y filtrar cambios').item.json.transportadora, registrado_en: $('Comparar y filtrar cambios').item.json.registrado_en, novedad: $('Comparar y filtrar cambios').item.json.novedad }) }}`;
 const UPDATE_ORDER_JSON_BODY_MARKER = "={{ JSON.stringify(";
 const WALLET_ON_CONFLICT_PARAM = "on_conflict=pais,id_movimiento_dropi";
 const RECONCILIATION_SELECT_COLUMN = "tarea_generada_para_estado";
@@ -371,6 +373,50 @@ function patchUpdateOrderJsonBody(updateOrderNode) {
   updateOrderNode.parameters.jsonBody = UPDATE_ORDER_JSON_BODY;
 
   return "updated";
+}
+
+function patchRegisterHistoryJsonBody(workflow) {
+  const registerHistoryNode = findNode(workflow, REGISTER_HISTORY_NODE_NAME);
+
+  if (!registerHistoryNode) {
+    throw new Error(`Node "${REGISTER_HISTORY_NODE_NAME}" was not found.`);
+  }
+
+  if (registerHistoryNode.type !== "n8n-nodes-base.httpRequest") {
+    throw new Error(
+      `"${REGISTER_HISTORY_NODE_NAME}" is not an HTTP Request node. Found type: ${registerHistoryNode.type ?? "(missing)"}.`,
+    );
+  }
+
+  if (
+    !registerHistoryNode.parameters ||
+    typeof registerHistoryNode.parameters !== "object" ||
+    Array.isArray(registerHistoryNode.parameters)
+  ) {
+    throw new Error(`"${REGISTER_HISTORY_NODE_NAME}" does not have parameters.`);
+  }
+
+  const beforeJsonBody = registerHistoryNode.parameters.jsonBody;
+
+  if (
+    typeof beforeJsonBody === "string" &&
+    beforeJsonBody.trimStart().startsWith(UPDATE_ORDER_JSON_BODY_MARKER) &&
+    beforeJsonBody.includes("novedad")
+  ) {
+    return {
+      status: "already-patched",
+      beforeJsonBody,
+      afterJsonBody: beforeJsonBody,
+    };
+  }
+
+  registerHistoryNode.parameters.jsonBody = REGISTER_HISTORY_JSON_BODY;
+
+  return {
+    status: "updated",
+    beforeJsonBody,
+    afterJsonBody: REGISTER_HISTORY_JSON_BODY,
+  };
 }
 
 function buildWalletMappingCode(pais) {
@@ -867,6 +913,25 @@ function formatKeys(keys) {
   return keys.length > 0 ? keys.join(", ") : "(none)";
 }
 
+function formatJsonBodyForSummary(value) {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value === undefined) {
+    return "(undefined)";
+  }
+
+  return JSON.stringify(value, null, 2);
+}
+
+function indentBlock(value, prefix = "    ") {
+  return formatJsonBodyForSummary(value)
+    .split("\n")
+    .map((line) => `${prefix}${line}`)
+    .join("\n");
+}
+
 function patchWorkflow(workflow, workflowTarget, config) {
   if (!Array.isArray(workflow.nodes)) {
     throw new Error("Workflow response does not include a nodes array.");
@@ -894,6 +959,7 @@ function patchWorkflow(workflow, workflowTarget, config) {
 
   const retryStyle = getRetryStyle(workflow);
   const updateOrderJsonBodyStatus = patchUpdateOrderJsonBody(updateOrderNode);
+  const registerHistoryJsonBodyPatch = patchRegisterHistoryJsonBody(workflow);
   const nodeChange = createOrUpdateWebhookNode(
     workflow,
     updateOrderNode,
@@ -960,6 +1026,9 @@ function patchWorkflow(workflow, workflowTarget, config) {
     activeOrdersSelectStatus,
     compareFilterCodeStatus,
     updateOrderJsonBodyStatus,
+    registerHistoryJsonBodyStatus: registerHistoryJsonBodyPatch.status,
+    registerHistoryJsonBodyBefore: registerHistoryJsonBodyPatch.beforeJsonBody,
+    registerHistoryJsonBodyAfter: registerHistoryJsonBodyPatch.afterJsonBody,
     walletMappingNodeStatus: walletMappingNodeChange.status,
     walletInsertNodeStatus: walletInsertNodeChange.status,
     walletInsertOnConflictStatus: walletInsertNodeChange.onConflictStatus,
@@ -984,6 +1053,11 @@ function printChangeSummary(workflow, workflowTarget, patchResult, config) {
   console.log(
     `- "${UPDATE_ORDER_NODE_NAME}" JSON body: ${patchResult.updateOrderJsonBodyStatus}`,
   );
+  console.log(
+    `- "${REGISTER_HISTORY_NODE_NAME}" JSON body: ${patchResult.registerHistoryJsonBodyStatus}`,
+  );
+  console.log(`  before:\n${indentBlock(patchResult.registerHistoryJsonBodyBefore)}`);
+  console.log(`  after:\n${indentBlock(patchResult.registerHistoryJsonBodyAfter)}`);
   console.log(`- node "${WEBHOOK_NODE_NAME}": ${patchResult.nodeStatus}`);
   console.log(
     `- connection "${UPDATE_ORDER_NODE_NAME}" -> "${WEBHOOK_NODE_NAME}": ${patchResult.connectionStatus}`,

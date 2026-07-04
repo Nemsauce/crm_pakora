@@ -204,3 +204,9 @@ Pendiente cuando se retome 'notis':
 - El nodo se conecta desde `Dropi Login Final` y corre como rama paralela independiente: no depende de datos live de Dropi, solo usa el polling 5x/día como sustituto de cron mientras Vercel Cron Pro no está activo.
 - Decisión explícita: se agrega solo al workflow `Dropi Polling (CO)` (`9p1gvbDxdYqugkMT`) y NO al de MX. El endpoint escanea todas las órdenes activas sin filtrar por país; ponerlo también en MX duplicaría llamadas cuando ambos pollings corran cerca. La idempotencia del endpoint lo toleraría, pero se evita el ruido operativo.
 - El dry-run del script reporta `added`/`confirmed` para CO y `skipped-co-only` para MX. Pendiente: Alejo debe revisar dry-run y luego correr `--confirm` contra n8n de producción.
+
+### [Fix producción] novedad faltante en status_history Dropi — SCRIPT LISTO, PENDIENTE DE EJECUCIÓN
+- Bug confirmado en los workflows `Dropi Polling (CO)` y `Dropi Polling MX`: `Comparar y filtrar cambios` ya calcula `novedad`, pero el nodo `Registrar historial` no incluía ese campo en el insert a Supabase, así que `status_history.novedad` quedaba vacío aunque Dropi hubiera enviado el dato.
+- Se extendió `scripts/n8n/patch-dropi-polling-webhook.mjs` de forma idempotente para parchear solo el `jsonBody` de `Registrar historial` en ambos workflows: mantiene `order_id`, `estado`, `transportadora`, `registrado_en` y agrega `novedad`.
+- El nuevo body usa `JSON.stringify({ ... })`, igual que el fix previo de `Actualizar orden Supabase`, para evitar JSON inválido cuando los textos de Dropi tengan comillas, saltos de línea o caracteres escapables.
+- Pendiente: Alejo debe revisar el dry-run con el before/after del `jsonBody` para ambos workflows y luego correr `--confirm` contra n8n de producción.

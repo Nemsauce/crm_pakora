@@ -13,6 +13,8 @@ It also turns the existing Dropi polling cycle into the free-tier reconciliation
 
 It patches `Actualizar orden Supabase` to send its JSON body through `JSON.stringify(...)` instead of manual string interpolation. This avoids production failures when real Dropi values contain quotes, backslashes, line breaks, or other characters that would otherwise produce invalid JSON.
 
+It also patches `Registrar historial` to use the same `JSON.stringify(...)` body pattern and to persist `novedad` from `Comparar y filtrar cambios`. The compare node already computes that field, but the history insert previously dropped it before Supabase, so status history rows could not surface the latest novelty detail in the app.
+
 The script also adds a parallel wallet-capture branch from `Dropi Consultar Wallet`:
 
 - `Mapear movimientos wallet completo`: maps every wallet movement in the Dropi wallet response `objects` array that has `order_id`.
@@ -52,6 +54,6 @@ Apply after reviewing the dry-run summary:
 node scripts/n8n/patch-dropi-polling-webhook.mjs --confirm
 ```
 
-This script is manual maintenance, not automatic or scheduled. Re-run it manually if the webhook URL, shared secret, cron secret, reconciliation field, wallet capture mapping, Supabase wallet endpoint, stale-order cron endpoint, or target node names ever change.
+This script is manual maintenance, not automatic or scheduled. Re-run it manually if the webhook URL, shared secret, cron secret, reconciliation field, wallet capture mapping, Supabase wallet endpoint, stale-order cron endpoint, `Registrar historial` history payload, or target node names ever change.
 
-After applying, manually re-test both workflows in n8n with a manual execution. Confirm the new `Notificar backend CRM` node fires correctly, the new wallet branch inserts `wallet_movements` without duplicating rows on repeat runs, and the CO-only `Chequear pedidos estancados` node receives an authorized response from the backend cron endpoint.
+After applying, manually re-test both workflows in n8n with a manual execution. Confirm the new `Notificar backend CRM` node fires correctly, `Registrar historial` inserts `status_history.novedad` when Dropi provides it, the new wallet branch inserts `wallet_movements` without duplicating rows on repeat runs, and the CO-only `Chequear pedidos estancados` node receives an authorized response from the backend cron endpoint.
