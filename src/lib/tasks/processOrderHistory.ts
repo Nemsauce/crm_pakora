@@ -1,21 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Database } from "@/lib/supabase/database.types";
 import {
-  closeOpenTasks,
-  ensureOpenTask,
+  applyCategoryDecision,
   lookupCategory,
   OrderNotFoundError,
-  type DecisionCategory,
   type Order,
-  type ProcessResult,
-  type TaskType,
 } from "@/lib/tasks/processOrderEvent";
 
 const MAX_HISTORY_ENTRIES = 50;
-const OPEN_TASK_STATES = [
-  "pendiente",
-  "en_progreso",
-] satisfies Database["public"]["Enums"]["estado_tarea_enum"][];
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -32,19 +23,6 @@ export type ProcessOrderHistoryResult = {
   tasksClosed: number;
   errors: string[];
 };
-
-type OpenFailedAttemptTask = {
-  id: number;
-  intento_numero: number;
-};
-
-function deadlineInTwoHours() {
-  return new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
-}
-
-function getOrderNumber(order: Order) {
-  return order.numero_orden ?? String(order.id);
-}
 
 function buildNovedadDescription(entry: OrderHistoryEntry) {
   return entry.novedad
@@ -106,168 +84,6 @@ async function insertStatusHistoryEntry(
   }
 }
 
-async function countOpenTasks(supabase: AdminClient, orderId: number) {
-  const { count, error } = await supabase
-    .from("tasks")
-    .select("id", { count: "exact", head: true })
-    .eq("order_id", orderId)
-    .in("estado", OPEN_TASK_STATES);
-
-  if (error) {
-    throw error;
-  }
-
-  return count ?? 0;
-}
-
-async function findOpenFailedAttemptTask(
-  supabase: AdminClient,
-  orderId: number,
-) {
-  const { data, error } = await supabase
-    .from("tasks")
-    .select("id,intento_numero")
-    .eq("order_id", orderId)
-    .eq("tipo", "presionar_entrega")
-    .in("estado", OPEN_TASK_STATES)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  return data as OpenFailedAttemptTask | null;
-}
-
-async function updateFailedAttemptTask(
-  supabase: AdminClient,
-  order: Order,
-): Promise<ProcessResult> {
-  const tipo: TaskType = "presionar_entrega";
-  const descripcion = `Estado Dropi: ${order.estado_dropi ?? "sin estado"}`;
-  const existingTask = await findOpenFailedAttemptTask(supabase, order.id);
-
-  if (!existingTask) {
-    return ensureOpenTask({
-      order,
-      tipo,
-      titulo: "Presionar entrega, intento fallido",
-      descripcion,
-    });
-  }
-
-  const { data, error } = await supabase
-    .from("tasks")
-    .update({
-      intento_numero: existingTask.intento_numero + 1,
-      descripcion,
-      fecha_limite: deadlineInTwoHours(),
-    })
-    .eq("id", existingTask.id)
-    .select("id")
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return {
-    action: "task_updated",
-    taskId: data.id,
-    categoria: "",
-  };
-}
-
-async function processHistoryDecision(
-  supabase: AdminClient,
-  order: Order,
-  categoria: DecisionCategory,
-  entry: OrderHistoryEntry,
-): Promise<{ result: ProcessResult; tasksClosed: number }> {
-  switch (categoria) {
-    case "nuevo":
-      return {
-        result: await ensureOpenTask({
-          order,
-          tipo: "llamar_confirmacion",
-          titulo: `Llamar para confirmar pedido ${getOrderNumber(order)}`,
-        }),
-        tasksClosed: 0,
-      };
-    case "guia_generada":
-      return {
-        result: await ensureOpenTask({
-          order,
-          tipo: "notificar_guia",
-          titulo: "Notificar guía de seguimiento al cliente",
-        }),
-        tasksClosed: 0,
-      };
-    case "en_reparto":
-      return {
-        result: await ensureOpenTask({
-          order,
-          tipo: "presionar_entrega",
-          titulo: "Confirmar que el cliente esté pendiente de recibir",
-        }),
-        tasksClosed: 0,
-      };
-    case "recoger_oficina":
-      return {
-        result: await ensureOpenTask({
-          order,
-          tipo: "presionar_entrega",
-          titulo: "Avisar al cliente que debe recoger el paquete en oficina",
-        }),
-        tasksClosed: 0,
-      };
-    case "intento_fallido":
-      return {
-        result: await updateFailedAttemptTask(supabase, order),
-        tasksClosed: 0,
-      };
-    case "novedad":
-      return {
-        result: await ensureOpenTask({
-          order,
-          tipo: "resolver_novedad",
-          titulo: "Revisar y gestionar novedad",
-          descripcion: buildNovedadDescription(entry),
-        }),
-        tasksClosed: 0,
-      };
-    case "proximo_a_llegar":
-      return {
-        result: await ensureOpenTask({
-          order,
-          tipo: "notificar_proximo_llegar",
-          titulo: "Avisar al cliente que el paquete está próximo a llegar",
-        }),
-        tasksClosed: 0,
-      };
-    case "entregado":
-    case "cancelado":
-    case "devolucion": {
-      const openTasks = await countOpenTasks(supabase, order.id);
-      const result = await closeOpenTasks(order);
-
-      return {
-        result,
-        tasksClosed: openTasks,
-      };
-    }
-    case "confirmado":
-    case "en_ruta":
-    case "sin_clasificar":
-      return {
-        result: { action: "noop", categoria },
-        tasksClosed: 0,
-      };
-  }
-}
-
 async function updateOrderCurrentState(
   supabase: AdminClient,
   orderId: number,
@@ -321,12 +137,10 @@ export async function processOrderHistory(
 
       const orderForEntry = getOrderForEntry(order, entry);
       const categoria = await lookupCategory(orderForEntry);
-      const decision = await processHistoryDecision(
-        supabase,
-        orderForEntry,
-        categoria,
-        entry,
-      );
+      const decision = await applyCategoryDecision(orderForEntry, categoria, {
+        buildNovedadDescription: () => buildNovedadDescription(entry),
+        sendNotifications: false,
+      });
 
       if (decision.result.action === "task_created") {
         tasksCreated += 1;

@@ -35,6 +35,16 @@ export type EnsureTaskOptions = {
   descripcion?: string | null;
 };
 
+export type ApplyCategoryDecisionOptions = {
+  buildNovedadDescription?: (order: Order) => Promise<string> | string;
+  sendNotifications?: boolean;
+};
+
+export type CategoryDecisionOutcome = {
+  result: ProcessResult;
+  tasksClosed: number;
+};
+
 const OPEN_TASK_STATES = ["pendiente", "en_progreso"] satisfies TaskState[];
 
 export class OrderNotFoundError extends Error {
@@ -271,7 +281,10 @@ type CloseTasksOptions = {
   closeMessage: string;
 };
 
-async function closeTasks(order: Order, options: CloseTasksOptions) {
+async function closeTasks(
+  order: Order,
+  options: CloseTasksOptions,
+): Promise<CategoryDecisionOutcome> {
   const supabase = createAdminClient();
   let query = supabase
     .from("tasks")
@@ -311,17 +324,22 @@ async function closeTasks(order: Order, options: CloseTasksOptions) {
   );
 
   return {
-    action: openTasks.length > 0 ? "tasks_closed" : "no_open_tasks_to_close",
-    taskId: openTasks[0]?.id,
-    categoria: "",
+    result: {
+      action: openTasks.length > 0 ? "tasks_closed" : "no_open_tasks_to_close",
+      taskId: openTasks[0]?.id,
+      categoria: "",
+    },
+    tasksClosed: openTasks.length,
   };
 }
 
 export async function closeOpenTasks(order: Order) {
-  return closeTasks(order, {
+  const outcome = await closeTasks(order, {
     completadoPor: "sistema (cambio de estado automático)",
     closeMessage: automaticCloseMessage(order.estado_dropi),
   });
+
+  return outcome.result;
 }
 
 async function closeTasksOfType(order: Order, tipo: TaskType) {
@@ -395,142 +413,191 @@ async function notifyActiveProfiles({
   }
 }
 
-async function executeDecision(
+async function notifyNovedad(order: Order, taskId: number | null) {
+  const notificationRecipients = await notifyActiveProfiles({
+    tipo: "novedad",
+    titulo: `Novedad en pedido ${getOrderNumber(order)}`,
+    mensaje: `Estado Dropi: ${order.estado_dropi ?? "sin estado"}`,
+    orderId: order.id,
+    taskId,
+  });
+
+  for (const profile of notificationRecipients) {
+    if (!profile.telegram_chat_id) {
+      continue;
+    }
+
+    try {
+      await sendTelegramMessage(
+        profile.telegram_chat_id,
+        `🔴 Novedad en pedido ${getOrderNumber(order)}: ${order.estado_dropi ?? "sin estado"}`,
+      );
+    } catch (error) {
+      console.error("Failed to send Telegram novedad notification", error);
+    }
+  }
+}
+
+async function notifyDeliveredOrder(order: Order) {
+  const notificationRecipients = await notifyActiveProfiles({
+    tipo: "pedido_entregado",
+    titulo: `Pedido ${getOrderNumber(order)} entregado`,
+    mensaje: `Cliente: ${getCustomerName(order)}`,
+    orderId: order.id,
+    taskId: null,
+  });
+
+  for (const profile of notificationRecipients) {
+    if (!profile.telegram_chat_id) {
+      continue;
+    }
+
+    try {
+      await sendTelegramMessage(
+        profile.telegram_chat_id,
+        `✅ Pedido ${getOrderNumber(order)} entregado a ${getCustomerName(order)}`,
+      );
+    } catch (error) {
+      console.error("Failed to send Telegram delivery notification", error);
+    }
+  }
+}
+
+async function notifyReturnedOrder(order: Order) {
+  const productName = order.nombre_producto?.trim() || "Producto sin nombre";
+  const notificationRecipients = await notifyActiveProfiles({
+    tipo: "pedido_devolucion" as NotificacionTipo,
+    titulo: `Devolución: pedido ${getOrderNumber(order)}`,
+    mensaje: `Cliente: ${getCustomerName(order)} | Producto: ${productName}`,
+    orderId: order.id,
+    taskId: null,
+  });
+
+  for (const profile of notificationRecipients) {
+    if (!profile.telegram_chat_id) {
+      continue;
+    }
+
+    try {
+      await sendTelegramMessage(
+        profile.telegram_chat_id,
+        `🔵 Devolución en pedido ${getOrderNumber(order)}: ${getCustomerName(order)}`,
+      );
+    } catch (error) {
+      console.error("Failed to send Telegram return notification", error);
+    }
+  }
+}
+
+function taskOutcome(result: ProcessResult): CategoryDecisionOutcome {
+  return {
+    result,
+    tasksClosed: 0,
+  };
+}
+
+export async function applyCategoryDecision(
   order: Order,
   categoria: DecisionCategory,
-): Promise<ProcessResult> {
+  options: ApplyCategoryDecisionOptions = {},
+): Promise<CategoryDecisionOutcome> {
+  const sendNotifications = options.sendNotifications ?? true;
+  const getNovedadDescription =
+    options.buildNovedadDescription ?? buildNovedadDescription;
+
   switch (categoria) {
     case "nuevo":
-      return ensureOpenTask({
-        order,
-        tipo: "llamar_confirmacion",
-        titulo: `Llamar para confirmar pedido ${getOrderNumber(order)}`,
-      });
+      return taskOutcome(
+        await ensureOpenTask({
+          order,
+          tipo: "llamar_confirmacion",
+          titulo: `Llamar para confirmar pedido ${getOrderNumber(order)}`,
+        }),
+      );
     case "guia_generada":
-      return ensureOpenTask({
-        order,
-        tipo: "notificar_guia",
-        titulo: "Notificar guía de seguimiento al cliente",
-      });
+      return taskOutcome(
+        await ensureOpenTask({
+          order,
+          tipo: "notificar_guia",
+          titulo: "Notificar guía de seguimiento al cliente",
+        }),
+      );
     case "en_reparto":
-      return ensureOpenTask({
-        order,
-        tipo: "presionar_entrega",
-        titulo: "Confirmar que el cliente esté pendiente de recibir",
-      });
+      return taskOutcome(
+        await ensureOpenTask({
+          order,
+          tipo: "presionar_entrega",
+          titulo: "Confirmar que el cliente esté pendiente de recibir",
+        }),
+      );
     case "recoger_oficina":
-      return ensureOpenTask({
-        order,
-        tipo: "presionar_entrega",
-        titulo: "Avisar al cliente que debe recoger el paquete en oficina",
-      });
+      return taskOutcome(
+        await ensureOpenTask({
+          order,
+          tipo: "presionar_entrega",
+          titulo: "Avisar al cliente que debe recoger el paquete en oficina",
+        }),
+      );
     case "intento_fallido":
-      return updateFailedAttemptTask(order);
+      return taskOutcome(await updateFailedAttemptTask(order));
     case "novedad": {
       const result = await ensureOpenTask({
         order,
         tipo: "resolver_novedad",
         titulo: "Revisar y gestionar novedad",
-        descripcion: await buildNovedadDescription(order),
+        descripcion: await getNovedadDescription(order),
       });
 
-      const notificationRecipients = await notifyActiveProfiles({
-        tipo: "novedad",
-        titulo: `Novedad en pedido ${getOrderNumber(order)}`,
-        mensaje: `Estado Dropi: ${order.estado_dropi ?? "sin estado"}`,
-        orderId: order.id,
-        taskId: result.taskId ?? null,
-      });
-
-      for (const profile of notificationRecipients) {
-        if (!profile.telegram_chat_id) {
-          continue;
-        }
-
-        try {
-          await sendTelegramMessage(
-            profile.telegram_chat_id,
-            `🔴 Novedad en pedido ${getOrderNumber(order)}: ${order.estado_dropi ?? "sin estado"}`,
-          );
-        } catch (error) {
-          console.error("Failed to send Telegram novedad notification", error);
-        }
+      if (sendNotifications) {
+        await notifyNovedad(order, result.taskId ?? null);
       }
 
-      return result;
+      return taskOutcome(result);
     }
     case "proximo_a_llegar":
-      return ensureOpenTask({
-        order,
-        tipo: "notificar_proximo_llegar",
-        titulo: "Avisar al cliente que el paquete está próximo a llegar",
-      });
+      return taskOutcome(
+        await ensureOpenTask({
+          order,
+          tipo: "notificar_proximo_llegar",
+          titulo: "Avisar al cliente que el paquete está próximo a llegar",
+        }),
+      );
     case "entregado": {
-      const result = await closeOpenTasks(order);
-
-      const notificationRecipients = await notifyActiveProfiles({
-        tipo: "pedido_entregado",
-        titulo: `Pedido ${getOrderNumber(order)} entregado`,
-        mensaje: `Cliente: ${getCustomerName(order)}`,
-        orderId: order.id,
-        taskId: null,
+      const outcome = await closeTasks(order, {
+        completadoPor: "sistema (cambio de estado automático)",
+        closeMessage: automaticCloseMessage(order.estado_dropi),
       });
 
-      for (const profile of notificationRecipients) {
-        if (!profile.telegram_chat_id) {
-          continue;
-        }
-
-        try {
-          await sendTelegramMessage(
-            profile.telegram_chat_id,
-            `✅ Pedido ${getOrderNumber(order)} entregado a ${getCustomerName(order)}`,
-          );
-        } catch (error) {
-          console.error("Failed to send Telegram delivery notification", error);
-        }
+      if (sendNotifications) {
+        await notifyDeliveredOrder(order);
       }
 
-      return result;
+      return outcome;
     }
     case "confirmado":
       return closeTasksOfType(order, "llamar_confirmacion");
     case "cancelado":
-      return closeOpenTasks(order);
+      return closeTasks(order, {
+        completadoPor: "sistema (cambio de estado automático)",
+        closeMessage: automaticCloseMessage(order.estado_dropi),
+      });
     case "devolucion": {
-      const result = await closeOpenTasks(order);
-      const productName = order.nombre_producto?.trim() || "Producto sin nombre";
-
-      const notificationRecipients = await notifyActiveProfiles({
-        tipo: "pedido_devolucion" as NotificacionTipo,
-        titulo: `Devolución: pedido ${getOrderNumber(order)}`,
-        mensaje: `Cliente: ${getCustomerName(order)} | Producto: ${productName}`,
-        orderId: order.id,
-        taskId: null,
+      const outcome = await closeTasks(order, {
+        completadoPor: "sistema (cambio de estado automático)",
+        closeMessage: automaticCloseMessage(order.estado_dropi),
       });
 
-      for (const profile of notificationRecipients) {
-        if (!profile.telegram_chat_id) {
-          continue;
-        }
-
-        try {
-          await sendTelegramMessage(
-            profile.telegram_chat_id,
-            `🔵 Devolución en pedido ${getOrderNumber(order)}: ${getCustomerName(order)}`,
-          );
-        } catch (error) {
-          console.error("Failed to send Telegram return notification", error);
-        }
+      if (sendNotifications) {
+        await notifyReturnedOrder(order);
       }
 
-      return result;
+      return outcome;
     }
     case "en_ruta":
     case "sin_clasificar":
-      return { action: "noop", categoria };
+      return taskOutcome({ action: "noop", categoria });
     default:
-      return { action: "noop", categoria: "sin_clasificar" };
+      return taskOutcome({ action: "noop", categoria: "sin_clasificar" });
   }
 }
 
@@ -547,7 +614,7 @@ export async function processOrderEvent(
     };
   }
 
-  const result = await executeDecision(order, categoria);
+  const { result } = await applyCategoryDecision(order, categoria);
   await updateProcessedState(order.id, order.estado_dropi);
 
   return {
