@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Check,
   ChevronDown,
+  Copy,
   MessageCircle,
   PackageCheck,
   Phone,
@@ -210,6 +211,46 @@ function getWhatsappNumber(order: Pick<Order, "telefono" | "pais">) {
 function buildDetailHref(pathname: string, params: URLSearchParams) {
   const query = params.toString();
   return query ? `${pathname}?${query}` : pathname;
+}
+
+function DropiIdCopyButton({
+  idOrdenDropi,
+}: {
+  idOrdenDropi: number | string | null | undefined;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  if (idOrdenDropi === null || idOrdenDropi === undefined) {
+    return null;
+  }
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(String(idOrdenDropi));
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-bg-page px-2.5 font-mono text-xs font-semibold tabular-nums text-[var(--foreground)] outline-none transition-colors hover:bg-bg-surface focus-visible:ring-2 focus-visible:ring-ring"
+      aria-label={`Copiar ID Dropi ${idOrdenDropi}`}
+    >
+      <span>ID Dropi {idOrdenDropi}</span>
+      {copied ? (
+        <>
+          <Check className="h-3.5 w-3.5 text-risk-low" aria-hidden="true" />
+          <span className="font-body text-risk-low">Copiado</span>
+        </>
+      ) : (
+        <Copy
+          className="h-3.5 w-3.5 text-[var(--muted-foreground)]"
+          aria-hidden="true"
+        />
+      )}
+    </button>
+  );
 }
 
 function AssigneeSelect({
@@ -684,12 +725,15 @@ function SelectedTaskSection({
             <h2 className="mt-3 font-display text-xl font-semibold text-[var(--foreground)]">
               {task.titulo}
             </h2>
-            <p className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
-              {getCustomerName(order)} ·{" "}
-              <span className="font-mono tabular-nums">
-                {getOrderIdentifier(order)}
+            <div className="mt-1 flex flex-wrap items-center gap-2 font-body text-sm text-[var(--muted-foreground)]">
+              <span>
+                {getCustomerName(order)} ·{" "}
+                <span className="font-mono tabular-nums">
+                  {getOrderIdentifier(order)}
+                </span>
               </span>
-            </p>
+              <DropiIdCopyButton idOrdenDropi={order.id_orden_dropi} />
+            </div>
             <div
               className={`mt-3 inline-flex rounded-full px-3 py-1 font-mono text-xs font-semibold tabular-nums ${
                 deadline.isOverdue
