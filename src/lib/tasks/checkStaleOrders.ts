@@ -32,6 +32,17 @@ type StaleTaskConfig = {
   titulo: string;
 };
 
+type ClassifiedStaleOrder = {
+  order: OrderWithLatestStatusHistory;
+  taskConfig: StaleTaskConfig;
+};
+
+type RecentlyCompletedTask = {
+  order_id: number;
+  tipo: TaskType;
+  completado_en: string;
+};
+
 function getOrderNumber(order: Order) {
   return order.numero_orden ?? String(order.id);
 }
@@ -145,8 +156,14 @@ function isOlderThanCutoff(value: string | null, cutoffTime: number) {
   return Number.isFinite(registeredAtTime) && registeredAtTime < cutoffTime;
 }
 
-async function loadStaleOrderCandidates(supabase: AdminClient) {
-  const cutoffTime = Date.now() - STALE_AFTER_MS;
+function getCompletionKey(orderId: number, tipo: TaskType) {
+  return `${orderId}:${tipo}`;
+}
+
+async function loadStaleOrderCandidates(
+  supabase: AdminClient,
+  cutoffTime: number,
+) {
   const { data, error } = await supabase
     .from("orders")
     .select("*, status_history!inner(registrado_en)")
@@ -170,10 +187,65 @@ async function loadStaleOrderCandidates(supabase: AdminClient) {
     .slice(0, MAX_ORDERS_PER_RUN);
 }
 
+async function loadRecentCompletionMap(
+  supabase: AdminClient,
+  classifiedOrders: ClassifiedStaleOrder[],
+  cutoffTime: number,
+) {
+  if (classifiedOrders.length === 0) {
+    return new Map<string, string>();
+  }
+
+  const orderIds = [...new Set(classifiedOrders.map(({ order }) => order.id))];
+  const taskTypes = [
+    ...new Set(classifiedOrders.map(({ taskConfig }) => taskConfig.tipo)),
+  ];
+  const relevantPairs = new Set(
+    classifiedOrders.map(({ order, taskConfig }) =>
+      getCompletionKey(order.id, taskConfig.tipo),
+    ),
+  );
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("order_id,tipo,completado_en")
+    .in("order_id", orderIds)
+    .in("tipo", taskTypes)
+    .eq("estado", "completada")
+    .not("completado_en", "is", null)
+    .gt("completado_en", new Date(cutoffTime).toISOString())
+    .order("completado_en", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  const completions = new Map<string, string>();
+
+  for (const task of (data ?? []) as RecentlyCompletedTask[]) {
+    const key = getCompletionKey(task.order_id, task.tipo);
+
+    if (relevantPairs.has(key) && !completions.has(key)) {
+      completions.set(key, task.completado_en);
+    }
+  }
+
+  return completions;
+}
+
+function wasSameTaskTypeCompletedRecently(
+  completionMap: Map<string, string>,
+  orderId: number,
+  tipo: TaskType,
+) {
+  return completionMap.has(getCompletionKey(orderId, tipo));
+}
+
 export async function checkStaleOrders(): Promise<CheckStaleOrdersResult> {
   const supabase = createAdminClient();
-  const orders = await loadStaleOrderCandidates(supabase);
+  const cutoffTime = Date.now() - STALE_AFTER_MS;
+  const orders = await loadStaleOrderCandidates(supabase, cutoffTime);
   const errors: CheckStaleOrdersResult["errors"] = [];
+  const classifiedOrders: ClassifiedStaleOrder[] = [];
   let processed = 0;
   let tasksCreated = 0;
 
@@ -183,6 +255,45 @@ export async function checkStaleOrders(): Promise<CheckStaleOrdersResult> {
       const taskConfig = getStaleTaskConfig(order, categoria);
 
       if (!taskConfig) {
+        processed += 1;
+        continue;
+      }
+
+      classifiedOrders.push({
+        order,
+        taskConfig,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown stale-order error";
+
+      console.error("Failed to classify stale order", {
+        order_id: order.id,
+        error: errorMessage,
+      });
+
+      errors.push({
+        order_id: order.id,
+        error: errorMessage,
+      });
+    }
+  }
+
+  const recentCompletions = await loadRecentCompletionMap(
+    supabase,
+    classifiedOrders,
+    cutoffTime,
+  );
+
+  for (const { order, taskConfig } of classifiedOrders) {
+    try {
+      if (
+        wasSameTaskTypeCompletedRecently(
+          recentCompletions,
+          order.id,
+          taskConfig.tipo,
+        )
+      ) {
         processed += 1;
         continue;
       }
