@@ -7,7 +7,7 @@ type Task = Tables<"tasks">;
 export type TaskType = Database["public"]["Enums"]["tipo_tarea_enum"];
 type TaskState = Database["public"]["Enums"]["estado_tarea_enum"];
 
-type DecisionCategory =
+export type DecisionCategory =
   | "nuevo"
   | "confirmado"
   | "guia_generada"
@@ -104,7 +104,7 @@ async function loadOrder(orderId: number) {
   return data;
 }
 
-async function lookupCategory(order: Order): Promise<DecisionCategory> {
+export async function lookupCategory(order: Order): Promise<DecisionCategory> {
   if (!order.estado_dropi) {
     return "sin_clasificar";
   }
@@ -265,7 +265,7 @@ async function buildNovedadDescription(order: Order) {
     : `Estado Dropi: ${order.estado_dropi ?? "sin estado"}`;
 }
 
-async function closeOpenTasks(order: Order) {
+export async function closeOpenTasks(order: Order) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("tasks")
