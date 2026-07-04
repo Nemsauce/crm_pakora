@@ -265,20 +265,31 @@ async function buildNovedadDescription(order: Order) {
     : `Estado Dropi: ${order.estado_dropi ?? "sin estado"}`;
 }
 
-export async function closeOpenTasks(order: Order) {
+type CloseTasksOptions = {
+  tipo?: TaskType;
+  completadoPor: string;
+  closeMessage: string;
+};
+
+async function closeTasks(order: Order, options: CloseTasksOptions) {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("tasks")
     .select("*")
     .eq("order_id", order.id)
     .in("estado", OPEN_TASK_STATES);
+
+  if (options.tipo) {
+    query = query.eq("tipo", options.tipo);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw error;
   }
 
   const openTasks = data ?? [];
-  const closeMessage = automaticCloseMessage(order.estado_dropi);
 
   await Promise.all(
     openTasks.map((task: Task) =>
@@ -287,8 +298,8 @@ export async function closeOpenTasks(order: Order) {
         .update({
           estado: "completada",
           completado_en: new Date().toISOString(),
-          completado_por: "sistema (cambio de estado automático)",
-          descripcion: appendCloseMessage(task.descripcion, closeMessage),
+          completado_por: options.completadoPor,
+          descripcion: appendCloseMessage(task.descripcion, options.closeMessage),
         })
         .eq("id", task.id)
         .then(({ error: updateError }) => {
@@ -304,6 +315,22 @@ export async function closeOpenTasks(order: Order) {
     taskId: openTasks[0]?.id,
     categoria: "",
   };
+}
+
+export async function closeOpenTasks(order: Order) {
+  return closeTasks(order, {
+    completadoPor: "sistema (cambio de estado automático)",
+    closeMessage: automaticCloseMessage(order.estado_dropi),
+  });
+}
+
+async function closeTasksOfType(order: Order, tipo: TaskType) {
+  return closeTasks(order, {
+    tipo,
+    completadoPor: "sistema (pedido confirmado, avanzó de estado)",
+    closeMessage:
+      "Cerrada automáticamente porque el pedido fue confirmado y avanzó de estado.",
+  });
 }
 
 type NotificacionTipo = Database["public"]["Enums"]["notificacion_tipo_enum"];
@@ -466,6 +493,8 @@ async function executeDecision(
 
       return result;
     }
+    case "confirmado":
+      return closeTasksOfType(order, "llamar_confirmacion");
     case "cancelado":
       return closeOpenTasks(order);
     case "devolucion": {
@@ -497,7 +526,6 @@ async function executeDecision(
 
       return result;
     }
-    case "confirmado":
     case "en_ruta":
     case "sin_clasificar":
       return { action: "noop", categoria };
