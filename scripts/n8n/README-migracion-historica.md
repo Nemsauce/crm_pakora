@@ -11,6 +11,22 @@ This is a one-time maintenance script for the final historical load. It is not s
 
 The script updates `Dropi Consultar Historico` in both migration workflows so historical orders are fetched from `2026-03-01` through today's date, using n8n HTTP Request native pagination instead of only the first result page.
 
+### Windowing and the dynamic last window
+
+Dropi's API caps each historical query at 85 days, so the full `2026-03-01` -> today range is split into multiple `Ventana N` window nodes, each spanning at most `MAX_WINDOW_SPAN_DAYS` (85) days, chained in sequence.
+
+Every window's `from`/`until` used to be static dates computed once, at the moment the patch script was run, then baked as literal query-param values into the n8n workflow. That is fine for every window except the *last* one: its `until` is meant to represent "today," but once frozen into the workflow it stays stuck on whatever day the script happened to run. If the actual migration execution in n8n happens on a later day than the patch, or the workflow is simply re-run again days later without re-patching first, that last window silently stops short of the current date and misses everything in between — this is exactly what happened when a run's last window ended at `2026-07-02` instead of picking up `2026-07-03`'s orders: not a date-math bug, just the expected behavior of a static value baked in at patch time.
+
+The fix: only the **last** computed window's `until` is now a live n8n expression, evaluated at actual workflow-execution time instead of patch-script-run time:
+
+```
+{{ $now.setZone('America/Bogota').toFormat('yyyy-MM-dd') }}
+```
+
+Explicitly pinned to `America/Bogota` (matching the script's own `getTodayDateString()` used to compute window boundaries), independent of whatever timezone the n8n instance or workflow happens to be configured with. Every earlier window keeps its static `until` date, since those windows' end dates are fixed points in the past and never need to move. This means the migration workflows can be re-run on any future day and the last window will always pick up everything through that day, without needing to re-run this patch script first.
+
+In the dry-run/`--confirm` output, the computed-windows summary marks the last window's `until` as "static reference only" and shows the dynamic expression that actually gets embedded in the node URL; the per-node URL printed below it shows the real, patched value.
+
 It also adds a new wallet historical branch that did not exist in these migration workflows:
 
 ```text

@@ -21,6 +21,14 @@ const HISTORY_FROM_DATE = "2026-03-01";
 const ORDERS_PAGE_SIZE = 50;
 const WALLET_PAGE_SIZE = 200;
 const MAX_WINDOW_SPAN_DAYS = 85;
+// Only the LAST computed window uses this dynamic n8n expression for "until",
+// evaluated at actual workflow-execution time (not frozen at patch-script-run
+// time). Earlier/historical windows keep static "until" dates since those are
+// fixed points in the past. Explicitly pinned to America/Bogota to match
+// getTodayDateString() below, independent of the n8n instance/workflow
+// timezone setting.
+const LAST_WINDOW_UNTIL_EXPRESSION =
+  "{{ $now.setZone('America/Bogota').toFormat('yyyy-MM-dd') }}";
 const DROPI_HISTORICAL_ORDERS_NODE_NAME = "Dropi Consultar Historico";
 const DROPI_WALLET_TEMPLATE_NODE_NAME = "Dropi Consultar Wallet";
 const DROPI_WALLET_HISTORICAL_NODE_NAME = "Dropi Consultar Wallet Historico";
@@ -204,7 +212,21 @@ function computeDateWindows(fromDateString, toDateString = getTodayDateString())
     currentDate = addDays(untilDate, 1);
   }
 
-  return windows;
+  return windows.map((window, arrayIndex) => {
+    const isLastWindow = arrayIndex === windows.length - 1;
+
+    return {
+      ...window,
+      // "until" stays the static computed date for display/window-math
+      // purposes. "untilForUrl" is what actually gets embedded in the n8n
+      // node URL: for every window except the last, that's the same static
+      // date (its end date is a fixed point in the past). For the last
+      // window, it's a live n8n expression so re-running the migration on a
+      // future day picks up everything up to that day, without re-patching.
+      untilIsDynamic: isLastWindow,
+      untilForUrl: isLastWindow ? LAST_WINDOW_UNTIL_EXPRESSION : window.until,
+    };
+  });
 }
 
 function getHttpRequestUrl(node) {
@@ -432,7 +454,7 @@ function buildDropiWindowParameters(baseNode, pageSize, window) {
     getHttpRequestUrl(baseNode),
     pageSize,
     window.from,
-    window.until,
+    window.untilForUrl,
   );
   parameters.options ??= {};
   parameters.options.pagination = {
@@ -1337,8 +1359,11 @@ function printChangeSummary(workflow, workflowTarget, patchResult) {
     `- computed windows (${patchResult.windows.length}, max ${patchResult.maxWindowSpanDays} days apart):`,
   );
   for (const window of patchResult.windows) {
+    const untilLabel = window.untilIsDynamic
+      ? `${window.until} (static reference only — actual "until" is DYNAMIC: ${window.untilForUrl})`
+      : window.until;
     console.log(
-      `  - Window ${window.index}: ${window.from} to ${window.until} (${window.spanDays} days apart)`,
+      `  - Window ${window.index}: ${window.from} to ${untilLabel} (${window.spanDays} days apart)`,
     );
   }
   console.log("- orders historical window nodes:");
