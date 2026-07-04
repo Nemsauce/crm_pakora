@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { sendTelegramMessage } from "@/lib/notifications/sendTelegram";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -86,6 +87,31 @@ async function notifyAssignee({
 
     if (insertError) {
       throw insertError;
+    }
+
+    try {
+      const { data: assigneeProfile, error: profileError } = await supabase
+        .from("profiles")
+        .select("telegram_chat_id")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      const profile = assigneeProfile as unknown as {
+        telegram_chat_id: string | null;
+      } | null;
+
+      if (profile?.telegram_chat_id) {
+        await sendTelegramMessage(
+          profile.telegram_chat_id,
+          `📋 Se te asignó: ${titulo}`,
+        );
+      }
+    } catch (telegramError) {
+      console.error("Failed to send Telegram assignment notification", telegramError);
     }
   } catch (error) {
     console.error("Failed to insert assignment notification", error);

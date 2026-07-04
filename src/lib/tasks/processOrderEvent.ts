@@ -1,3 +1,4 @@
+import { sendTelegramMessage } from "@/lib/notifications/sendTelegram";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 
@@ -306,6 +307,10 @@ async function closeOpenTasks(order: Order) {
 }
 
 type NotificacionTipo = Database["public"]["Enums"]["notificacion_tipo_enum"];
+type NotificationRecipient = {
+  id: string;
+  telegram_chat_id: string | null;
+};
 
 type NotifyActiveProfilesInput = {
   tipo: NotificacionTipo;
@@ -321,22 +326,22 @@ async function notifyActiveProfiles({
   mensaje,
   orderId,
   taskId,
-}: NotifyActiveProfilesInput) {
+}: NotifyActiveProfilesInput): Promise<NotificationRecipient[]> {
   try {
     const supabase = createAdminClient();
     const { data: activeProfiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id,telegram_chat_id")
       .eq("activo", true);
 
     if (profilesError) {
       throw profilesError;
     }
 
-    const recipients = activeProfiles ?? [];
+    const recipients = (activeProfiles ?? []) as unknown as NotificationRecipient[];
 
     if (recipients.length === 0) {
-      return;
+      return [];
     }
 
     const rows = recipients.map((profile) => ({
@@ -355,8 +360,11 @@ async function notifyActiveProfiles({
     if (insertError) {
       throw insertError;
     }
+
+    return recipients;
   } catch (error) {
     console.error("Failed to insert notifications", error);
+    return [];
   }
 }
 
@@ -399,13 +407,28 @@ async function executeDecision(
         descripcion: await buildNovedadDescription(order),
       });
 
-      await notifyActiveProfiles({
+      const notificationRecipients = await notifyActiveProfiles({
         tipo: "novedad",
         titulo: `Novedad en pedido ${getOrderNumber(order)}`,
         mensaje: `Estado Dropi: ${order.estado_dropi ?? "sin estado"}`,
         orderId: order.id,
         taskId: result.taskId ?? null,
       });
+
+      for (const profile of notificationRecipients) {
+        if (!profile.telegram_chat_id) {
+          continue;
+        }
+
+        try {
+          await sendTelegramMessage(
+            profile.telegram_chat_id,
+            `🔴 Novedad en pedido ${getOrderNumber(order)}: ${order.estado_dropi ?? "sin estado"}`,
+          );
+        } catch (error) {
+          console.error("Failed to send Telegram novedad notification", error);
+        }
+      }
 
       return result;
     }
@@ -418,13 +441,28 @@ async function executeDecision(
     case "entregado": {
       const result = await closeOpenTasks(order);
 
-      await notifyActiveProfiles({
+      const notificationRecipients = await notifyActiveProfiles({
         tipo: "pedido_entregado",
         titulo: `Pedido ${getOrderNumber(order)} entregado`,
         mensaje: `Cliente: ${getCustomerName(order)}`,
         orderId: order.id,
         taskId: null,
       });
+
+      for (const profile of notificationRecipients) {
+        if (!profile.telegram_chat_id) {
+          continue;
+        }
+
+        try {
+          await sendTelegramMessage(
+            profile.telegram_chat_id,
+            `✅ Pedido ${getOrderNumber(order)} entregado a ${getCustomerName(order)}`,
+          );
+        } catch (error) {
+          console.error("Failed to send Telegram delivery notification", error);
+        }
+      }
 
       return result;
     }
