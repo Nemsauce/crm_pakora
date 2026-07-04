@@ -467,8 +467,36 @@ async function executeDecision(
       return result;
     }
     case "cancelado":
-    case "devolucion":
       return closeOpenTasks(order);
+    case "devolucion": {
+      const result = await closeOpenTasks(order);
+      const productName = order.nombre_producto?.trim() || "Producto sin nombre";
+
+      const notificationRecipients = await notifyActiveProfiles({
+        tipo: "pedido_devolucion" as NotificacionTipo,
+        titulo: `Devolución: pedido ${getOrderNumber(order)}`,
+        mensaje: `Cliente: ${getCustomerName(order)} | Producto: ${productName}`,
+        orderId: order.id,
+        taskId: null,
+      });
+
+      for (const profile of notificationRecipients) {
+        if (!profile.telegram_chat_id) {
+          continue;
+        }
+
+        try {
+          await sendTelegramMessage(
+            profile.telegram_chat_id,
+            `🔵 Devolución en pedido ${getOrderNumber(order)}: ${getCustomerName(order)}`,
+          );
+        } catch (error) {
+          console.error("Failed to send Telegram return notification", error);
+        }
+      }
+
+      return result;
+    }
     case "confirmado":
     case "en_ruta":
     case "sin_clasificar":
