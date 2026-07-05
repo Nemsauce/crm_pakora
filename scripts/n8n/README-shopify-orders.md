@@ -59,3 +59,18 @@ node scripts/n8n/patch-shopify-orders-pais.mjs --confirm
 ```
 
 After applying, manually trigger (or wait for) a real Shopify order in both CO and MX and confirm the resulting row lands in `orders` with the correct `pais` value.
+
+## New order notifications
+
+The same script also wires new-order notifications (in-app + Telegram) for both workflows, additively:
+
+- **`Insertar orden Supabase1` Prefer header**: the script checks the node's current `Prefer` header. If it already includes `return=representation`, nothing changes (`confirmed`). Otherwise the script rewrites only the `return=` directive to `return=representation` — any other Prefer directive already present (e.g. `resolution=merge-duplicates`) is preserved — or appends `Prefer: return=representation` if the header was missing entirely. This is required so the node's response includes the newly inserted row's `id`, which the new notification node needs.
+- **`Notificar pedido nuevo` node**: a new HTTP Request node (POST) is added, calling `https://crm.pakora.online/api/webhooks/orders/new-order` with header `x-webhook-secret` (from `WEBHOOK_SHARED_SECRET`) and JSON body `{ "order_id": <id from "Insertar orden Supabase1" response> }`, following the same header/body conventions already used for `Notificar backend CRM` in `patch-dropi-polling-webhook.mjs`.
+- **Connection**: `Insertar orden Supabase1` → `Notificar pedido nuevo` is added in parallel with the existing `Insertar orden Supabase1` → `Crear tarea confirmacion` connection. Neither that connection nor the `Crear tarea confirmacion` / `Insertar comentario` nodes are touched.
+
+The script is idempotent for this addition too: if `Notificar pedido nuevo` already exists with the expected parameters and the connection is already present, both report `confirmed`.
+
+### Additional required env var
+
+- `WEBHOOK_SHARED_SECRET`: same shared secret already used by the backend webhook routes (`x-webhook-secret` header), used here for the new `Notificar pedido nuevo` node.
+- `NEW_ORDER_WEBHOOK_URL` (optional): overrides the default `https://crm.pakora.online/api/webhooks/orders/new-order` target.

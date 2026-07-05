@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { randomUUID } from "node:crypto";
+
 const WORKFLOWS = [
   { id: "R6yGZIKxVCWfJaq9", name: "Shopify Orders (CO)", pais: "CO" },
   { id: "oYYHzqRXCjNfPGks", name: "Shopify Orders MX", pais: "MX" },
@@ -7,6 +9,12 @@ const WORKFLOWS = [
 
 const INSERT_ORDER_NODE_NAME = "Insertar orden Supabase1";
 const MAP_ORDER_NODE_NAME = "Mapear orden Shopify";
+const NOTIFY_NEW_ORDER_NODE_NAME = "Notificar pedido nuevo";
+const DEFAULT_NEW_ORDER_WEBHOOK_URL =
+  "https://crm.pakora.online/api/webhooks/orders/new-order";
+const NOTIFY_NEW_ORDER_JSON_BODY = `={
+  "order_id": {{ $('${INSERT_ORDER_NODE_NAME}').item.json.id }}
+}`;
 const ACTIVO_ANCHOR = '"activo": true';
 const OLD_FECHA_LOGIC_WITH_FALLBACK = `let fecha;
 try {
@@ -59,7 +67,7 @@ function readEnv(name) {
 }
 
 function readConfig() {
-  const requiredEnvNames = ["N8N_BASE_URL", "N8N_API_KEY"];
+  const requiredEnvNames = ["N8N_BASE_URL", "N8N_API_KEY", "WEBHOOK_SHARED_SECRET"];
   const missing = requiredEnvNames.filter((name) => !readEnv(name));
 
   if (missing.length > 0) {
@@ -70,6 +78,8 @@ function readConfig() {
   }
 
   const n8nBaseUrl = readEnv("N8N_BASE_URL").replace(/\/+$/, "");
+  const newOrderWebhookUrl =
+    readEnv("NEW_ORDER_WEBHOOK_URL") ?? DEFAULT_NEW_ORDER_WEBHOOK_URL;
 
   try {
     new URL(n8nBaseUrl);
@@ -77,9 +87,17 @@ function readConfig() {
     throw new Error("N8N_BASE_URL must be a full URL, for example https://n8n.example.com");
   }
 
+  try {
+    new URL(newOrderWebhookUrl);
+  } catch {
+    throw new Error("NEW_ORDER_WEBHOOK_URL must be a full URL when provided.");
+  }
+
   return {
     n8nBaseUrl,
     apiKey: readEnv("N8N_API_KEY"),
+    webhookSharedSecret: readEnv("WEBHOOK_SHARED_SECRET"),
+    newOrderWebhookUrl,
   };
 }
 
@@ -119,6 +137,176 @@ async function requestJson(url, config, options = {}) {
 
 function findNode(workflow, name) {
   return workflow.nodes?.find((node) => node.name === name);
+}
+
+function clone(value) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return JSON.parse(JSON.stringify(value));
+}
+
+function getPositionNear(sourceNode, offset = [420, 150]) {
+  const [x = 0, y = 0] = Array.isArray(sourceNode.position)
+    ? sourceNode.position
+    : [0, 0];
+
+  return [x + offset[0], y + offset[1]];
+}
+
+function getHeaderParameterList(parameters) {
+  const headers = parameters?.headerParameters?.parameters;
+
+  return Array.isArray(headers)
+    ? clone(headers).filter(
+        (header) =>
+          header &&
+          typeof header === "object" &&
+          typeof header.name === "string" &&
+          Object.hasOwn(header, "value"),
+      )
+    : [];
+}
+
+function parsePreferDirectives(value) {
+  return value
+    .split(",")
+    .map((directive) => directive.trim())
+    .filter((directive) => directive.length > 0);
+}
+
+function ensurePreferReturnsRepresentation(node) {
+  if (node.type !== "n8n-nodes-base.httpRequest") {
+    throw new Error(
+      `"${INSERT_ORDER_NODE_NAME}" is not an HTTP Request node. Found type: ${node.type ?? "(missing)"}.`,
+    );
+  }
+
+  node.parameters ??= {};
+
+  const headers = getHeaderParameterList(node.parameters);
+  const preferHeader = headers.find(
+    (header) => header.name.toLowerCase() === "prefer",
+  );
+  const before = preferHeader ? preferHeader.value : null;
+
+  if (!preferHeader) {
+    headers.push({ name: "Prefer", value: "return=representation" });
+    node.parameters.sendHeaders = true;
+    node.parameters.headerParameters = { parameters: headers };
+
+    return { status: "added", before, after: "return=representation" };
+  }
+
+  const directives = parsePreferDirectives(preferHeader.value);
+  const returnDirectiveIndex = directives.findIndex((directive) =>
+    directive.startsWith("return="),
+  );
+
+  if (returnDirectiveIndex === -1) {
+    directives.push("return=representation");
+  } else if (directives[returnDirectiveIndex] === "return=representation") {
+    return { status: "confirmed", before, after: before };
+  } else {
+    directives[returnDirectiveIndex] = "return=representation";
+  }
+
+  const nextValue = directives.join(",");
+  preferHeader.value = nextValue;
+  node.parameters.sendHeaders = true;
+  node.parameters.headerParameters = { parameters: headers };
+
+  return { status: "updated", before, after: nextValue };
+}
+
+function buildNotifyNewOrderParameters(config) {
+  return {
+    method: "POST",
+    url: config.newOrderWebhookUrl,
+    sendHeaders: true,
+    headerParameters: {
+      parameters: [
+        {
+          name: "x-webhook-secret",
+          value: config.webhookSharedSecret,
+        },
+        {
+          name: "Content-Type",
+          value: "application/json",
+        },
+      ],
+    },
+    sendBody: true,
+    specifyBody: "json",
+    jsonBody: NOTIFY_NEW_ORDER_JSON_BODY,
+    options: {},
+  };
+}
+
+function buildNotifyNewOrderNode(insertOrderNode, config) {
+  return {
+    parameters: buildNotifyNewOrderParameters(config),
+    id: randomUUID(),
+    name: NOTIFY_NEW_ORDER_NODE_NAME,
+    type: "n8n-nodes-base.httpRequest",
+    typeVersion: 4.4,
+    position: getPositionNear(insertOrderNode),
+  };
+}
+
+function createOrUpdateNotifyNewOrderNode(workflow, insertOrderNode, config) {
+  const existingNode = findNode(workflow, NOTIFY_NEW_ORDER_NODE_NAME);
+
+  if (!existingNode) {
+    const newNode = buildNotifyNewOrderNode(insertOrderNode, config);
+    workflow.nodes.push(newNode);
+
+    return { node: newNode, status: "added" };
+  }
+
+  if (existingNode.type !== "n8n-nodes-base.httpRequest") {
+    throw new Error(
+      `"${NOTIFY_NEW_ORDER_NODE_NAME}" exists but is not an HTTP Request node. Found type: ${existingNode.type ?? "(missing)"}.`,
+    );
+  }
+
+  const before = JSON.stringify(existingNode.parameters);
+  existingNode.parameters = buildNotifyNewOrderParameters(config);
+  const after = JSON.stringify(existingNode.parameters);
+
+  return {
+    node: existingNode,
+    status: before === after ? "confirmed" : "updated",
+  };
+}
+
+function ensureMainConnection(workflow, sourceNodeName, targetNodeName) {
+  workflow.connections ??= {};
+  workflow.connections[sourceNodeName] ??= {};
+  workflow.connections[sourceNodeName].main ??= [];
+  workflow.connections[sourceNodeName].main[0] ??= [];
+
+  const outputConnections = workflow.connections[sourceNodeName].main[0];
+  const existingConnection = outputConnections.find(
+    (connection) => connection.node === targetNodeName,
+  );
+
+  if (existingConnection) {
+    const before = JSON.stringify(existingConnection);
+    existingConnection.type = "main";
+    existingConnection.index = 0;
+
+    return before === JSON.stringify(existingConnection) ? "confirmed" : "updated";
+  }
+
+  outputConnections.push({
+    node: targetNodeName,
+    type: "main",
+    index: 0,
+  });
+
+  return "added";
 }
 
 function countSubstring(value, substring) {
@@ -351,7 +539,7 @@ function formatKeys(keys) {
   return keys.length > 0 ? keys.join(", ") : "(none)";
 }
 
-function patchWorkflow(workflow, workflowTarget) {
+function patchWorkflow(workflow, workflowTarget, config) {
   if (!Array.isArray(workflow.nodes)) {
     throw new Error("Workflow response does not include a nodes array.");
   }
@@ -370,6 +558,17 @@ function patchWorkflow(workflow, workflowTarget) {
 
   const jsonBodyPatch = patchInsertOrderJsonBody(insertOrderNode, workflowTarget.pais);
   const fechaLogicPatch = patchMapOrderJsCode(mapOrderNode);
+  const preferPatch = ensurePreferReturnsRepresentation(insertOrderNode);
+  const notifyNodePatch = createOrUpdateNotifyNewOrderNode(
+    workflow,
+    insertOrderNode,
+    config,
+  );
+  const connectionStatus = ensureMainConnection(
+    workflow,
+    INSERT_ORDER_NODE_NAME,
+    NOTIFY_NEW_ORDER_NODE_NAME,
+  );
 
   return {
     jsonBodyStatus: jsonBodyPatch.status,
@@ -377,8 +576,17 @@ function patchWorkflow(workflow, workflowTarget) {
     jsonBodyAfter: jsonBodyPatch.after,
     fechaLogicStatus: fechaLogicPatch.status,
     fechaLogicDiff: fechaLogicPatch.diff,
+    preferStatus: preferPatch.status,
+    preferBefore: preferPatch.before,
+    preferAfter: preferPatch.after,
+    notifyNodeStatus: notifyNodePatch.status,
+    connectionStatus,
     hasChanges:
-      jsonBodyPatch.status !== "confirmed" || fechaLogicPatch.status !== "confirmed",
+      jsonBodyPatch.status !== "confirmed" ||
+      fechaLogicPatch.status !== "confirmed" ||
+      preferPatch.status !== "confirmed" ||
+      notifyNodePatch.status !== "confirmed" ||
+      connectionStatus !== "confirmed",
     settingsSummary: getFilteredWorkflowSettings(workflow),
   };
 }
@@ -400,6 +608,17 @@ function printChangeSummary(workflow, workflowTarget, patchResult) {
   console.log(`- "${MAP_ORDER_NODE_NAME}" jsCode diff:`);
   console.log(patchResult.fechaLogicDiff);
   console.log(
+    `- "${INSERT_ORDER_NODE_NAME}" Prefer header: ${patchResult.preferStatus}`,
+  );
+  console.log(`  before: ${patchResult.preferBefore ?? "(no Prefer header)"}`);
+  console.log(`  after: ${patchResult.preferAfter}`);
+  console.log(
+    `- "${NOTIFY_NEW_ORDER_NODE_NAME}" node: ${patchResult.notifyNodeStatus}`,
+  );
+  console.log(
+    `- connection "${INSERT_ORDER_NODE_NAME}" -> "${NOTIFY_NEW_ORDER_NODE_NAME}": ${patchResult.connectionStatus}`,
+  );
+  console.log(
     `- workflow.settings keys returned: ${formatKeys(patchResult.settingsSummary.presentKeys)}`,
   );
   console.log(
@@ -415,7 +634,7 @@ async function processWorkflow(workflowTarget, config, confirm) {
   console.log(`\nGET ${url}`);
 
   const workflow = await requestJson(url, config);
-  const patchResult = patchWorkflow(workflow, workflowTarget);
+  const patchResult = patchWorkflow(workflow, workflowTarget, config);
 
   printChangeSummary(workflow, workflowTarget, patchResult);
 
