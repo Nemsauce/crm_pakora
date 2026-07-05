@@ -198,6 +198,16 @@ export function NotificationBell() {
         setUnreadCount(count ?? 0);
       }
 
+      const { data: sessionData } = await supabase.auth.getSession();
+
+      if (sessionData.session?.access_token) {
+        await supabase.realtime.setAuth(sessionData.session.access_token);
+      }
+
+      if (!isActive) {
+        return;
+      }
+
       channel = supabase
         .channel(`notifications:${activeUserId}`)
         .on(
@@ -273,7 +283,9 @@ export function NotificationBell() {
             }
           },
         )
-        .subscribe();
+        .subscribe((status, err) => {
+          console.log("[NotificationBell] realtime status:", status, err);
+        });
     }
 
     void loadNotifications();
