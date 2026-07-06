@@ -44,10 +44,14 @@ const CODE_RECONCILIATION_MARKER =
   "const yaProcesado = supabase.json.tarea_generada_para_estado === estadoNuevo;";
 const CODE_HISTORY_REPLAY_MARKER =
   "function getMissingHistoryEntries(history, latestKnownRegisteredAt, fallbackTransportadora, fallbackNovedad)";
+const CODE_DROPI_PAGINATION_AGGREGATION_MARKER =
+  "function getDropiObjects(payload)";
 const DROPI_ORDERS_ROLLING_FROM_EXPRESSION =
   "{{ new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }}";
 const DROPI_ORDERS_ROLLING_UNTIL_EXPRESSION =
   "{{ new Date().toISOString().split('T')[0] }}";
+const DROPI_ORDERS_PAGINATION_MAX_REQUESTS = 20;
+const DROPI_ORDERS_PAGINATION_REQUEST_INTERVAL = 500;
 const ALLOWED_WORKFLOW_SETTINGS_KEYS = new Set([
   "executionOrder",
   "saveManualExecutions",
@@ -1005,6 +1009,92 @@ function combinePatchStatuses(statuses) {
   return "confirmed";
 }
 
+function getQueryParamValue(urlValue, paramName) {
+  if (typeof urlValue !== "string") {
+    return undefined;
+  }
+
+  const paramPattern = new RegExp(`(?:[?&])${escapeRegExp(paramName)}=([^&]*)`);
+  const paramMatch = paramPattern.exec(urlValue);
+
+  return paramMatch ? decodeQueryValue(paramMatch[1]) : undefined;
+}
+
+function getDropiOrdersResultNumber(node) {
+  const rawResultNumber = getQueryParamValue(getHttpRequestUrl(node), "result_number");
+  const pageSize = Number(rawResultNumber);
+
+  if (!Number.isInteger(pageSize) || pageSize <= 0) {
+    throw new Error(
+      `"${DROPI_ORDERS_NODE_NAME}" URL must contain a positive integer result_number query parameter.`,
+    );
+  }
+
+  return pageSize;
+}
+
+function buildDropiOrdersPagination(pageSize) {
+  return {
+    paginationMode: "updateAParameterInEachRequest",
+    parameters: {
+      parameters: [
+        {
+          type: "qs",
+          name: "start",
+          value: `={{ $pageCount * ${pageSize} }}`,
+        },
+      ],
+    },
+    paginationCompleteWhen: "other",
+    statusCodesWhenComplete: "",
+    completeExpression: `={{ !Array.isArray($response.body?.objects) || $response.body.objects.length < ${pageSize} }}`,
+    limitPagesFetched: true,
+    maxRequests: DROPI_ORDERS_PAGINATION_MAX_REQUESTS,
+    requestInterval: DROPI_ORDERS_PAGINATION_REQUEST_INTERVAL,
+  };
+}
+
+function patchDropiOrdersNativePagination(workflow) {
+  const node = findNode(workflow, DROPI_ORDERS_NODE_NAME);
+
+  if (!node) {
+    throw new Error(`Node "${DROPI_ORDERS_NODE_NAME}" was not found.`);
+  }
+
+  if (node.type !== "n8n-nodes-base.httpRequest") {
+    throw new Error(
+      `"${DROPI_ORDERS_NODE_NAME}" is not an HTTP Request node. Found type: ${node.type ?? "(missing)"}.`,
+    );
+  }
+
+  if (
+    !node.parameters ||
+    typeof node.parameters !== "object" ||
+    Array.isArray(node.parameters)
+  ) {
+    throw new Error(`"${DROPI_ORDERS_NODE_NAME}" does not have parameters.`);
+  }
+
+  const pageSize = getDropiOrdersResultNumber(node);
+  const desiredPagination = {
+    pagination: buildDropiOrdersPagination(pageSize),
+  };
+  const beforePagination = clone(node.parameters.options?.pagination ?? null);
+
+  node.parameters.options ??= {};
+  node.parameters.options.pagination = desiredPagination;
+
+  return {
+    status:
+      JSON.stringify(beforePagination) === JSON.stringify(desiredPagination)
+        ? "confirmed"
+        : "updated",
+    pageSize,
+    beforePagination,
+    afterPagination: clone(node.parameters.options.pagination),
+  };
+}
+
 function patchMxDropiOrdersRollingDateWindow(workflow, workflowTarget) {
   if (workflowTarget.pais !== "MX") {
     return {
@@ -1161,8 +1251,19 @@ function patchActiveOrdersSelect(workflow) {
 }
 
 function buildCompareFilterCode() {
-  return `const dropiResponse = $('Dropi Consultar Pedidos').item.json;
-const dropiOrders = Array.isArray(dropiResponse.objects) ? dropiResponse.objects : [];
+  return `const dropiOrders = [];
+
+function getDropiObjects(payload) {
+  if (Array.isArray(payload?.objects)) return payload.objects;
+  if (Array.isArray(payload?.data?.objects)) return payload.data.objects;
+  if (Array.isArray(payload?.body?.objects)) return payload.body.objects;
+  return [];
+}
+
+for (const item of $('Dropi Consultar Pedidos').all()) {
+  dropiOrders.push(...getDropiObjects(item.json));
+}
+
 const supabaseOrders = $('Traer ordenes activas Supabase').all();
 
 const estadosCerrados = ['ENTREGADO', 'CANCELADO', 'DEVOLUCION'];
@@ -1360,6 +1461,19 @@ return results.length > 0 ? results : [];
 `;
 }
 
+function extractCompareDropiInputSnippet(jsCode) {
+  if (typeof jsCode !== "string") {
+    return "(missing)";
+  }
+
+  const lines = jsCode.split("\n");
+  const endIndex = lines.findIndex((line) => line.startsWith("const estadosCerrados"));
+  const snippetLines =
+    endIndex === -1 ? lines.slice(0, Math.min(lines.length, 14)) : lines.slice(0, endIndex);
+
+  return snippetLines.join("\n").trimEnd();
+}
+
 function patchCompareFilterCode(workflow) {
   const node = findNode(workflow, COMPARE_FILTER_NODE_NAME);
 
@@ -1387,19 +1501,44 @@ function patchCompareFilterCode(workflow) {
     throw new Error(`"${COMPARE_FILTER_NODE_NAME}" does not have string jsCode.`);
   }
 
-  if (jsCode.includes(CODE_HISTORY_REPLAY_MARKER)) {
-    return "already-patched";
+  const nextCode = buildCompareFilterCode();
+  const beforeAggregationSnippet = extractCompareDropiInputSnippet(jsCode);
+  const afterAggregationSnippet = extractCompareDropiInputSnippet(nextCode);
+
+  if (jsCode === nextCode) {
+    return {
+      status: "confirmed",
+      aggregationStatus: "confirmed",
+      neededMultiItemAggregationFix: false,
+      beforeAggregationSnippet,
+      afterAggregationSnippet,
+    };
   }
 
-  if (!jsCode.includes("const dropiResponse") || !jsCode.includes("results.push")) {
+  if (
+    !jsCode.includes(CODE_HISTORY_REPLAY_MARKER) ||
+    (!jsCode.includes("const dropiResponse") &&
+      !jsCode.includes(CODE_DROPI_PAGINATION_AGGREGATION_MARKER)) ||
+    !jsCode.includes("results.push")
+  ) {
     throw new Error(
       `"${COMPARE_FILTER_NODE_NAME}" jsCode does not match the expected Dropi comparison shape.`,
     );
   }
 
-  node.parameters.jsCode = buildCompareFilterCode();
+  node.parameters.jsCode = nextCode;
 
-  return jsCode.includes(CODE_RECONCILIATION_MARKER) ? "updated" : "added";
+  return {
+    status: jsCode.includes(CODE_RECONCILIATION_MARKER) ? "updated" : "added",
+    aggregationStatus: jsCode.includes(CODE_DROPI_PAGINATION_AGGREGATION_MARKER)
+      ? "confirmed"
+      : "updated",
+    neededMultiItemAggregationFix: !jsCode.includes(
+      CODE_DROPI_PAGINATION_AGGREGATION_MARKER,
+    ),
+    beforeAggregationSnippet,
+    afterAggregationSnippet,
+  };
 }
 
 function getFilteredWorkflowSettings(workflow) {
@@ -1507,6 +1646,7 @@ function patchWorkflow(workflow, workflowTarget, config) {
     workflow,
     workflowTarget,
   );
+  const dropiOrdersPaginationPatch = patchDropiOrdersNativePagination(workflow);
   const updateOrderJsonBodyStatus = patchUpdateOrderJsonBody(updateOrderNode);
   const registerHistoryJsonBodyPatch = patchRegisterHistoryJsonBody(workflow);
   const singleStateConnectionStatus = assertMainConnection(
@@ -1526,7 +1666,7 @@ function patchWorkflow(workflow, workflowTarget, config) {
     WEBHOOK_NODE_NAME,
   );
   const activeOrdersSelectPatch = patchActiveOrdersSelect(workflow);
-  const compareFilterCodeStatus = patchCompareFilterCode(workflow);
+  const compareFilterCodePatch = patchCompareFilterCode(workflow);
   const historyFilterNodeChange = createOrUpdateHistoryFilterNode(
     workflow,
     compareFilterNode,
@@ -1600,7 +1740,14 @@ function patchWorkflow(workflow, workflowTarget, config) {
     singleStateConnectionStatus,
     activeOrdersSelectStatus: activeOrdersSelectPatch.reconciliationStatus,
     activeOrdersLatestHistoryStatus: activeOrdersSelectPatch.latestHistoryStatus,
-    compareFilterCodeStatus,
+    compareFilterCodeStatus: compareFilterCodePatch.status,
+    compareFilterAggregationStatus: compareFilterCodePatch.aggregationStatus,
+    compareFilterNeededMultiItemAggregationFix:
+      compareFilterCodePatch.neededMultiItemAggregationFix,
+    compareFilterBeforeAggregationSnippet:
+      compareFilterCodePatch.beforeAggregationSnippet,
+    compareFilterAfterAggregationSnippet:
+      compareFilterCodePatch.afterAggregationSnippet,
     historyFilterNodeStatus: historyFilterNodeChange.status,
     processHistoryNodeStatus: processHistoryNodeChange.status,
     historyFilterConnectionStatus,
@@ -1612,6 +1759,10 @@ function patchWorkflow(workflow, workflowTarget, config) {
     dropiOrdersDateWindowStatus: dropiOrdersDateWindowPatch.status,
     dropiOrdersDateWindowBeforeUrl: dropiOrdersDateWindowPatch.beforeUrl,
     dropiOrdersDateWindowAfterUrl: dropiOrdersDateWindowPatch.afterUrl,
+    dropiOrdersPaginationStatus: dropiOrdersPaginationPatch.status,
+    dropiOrdersPaginationPageSize: dropiOrdersPaginationPatch.pageSize,
+    dropiOrdersPaginationBefore: dropiOrdersPaginationPatch.beforePagination,
+    dropiOrdersPaginationAfter: dropiOrdersPaginationPatch.afterPagination,
     walletMappingNodeStatus: walletMappingNodeChange.status,
     walletInsertNodeStatus: walletInsertNodeChange.status,
     walletInsertOnConflictStatus: walletInsertNodeChange.onConflictStatus,
@@ -1657,6 +1808,15 @@ function printChangeSummary(workflow, workflowTarget, patchResult, config) {
       `  after URL:\n${indentBlock(patchResult.dropiOrdersDateWindowAfterUrl)}`,
     );
   }
+  console.log(
+    `- "${DROPI_ORDERS_NODE_NAME}" native pagination: ${patchResult.dropiOrdersPaginationStatus} (result_number=${patchResult.dropiOrdersPaginationPageSize})`,
+  );
+  console.log(
+    `  before pagination:\n${indentBlock(patchResult.dropiOrdersPaginationBefore)}`,
+  );
+  console.log(
+    `  after pagination:\n${indentBlock(patchResult.dropiOrdersPaginationAfter)}`,
+  );
   console.log(`- node "${WEBHOOK_NODE_NAME}": ${patchResult.nodeStatus}`);
   console.log(
     `- existing connection "${COMPARE_FILTER_NODE_NAME}" -> "${UPDATE_ORDER_NODE_NAME}": ${patchResult.singleStateConnectionStatus}`,
@@ -1672,6 +1832,15 @@ function printChangeSummary(workflow, workflowTarget, patchResult, config) {
   );
   console.log(
     `- "${COMPARE_FILTER_NODE_NAME}" full-history comparison code: ${patchResult.compareFilterCodeStatus}`,
+  );
+  console.log(
+    `- "${COMPARE_FILTER_NODE_NAME}" multi-page Dropi aggregation: ${patchResult.compareFilterAggregationStatus} (needed fix: ${patchResult.compareFilterNeededMultiItemAggregationFix ? "yes" : "no"})`,
+  );
+  console.log(
+    `  before Dropi input snippet:\n${indentBlock(patchResult.compareFilterBeforeAggregationSnippet)}`,
+  );
+  console.log(
+    `  after Dropi input snippet:\n${indentBlock(patchResult.compareFilterAfterAggregationSnippet)}`,
   );
   console.log(
     `- node "${FILTER_HISTORY_NODE_NAME}": ${patchResult.historyFilterNodeStatus}`,
