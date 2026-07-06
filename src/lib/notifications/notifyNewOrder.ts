@@ -20,11 +20,6 @@ function getOrderNumber(order: Order) {
   return order.numero_orden ?? String(order.id);
 }
 
-function getCustomerName(order: Order) {
-  const fullName = [order.nombre, order.apellido].filter(Boolean).join(" ");
-  return fullName || "Cliente sin nombre";
-}
-
 function formatTotal(total: number | null) {
   return (total ?? 0).toFixed(2);
 }
@@ -67,11 +62,13 @@ async function notifyActiveProfiles(order: Order): Promise<NotificationRecipient
     }
 
     const productName = order.nombre_producto?.trim() || "Producto sin nombre";
+    const titulo = `🆕 Pedido nuevo: ${getOrderNumber(order)}`;
+    const mensaje = `${order.nombre} ${order.apellido} · ${productName} · $${formatTotal(order.total)}`;
     const rows = recipients.map((profile) => ({
       user_id: profile.id,
       tipo: "pedido_nuevo" as const,
-      titulo: `Pedido nuevo: ${getOrderNumber(order)}`,
-      mensaje: `Cliente: ${getCustomerName(order)} | Producto: ${productName} | Total: $${formatTotal(order.total)}`,
+      titulo,
+      mensaje,
       order_id: order.id,
       task_id: null,
     }));
@@ -96,6 +93,8 @@ async function sendTelegramNotifications(
   recipients: NotificationRecipient[],
 ) {
   const productName = order.nombre_producto?.trim() || "Producto sin nombre";
+  const titulo = `🆕 Pedido nuevo: ${getOrderNumber(order)}`;
+  const mensaje = `${order.nombre} ${order.apellido} · ${productName} · $${formatTotal(order.total)}`;
 
   for (const profile of recipients) {
     if (!profile.telegram_chat_id) {
@@ -105,7 +104,7 @@ async function sendTelegramNotifications(
     try {
       await sendTelegramMessage(
         profile.telegram_chat_id,
-        `🆕 Pedido nuevo ${getOrderNumber(order)}: ${getCustomerName(order)} — ${productName} ($${formatTotal(order.total)})`,
+        `${titulo}\n${mensaje}`,
       );
     } catch (error) {
       console.error("Failed to send Telegram new order notification", error);

@@ -59,28 +59,23 @@ async function notifyAssignee({
   titulo,
   orderId,
   numeroOrden,
-  clienteNombre,
 }: {
   userId: string;
   taskId: number;
   titulo: string;
   orderId: number | null;
   numeroOrden: string | null;
-  clienteNombre: string | null;
 }) {
   try {
     const supabase = createAdminClient();
-    const contextParts = [numeroOrden, clienteNombre].filter(Boolean);
-    const mensaje =
-      contextParts.length > 0
-        ? `Pedido ${contextParts.join(" · ")}`
-        : `Tarea: ${titulo}`;
+    const notificacionTitulo = "📋 Te asignaron una tarea";
+    const notificacionMensaje = `${titulo} · pedido ${numeroOrden ?? "sin número"}`;
 
     const { error: insertError } = await supabase.from("notifications").insert({
       user_id: userId,
       tipo: "tarea_urgente_asignada",
-      titulo: `Tarea asignada: ${titulo}`,
-      mensaje,
+      titulo: notificacionTitulo,
+      mensaje: notificacionMensaje,
       order_id: orderId,
       task_id: taskId,
     });
@@ -107,7 +102,7 @@ async function notifyAssignee({
       if (profile?.telegram_chat_id) {
         await sendTelegramMessage(
           profile.telegram_chat_id,
-          `📋 Se te asignó: ${titulo}`,
+          `${notificacionTitulo}\n${notificacionMensaje}`,
         );
       }
     } catch (telegramError) {
@@ -149,9 +144,6 @@ export async function reassignTask(
 
   if (userId && existingTask && userId !== existingTask.asignado_a) {
     const order = existingTask.orders;
-    const clienteNombre = order
-      ? [order.nombre, order.apellido].filter(Boolean).join(" ") || null
-      : null;
 
     await notifyAssignee({
       userId,
@@ -159,7 +151,6 @@ export async function reassignTask(
       titulo: existingTask.titulo,
       orderId: existingTask.order_id,
       numeroOrden: order?.numero_orden ?? null,
-      clienteNombre,
     });
   }
 

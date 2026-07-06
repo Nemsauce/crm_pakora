@@ -78,11 +78,6 @@ function getOrderNumber(order: Order) {
   return order.numero_orden ?? String(order.id);
 }
 
-function getCustomerName(order: Order) {
-  const fullName = [order.nombre, order.apellido].filter(Boolean).join(" ");
-  return fullName || "Cliente sin nombre";
-}
-
 async function updateProcessedState(orderId: number, estadoDropi: string | null) {
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -414,10 +409,13 @@ async function notifyActiveProfiles({
 }
 
 async function notifyNovedad(order: Order, taskId: number | null) {
+  const titulo = `Novedad en pedido ${getOrderNumber(order)}`;
+  const mensaje = `${order.nombre} ${order.apellido} · ${order.estado_dropi ?? "sin estado"}`;
+
   const notificationRecipients = await notifyActiveProfiles({
     tipo: "novedad",
-    titulo: `Novedad en pedido ${getOrderNumber(order)}`,
-    mensaje: `Estado Dropi: ${order.estado_dropi ?? "sin estado"}`,
+    titulo,
+    mensaje,
     orderId: order.id,
     taskId,
   });
@@ -430,7 +428,7 @@ async function notifyNovedad(order: Order, taskId: number | null) {
     try {
       await sendTelegramMessage(
         profile.telegram_chat_id,
-        `🔴 Novedad en pedido ${getOrderNumber(order)}: ${order.estado_dropi ?? "sin estado"}`,
+        `${titulo}\n${mensaje}`,
       );
     } catch (error) {
       console.error("Failed to send Telegram novedad notification", error);
@@ -439,10 +437,13 @@ async function notifyNovedad(order: Order, taskId: number | null) {
 }
 
 async function notifyDeliveredOrder(order: Order) {
+  const titulo = `✅ Entregado: ${getOrderNumber(order)}`;
+  const mensaje = `${order.nombre} ${order.apellido} recibió su pedido`;
+
   const notificationRecipients = await notifyActiveProfiles({
     tipo: "pedido_entregado",
-    titulo: `Pedido ${getOrderNumber(order)} entregado`,
-    mensaje: `Cliente: ${getCustomerName(order)}`,
+    titulo,
+    mensaje,
     orderId: order.id,
     taskId: null,
   });
@@ -455,7 +456,7 @@ async function notifyDeliveredOrder(order: Order) {
     try {
       await sendTelegramMessage(
         profile.telegram_chat_id,
-        `✅ Pedido ${getOrderNumber(order)} entregado a ${getCustomerName(order)}`,
+        `${titulo}\n${mensaje}`,
       );
     } catch (error) {
       console.error("Failed to send Telegram delivery notification", error);
@@ -465,10 +466,13 @@ async function notifyDeliveredOrder(order: Order) {
 
 async function notifyReturnedOrder(order: Order) {
   const productName = order.nombre_producto?.trim() || "Producto sin nombre";
+  const titulo = `↩️ Devolución: ${getOrderNumber(order)}`;
+  const mensaje = `${order.nombre} ${order.apellido} · ${productName}`;
+
   const notificationRecipients = await notifyActiveProfiles({
     tipo: "pedido_devolucion" as NotificacionTipo,
-    titulo: `Devolución: pedido ${getOrderNumber(order)}`,
-    mensaje: `Cliente: ${getCustomerName(order)} | Producto: ${productName}`,
+    titulo,
+    mensaje,
     orderId: order.id,
     taskId: null,
   });
@@ -481,7 +485,7 @@ async function notifyReturnedOrder(order: Order) {
     try {
       await sendTelegramMessage(
         profile.telegram_chat_id,
-        `🔵 Devolución en pedido ${getOrderNumber(order)}: ${getCustomerName(order)}`,
+        `${titulo}\n${mensaje}`,
       );
     } catch (error) {
       console.error("Failed to send Telegram return notification", error);
