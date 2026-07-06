@@ -493,6 +493,34 @@ async function notifyReturnedOrder(order: Order) {
   }
 }
 
+async function notifyEnReparto(order: Order, taskId: number | null) {
+  const titulo = `🚚 En reparto: ${getOrderNumber(order)}`;
+  const mensaje = `${order.nombre} ${order.apellido} · llegando hoy`;
+
+  const notificationRecipients = await notifyActiveProfiles({
+    tipo: "pedido_en_reparto" as NotificacionTipo,
+    titulo,
+    mensaje,
+    orderId: order.id,
+    taskId,
+  });
+
+  for (const profile of notificationRecipients) {
+    if (!profile.telegram_chat_id) {
+      continue;
+    }
+
+    try {
+      await sendTelegramMessage(
+        profile.telegram_chat_id,
+        `${titulo}\n${mensaje}`,
+      );
+    } catch (error) {
+      console.error("Failed to send Telegram en_reparto notification", error);
+    }
+  }
+}
+
 function taskOutcome(result: ProcessResult): CategoryDecisionOutcome {
   return {
     result,
@@ -526,14 +554,19 @@ export async function applyCategoryDecision(
           titulo: "Notificar guía de seguimiento al cliente",
         }),
       );
-    case "en_reparto":
-      return taskOutcome(
-        await ensureOpenTask({
-          order,
-          tipo: "presionar_entrega",
-          titulo: "Confirmar que el cliente esté pendiente de recibir",
-        }),
-      );
+    case "en_reparto": {
+      const result = await ensureOpenTask({
+        order,
+        tipo: "presionar_entrega",
+        titulo: "Confirmar que el cliente esté pendiente de recibir",
+      });
+
+      if (sendNotifications) {
+        await notifyEnReparto(order, result.taskId ?? null);
+      }
+
+      return taskOutcome(result);
+    }
     case "recoger_oficina":
       return taskOutcome(
         await ensureOpenTask({
