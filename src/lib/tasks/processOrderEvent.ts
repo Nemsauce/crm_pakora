@@ -467,7 +467,7 @@ async function notifyDeliveredOrder(order: Order) {
 async function notifyReturnedOrder(order: Order) {
   const productName = order.nombre_producto?.trim() || "Producto sin nombre";
   const titulo = `↩️ Devolución: ${getOrderNumber(order)}`;
-  const mensaje = `${order.nombre} ${order.apellido} · ${productName}`;
+  const mensaje = `${order.nombre} ${order.apellido} · ${productName} · ${order.pais}`;
 
   const notificationRecipients = await notifyActiveProfiles({
     tipo: "pedido_devolucion" as NotificacionTipo,
