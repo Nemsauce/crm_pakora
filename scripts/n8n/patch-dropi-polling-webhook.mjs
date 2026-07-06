@@ -18,6 +18,7 @@ const DROPI_WALLET_NODE_NAME = "Dropi Consultar Wallet";
 const MAP_WALLET_NODE_NAME = "Mapear movimientos wallet completo";
 const INSERT_WALLET_NODE_NAME = "Insertar movimientos wallet";
 const DROPI_LOGIN_FINAL_NODE_NAME = "Dropi Login Final";
+const DROPI_ORDERS_NODE_NAME = "Dropi Consultar Pedidos";
 const STALE_ORDERS_NODE_NAME = "Chequear pedidos estancados";
 const DEFAULT_BACKEND_WEBHOOK_URL =
   "https://crm.pakora.online/api/webhooks/orders/status-changed";
@@ -43,6 +44,10 @@ const CODE_RECONCILIATION_MARKER =
   "const yaProcesado = supabase.json.tarea_generada_para_estado === estadoNuevo;";
 const CODE_HISTORY_REPLAY_MARKER =
   "function getMissingHistoryEntries(history, latestKnownRegisteredAt, fallbackTransportadora, fallbackNovedad)";
+const DROPI_ORDERS_ROLLING_FROM_EXPRESSION =
+  "{{ new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }}";
+const DROPI_ORDERS_ROLLING_UNTIL_EXPRESSION =
+  "{{ new Date().toISOString().split('T')[0] }}";
 const ALLOWED_WORKFLOW_SETTINGS_KEYS = new Set([
   "executionOrder",
   "saveManualExecutions",
@@ -966,6 +971,24 @@ function patchQueryParam(urlValue, paramName, paramValue) {
   };
 }
 
+function ensureN8nExpressionUrlPrefix(urlValue) {
+  const trimmed = urlValue.trimStart();
+
+  if (trimmed.startsWith("=")) {
+    return {
+      nextUrl: urlValue,
+      status: "confirmed",
+    };
+  }
+
+  const leadingWhitespace = urlValue.slice(0, urlValue.length - trimmed.length);
+
+  return {
+    nextUrl: `${leadingWhitespace}=${trimmed}`,
+    status: "updated",
+  };
+}
+
 function combinePatchStatuses(statuses) {
   if (statuses.includes("updated")) {
     return "updated";
@@ -980,6 +1003,66 @@ function combinePatchStatuses(statuses) {
   }
 
   return "confirmed";
+}
+
+function patchMxDropiOrdersRollingDateWindow(workflow, workflowTarget) {
+  if (workflowTarget.pais !== "MX") {
+    return {
+      status: "skipped-mx-only",
+      beforeUrl: null,
+      afterUrl: null,
+    };
+  }
+
+  const node = findNode(workflow, DROPI_ORDERS_NODE_NAME);
+
+  if (!node) {
+    throw new Error(`Node "${DROPI_ORDERS_NODE_NAME}" was not found.`);
+  }
+
+  if (node.type !== "n8n-nodes-base.httpRequest") {
+    throw new Error(
+      `"${DROPI_ORDERS_NODE_NAME}" is not an HTTP Request node. Found type: ${node.type ?? "(missing)"}.`,
+    );
+  }
+
+  if (
+    !node.parameters ||
+    typeof node.parameters !== "object" ||
+    Array.isArray(node.parameters)
+  ) {
+    throw new Error(`"${DROPI_ORDERS_NODE_NAME}" does not have parameters.`);
+  }
+
+  const beforeUrl = node.parameters.url;
+
+  if (typeof beforeUrl !== "string") {
+    throw new Error(`"${DROPI_ORDERS_NODE_NAME}" does not have a string URL.`);
+  }
+
+  const fromPatch = patchQueryParam(
+    beforeUrl,
+    "from",
+    DROPI_ORDERS_ROLLING_FROM_EXPRESSION,
+  );
+  const untilPatch = patchQueryParam(
+    fromPatch.nextUrl,
+    "until",
+    DROPI_ORDERS_ROLLING_UNTIL_EXPRESSION,
+  );
+  const prefixPatch = ensureN8nExpressionUrlPrefix(untilPatch.nextUrl);
+
+  node.parameters.url = prefixPatch.nextUrl;
+
+  return {
+    status: combinePatchStatuses([
+      fromPatch.status,
+      untilPatch.status,
+      prefixPatch.status,
+    ]),
+    beforeUrl,
+    afterUrl: node.parameters.url,
+  };
 }
 
 function patchSelectParam(urlValue, columnName) {
@@ -1420,6 +1503,10 @@ function patchWorkflow(workflow, workflowTarget, config) {
   }
 
   const retryStyle = getRetryStyle(workflow);
+  const dropiOrdersDateWindowPatch = patchMxDropiOrdersRollingDateWindow(
+    workflow,
+    workflowTarget,
+  );
   const updateOrderJsonBodyStatus = patchUpdateOrderJsonBody(updateOrderNode);
   const registerHistoryJsonBodyPatch = patchRegisterHistoryJsonBody(workflow);
   const singleStateConnectionStatus = assertMainConnection(
@@ -1522,6 +1609,9 @@ function patchWorkflow(workflow, workflowTarget, config) {
     registerHistoryJsonBodyStatus: registerHistoryJsonBodyPatch.status,
     registerHistoryJsonBodyBefore: registerHistoryJsonBodyPatch.beforeJsonBody,
     registerHistoryJsonBodyAfter: registerHistoryJsonBodyPatch.afterJsonBody,
+    dropiOrdersDateWindowStatus: dropiOrdersDateWindowPatch.status,
+    dropiOrdersDateWindowBeforeUrl: dropiOrdersDateWindowPatch.beforeUrl,
+    dropiOrdersDateWindowAfterUrl: dropiOrdersDateWindowPatch.afterUrl,
     walletMappingNodeStatus: walletMappingNodeChange.status,
     walletInsertNodeStatus: walletInsertNodeChange.status,
     walletInsertOnConflictStatus: walletInsertNodeChange.onConflictStatus,
@@ -1553,6 +1643,20 @@ function printChangeSummary(workflow, workflowTarget, patchResult, config) {
   );
   console.log(`  before:\n${indentBlock(patchResult.registerHistoryJsonBodyBefore)}`);
   console.log(`  after:\n${indentBlock(patchResult.registerHistoryJsonBodyAfter)}`);
+  console.log(
+    `- "${DROPI_ORDERS_NODE_NAME}" MX rolling date window: ${patchResult.dropiOrdersDateWindowStatus}`,
+  );
+  if (
+    patchResult.dropiOrdersDateWindowBeforeUrl !== null ||
+    patchResult.dropiOrdersDateWindowAfterUrl !== null
+  ) {
+    console.log(
+      `  before URL:\n${indentBlock(patchResult.dropiOrdersDateWindowBeforeUrl)}`,
+    );
+    console.log(
+      `  after URL:\n${indentBlock(patchResult.dropiOrdersDateWindowAfterUrl)}`,
+    );
+  }
   console.log(`- node "${WEBHOOK_NODE_NAME}": ${patchResult.nodeStatus}`);
   console.log(
     `- existing connection "${COMPARE_FILTER_NODE_NAME}" -> "${UPDATE_ORDER_NODE_NAME}": ${patchResult.singleStateConnectionStatus}`,

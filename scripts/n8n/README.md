@@ -41,6 +41,8 @@ This node is connected from `Dropi Login Final` in the CO polling workflow (`9p1
 
 `/api/cron/reconcile-tasks` remains available in the backend and can be scheduled again later if the Vercel account moves to Pro.
 
+The script also normalizes the live MX orders query date window for `Dropi Consultar Pedidos`. `Dropi Polling MX` previously had a frozen URL window (`from=2026-05-01&until=2026-06-27`), so orders created after June 27, 2026 were invisible to ongoing polling. The patch is MX-only and idempotent: it rewrites only `from`/`until` to match CO's working rolling 30-day n8n expression and ensures the URL starts with `=` so n8n evaluates the `{{ }}` expressions at execution time. It does not add pagination; pagination for ongoing polling is tracked as a separate production workflow change.
+
 ## Required env vars
 
 - `N8N_BASE_URL`: your self-hosted n8n instance base URL.
@@ -64,6 +66,6 @@ Apply after reviewing the dry-run summary:
 node scripts/n8n/patch-dropi-polling-webhook.mjs --confirm
 ```
 
-This script is manual maintenance, not automatic or scheduled. Re-run it manually if the webhook URL, process-history webhook URL, shared secret, cron secret, reconciliation field, active-order history select, wallet capture mapping, Supabase wallet endpoint, stale-order cron endpoint, `Registrar historial` history payload, or target node names ever change.
+This script is manual maintenance, not automatic or scheduled. Re-run it manually if the webhook URL, process-history webhook URL, shared secret, cron secret, reconciliation field, active-order history select, wallet capture mapping, Supabase wallet endpoint, stale-order cron endpoint, MX live-order date window, `Registrar historial` history payload, or target node names ever change.
 
-After applying, manually re-test both workflows in n8n with a manual execution. Confirm the new `Notificar backend CRM` node fires correctly, `Registrar historial` inserts `status_history.novedad` when Dropi provides it, `Procesar historial completo` calls the backend only for items with non-empty `historiaFaltante`, the new wallet branch inserts `wallet_movements` without duplicating rows on repeat runs, and the CO-only `Chequear pedidos estancados` node receives an authorized response from the backend cron endpoint.
+After applying, manually re-test both workflows in n8n with a manual execution. Confirm the new `Notificar backend CRM` node fires correctly, MX `Dropi Consultar Pedidos` evaluates the rolling 30-day date window instead of sending literal `{{ }}` text, `Registrar historial` inserts `status_history.novedad` when Dropi provides it, `Procesar historial completo` calls the backend only for items with non-empty `historiaFaltante`, the new wallet branch inserts `wallet_movements` without duplicating rows on repeat runs, and the CO-only `Chequear pedidos estancados` node receives an authorized response from the backend cron endpoint.
