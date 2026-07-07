@@ -35,6 +35,11 @@ const currencyFormatter = {
   }),
 } satisfies Record<CosteoPais, Intl.NumberFormat>;
 
+const savingsPercentFormatter = new Intl.NumberFormat("es", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
 function parseInputNumber(value: string) {
   const parsed = Number(value.replace(",", "."));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -48,6 +53,10 @@ function readFormNumber(formData: FormData, name: string) {
 
 function formatMoney(formatter: Intl.NumberFormat, value: number) {
   return Number.isFinite(value) ? formatter.format(value) : "—";
+}
+
+function formatSavingsPercent(value: number) {
+  return Number.isFinite(value) ? `${savingsPercentFormatter.format(value)}%` : "—";
 }
 
 function readLiveCosteoValues(form: HTMLFormElement): PromotionCosteoValues {
@@ -149,6 +158,10 @@ export function PromotionsPanel({
       const precioPorUnidad = precioTotalPromo / cantidad;
       const ahorroCliente =
         liveValues.precioVenta * cantidad - precioTotalPromo;
+      const ahorroClientePct =
+        liveValues.precioVenta === 0
+          ? Number.NaN
+          : (ahorroCliente / (liveValues.precioVenta * cantidad)) * 100;
 
       return {
         cantidad,
@@ -156,6 +169,7 @@ export function PromotionsPanel({
         precioPorUnidad,
         utilidadTotal,
         ahorroCliente,
+        ahorroClientePct,
       };
     });
   }, [gananciaExtraPct, liveValues, quantityTiers]);
@@ -228,7 +242,7 @@ export function PromotionsPanel({
       </div>
 
       <div className="mt-5 overflow-x-auto rounded-2xl border border-border bg-bg-page">
-        <table className="min-w-[760px] w-full border-collapse">
+        <table className="min-w-[900px] w-full border-collapse">
           <thead>
             <tr className="border-b border-border">
               <th className="px-4 py-3 text-left font-body text-xs uppercase text-text-secondary">
@@ -245,6 +259,9 @@ export function PromotionsPanel({
               </th>
               <th className="px-4 py-3 text-left font-body text-xs uppercase text-text-secondary">
                 Ahorro del cliente
+              </th>
+              <th className="px-4 py-3 text-left font-body text-xs uppercase text-text-secondary">
+                Ahorro %
               </th>
             </tr>
           </thead>
@@ -265,6 +282,9 @@ export function PromotionsPanel({
                 </td>
                 <td className="px-4 py-4 font-mono text-sm font-semibold tabular-nums text-text-primary">
                   {formatMoney(moneyFormatter, row.ahorroCliente)}
+                </td>
+                <td className="px-4 py-4 font-mono text-sm font-semibold tabular-nums text-text-primary">
+                  {formatSavingsPercent(row.ahorroClientePct)}
                 </td>
               </tr>
             ))}
