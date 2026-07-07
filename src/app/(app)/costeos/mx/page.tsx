@@ -1,11 +1,108 @@
 import Link from "next/link";
 
+import {
+  CosteoCalculator,
+  type CosteoCalculatorInitialValues,
+} from "@/components/costeos/CosteoCalculator";
+import { CosteoList, type CosteoListItem } from "@/components/costeos/CosteoList";
+import { createClient } from "@/lib/supabase/server";
+
 const tabs = [
   { label: "Colombia", href: "/costeos/co", active: false },
   { label: "México", href: "/costeos/mx", active: true },
 ] as const;
 
-export default function CosteosMexicoPage() {
+const emptyMexicoCosteoValues = {
+  nombre_producto: "",
+  precio_proveedor: 0,
+  flete_base: 0,
+  tasa_efectividad: 0,
+  costos_administrativos: 0,
+  fullfilment: 0,
+  cpa_ads: 0,
+  cpa_porcentaje_objetivo: 0,
+  tasa_cancelacion: 0,
+  precio_venta: 0,
+  precio_comparacion: 0,
+  importe_gastado: null,
+} satisfies CosteoCalculatorInitialValues;
+
+type CosteosMexicoPageProps = {
+  searchParams?: Promise<{
+    guardado?: string | string[];
+    importe?: string | string[];
+    costeo?: string | string[];
+  }>;
+};
+
+type CosteoRow = CosteoCalculatorInitialValues &
+  CosteoListItem & {
+    pais: "MX";
+  };
+
+type SupabaseError = {
+  message: string;
+};
+
+type CosteoQueryBuilder = {
+  eq(column: string, value: string): CosteoQueryBuilder;
+  order(
+    column: string,
+    options: { ascending: boolean },
+  ): Promise<{ data: CosteoRow[] | null; error: SupabaseError | null }>;
+  maybeSingle(): Promise<{ data: CosteoRow | null; error: SupabaseError | null }>;
+};
+
+type CosteosReadClient = {
+  from(table: "costeos"): {
+    select(columns: string): CosteoQueryBuilder;
+  };
+};
+
+function getSearchParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function CosteosMexicoPage({
+  searchParams,
+}: CosteosMexicoPageProps) {
+  const params = await searchParams;
+  const saved = getSearchParam(params?.guardado) === "1";
+  const importeSaved = getSearchParam(params?.importe) === "1";
+  const selectedCosteoId = getSearchParam(params?.costeo) ?? null;
+  const supabase = (await createClient()) as unknown as CosteosReadClient;
+  const { data: costeosData, error: costeosError } = await supabase
+    .from("costeos")
+    .select("*")
+    .eq("pais", "MX")
+    .order("created_at", { ascending: false });
+
+  if (costeosError) {
+    throw new Error(`No se pudieron cargar los costeos: ${costeosError.message}`);
+  }
+
+  let selectedCosteo: CosteoRow | null = null;
+
+  if (selectedCosteoId) {
+    const { data, error } = await supabase
+      .from("costeos")
+      .select("*")
+      .eq("pais", "MX")
+      .eq("id", selectedCosteoId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`No se pudo cargar el costeo: ${error.message}`);
+    }
+
+    selectedCosteo = data;
+  }
+
+  const costeos = (costeosData ?? []).map((costeo) => ({
+    ...costeo,
+    id: String(costeo.id),
+  }));
+
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
       <div className="border-b border-border pb-4">
@@ -16,7 +113,7 @@ export default function CosteosMexicoPage() {
           México
         </h1>
         <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
-          Espacio reservado para el modelo de costes del mercado mexicano.
+          Calculadora operativa para validar margen antes de escalar producto.
         </p>
       </div>
 
@@ -37,14 +134,16 @@ export default function CosteosMexicoPage() {
         ))}
       </nav>
 
-      <div className="mt-5 rounded-2xl border border-border bg-bg-surface p-6 shadow-lg">
-        <p className="font-display text-lg font-semibold text-text-primary">
-          Próximamente
-        </p>
-        <p className="mt-2 font-body text-sm text-text-secondary">
-          La calculadora para México se activará en una versión posterior.
-        </p>
-      </div>
+      <CosteoCalculator
+        key={selectedCosteo ? String(selectedCosteo.id) : "nuevo"}
+        pais="MX"
+        saved={saved}
+        importeSaved={importeSaved}
+        costeoId={selectedCosteo ? String(selectedCosteo.id) : undefined}
+        initialValues={selectedCosteo ?? emptyMexicoCosteoValues}
+      />
+
+      <CosteoList costeos={costeos} selectedId={selectedCosteoId} />
     </section>
   );
 }
