@@ -5,6 +5,10 @@ import {
   type CosteoCalculatorInitialValues,
 } from "@/components/costeos/CosteoCalculator";
 import { CosteoList, type CosteoListItem } from "@/components/costeos/CosteoList";
+import {
+  PromotionsPanel,
+  type PromotionCosteoValues,
+} from "@/components/costeos/PromotionsPanel";
 import { createClient } from "@/lib/supabase/server";
 
 const tabs = [
@@ -46,6 +50,27 @@ type CosteosReadClient = {
 
 function getSearchParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function getPromotionValues(costeo: CosteoRow): PromotionCosteoValues {
+  const fleteConDevoluciones = costeo.flete_base / costeo.tasa_efectividad;
+  const cpaConDevolucionesYCancelaciones =
+    costeo.cpa_ads /
+    (costeo.tasa_efectividad * (1 - costeo.tasa_cancelacion));
+  const costoUnicoPorPedido =
+    fleteConDevoluciones +
+    costeo.costos_administrativos +
+    costeo.fullfilment +
+    cpaConDevolucionesYCancelaciones;
+  const utilidadPorPedidoEntregado =
+    costeo.precio_venta - (costeo.precio_proveedor + costoUnicoPorPedido);
+
+  return {
+    utilidadPorPedidoEntregado,
+    costoUnicoPorPedido,
+    precioProveedor: costeo.precio_proveedor,
+    precioVenta: costeo.precio_venta,
+  };
 }
 
 export default async function CosteosColombiaPage({
@@ -127,6 +152,10 @@ export default async function CosteosColombiaPage({
         costeoId={selectedCosteo ? String(selectedCosteo.id) : undefined}
         initialValues={selectedCosteo ?? undefined}
       />
+
+      {selectedCosteo ? (
+        <PromotionsPanel pais="CO" {...getPromotionValues(selectedCosteo)} />
+      ) : null}
 
       <CosteoList costeos={costeos} selectedId={selectedCosteoId} />
     </section>
