@@ -1,11 +1,28 @@
 import Link from "next/link";
 
+import { CosteoCalculator } from "@/components/costeos/CosteoCalculator";
+
 const tabs = [
   { label: "Colombia", href: "/costeos/co", active: true },
   { label: "México", href: "/costeos/mx", active: false },
 ] as const;
 
-export default function CosteosColombiaPage() {
+type CosteosColombiaPageProps = {
+  searchParams?: Promise<{
+    guardado?: string | string[];
+  }>;
+};
+
+function getSearchParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function CosteosColombiaPage({
+  searchParams,
+}: CosteosColombiaPageProps) {
+  const params = await searchParams;
+  const saved = getSearchParam(params?.guardado) === "1";
+
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
       <div className="border-b border-border pb-4">
@@ -37,14 +54,7 @@ export default function CosteosColombiaPage() {
         ))}
       </nav>
 
-      <div className="mt-5 rounded-2xl border border-border bg-bg-surface p-6 shadow-lg">
-        <p className="font-display text-lg font-semibold text-text-primary">
-          Calculadora de costeos — en construcción
-        </p>
-        <p className="mt-2 font-body text-sm text-text-secondary">
-          La calculadora real llega en el siguiente commit.
-        </p>
-      </div>
+      <CosteoCalculator saved={saved} />
     </section>
   );
 }
