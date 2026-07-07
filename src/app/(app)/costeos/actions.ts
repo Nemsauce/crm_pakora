@@ -56,6 +56,22 @@ function readNumber(formData: FormData, name: string) {
   return value;
 }
 
+function readOptionalNumber(formData: FormData, name: string) {
+  const rawValue = readString(formData, name);
+
+  if (!rawValue) {
+    return 0;
+  }
+
+  const value = Number(rawValue.replace(",", "."));
+
+  if (!Number.isFinite(value)) {
+    throw new Error(`El campo ${name} debe ser un número válido.`);
+  }
+
+  return value;
+}
+
 function readPais(formData: FormData): Pais {
   const pais = readString(formData, "pais");
 
@@ -68,6 +84,16 @@ function readPais(formData: FormData): Pais {
 
 function getCosteosPath(pais: Pais) {
   return `/costeos/${pais.toLowerCase()}`;
+}
+
+function readDiscountPercentage(formData: FormData) {
+  const discountPercentage = readOptionalNumber(formData, "precio_comparacion");
+
+  if (discountPercentage < 0 || discountPercentage >= 100) {
+    throw new Error("El % descuento mostrado debe ser menor a 100.");
+  }
+
+  return discountPercentage;
 }
 
 function readCosteoPayload(formData: FormData): CosteoUpdate {
@@ -88,7 +114,7 @@ function readCosteoPayload(formData: FormData): CosteoUpdate {
     cpa_porcentaje_objetivo: readNumber(formData, "cpa_porcentaje_objetivo"),
     tasa_cancelacion: readNumber(formData, "tasa_cancelacion") / 100,
     precio_venta: readNumber(formData, "precio_venta"),
-    precio_comparacion: readNumber(formData, "precio_comparacion"),
+    precio_comparacion: readDiscountPercentage(formData),
   };
 }
 

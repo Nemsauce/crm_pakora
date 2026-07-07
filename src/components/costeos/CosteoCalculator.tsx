@@ -85,6 +85,36 @@ function formatMultiplier(value: number) {
   return Number.isFinite(value) ? `${value.toFixed(2)}x` : "—";
 }
 
+function getInitialDiscountPercentage(
+  initialValues?: CosteoCalculatorInitialValues,
+) {
+  const storedValue = initialValues?.precio_comparacion ?? 0;
+
+  if (!Number.isFinite(storedValue) || storedValue <= 0) {
+    return 0;
+  }
+
+  if (storedValue < 100) {
+    return storedValue;
+  }
+
+  const precioVenta = initialValues?.precio_venta ?? 0;
+
+  if (precioVenta > 0 && storedValue > precioVenta) {
+    const inferredDiscount = (1 - precioVenta / storedValue) * 100;
+
+    if (
+      Number.isFinite(inferredDiscount) &&
+      inferredDiscount >= 0 &&
+      inferredDiscount < 100
+    ) {
+      return inferredDiscount;
+    }
+  }
+
+  return 0;
+}
+
 function NumericField({
   id,
   name,
@@ -223,8 +253,8 @@ export function CosteoCalculator({
   const [precioVenta, setPrecioVenta] = useState(
     formatInputNumber(initialValues?.precio_venta ?? 0),
   );
-  const [precioComparacion, setPrecioComparacion] = useState(
-    formatInputNumber(initialValues?.precio_comparacion ?? 0),
+  const [porcentajeDescuento, setPorcentajeDescuento] = useState(
+    formatInputNumber(getInitialDiscountPercentage(initialValues)),
   );
   const [cpaPorcentajeObjetivo, setCpaPorcentajeObjetivo] = useState(
     formatInputNumber(initialValues?.cpa_porcentaje_objetivo ?? 20),
@@ -248,7 +278,13 @@ export function CosteoCalculator({
     const cpaAdsValue = parseInputNumber(cpaAds);
     const tasaCancelacionValue = parseInputNumber(tasaCancelacion) / 100;
     const precioVentaValue = parseInputNumber(precioVenta);
-    const precioComparacionValue = parseInputNumber(precioComparacion);
+    const porcentajeDescuentoValue = parseInputNumber(porcentajeDescuento);
+    const precioComparacionInvalido = porcentajeDescuentoValue >= 100;
+    const precioComparacionValue = precioComparacionInvalido
+      ? Number.NaN
+      : porcentajeDescuentoValue <= 0
+        ? precioVentaValue
+        : precioVentaValue / (1 - porcentajeDescuentoValue / 100);
 
     const fleteConDevoluciones = fleteBaseValue / tasaEfectividadValue;
     const cpaConDevolucionesYCancelaciones =
@@ -277,7 +313,9 @@ export function CosteoCalculator({
       tasaEfectividad: tasaEfectividadValue,
       utilidadPorPedidoEntregado,
       utilidadPromedioPorPedidoShopify,
+      porcentajeDescuento: porcentajeDescuentoValue,
       precioComparacion: precioComparacionValue,
+      precioComparacionInvalido,
       breakeven,
       roas,
       precioVenta: precioVentaValue,
@@ -291,7 +329,7 @@ export function CosteoCalculator({
     cpaAds,
     tasaCancelacion,
     precioVenta,
-    precioComparacion,
+    porcentajeDescuento,
   ]);
 
   const utilidadTone =
@@ -402,15 +440,28 @@ export function CosteoCalculator({
               onChange={handlePrecioVentaChange}
               prefix="$"
             />
-            <NumericField
-              id="precio_comparacion"
-              name="precio_comparacion"
-              label="Precio de comparación"
-              value={precioComparacion}
-              onChange={setPrecioComparacion}
-              prefix="$"
-              required={false}
-            />
+            <div className="space-y-2">
+              <NumericField
+                id="precio_comparacion"
+                name="precio_comparacion"
+                label="% descuento mostrado"
+                value={porcentajeDescuento}
+                onChange={setPorcentajeDescuento}
+                suffix="%"
+                required={false}
+              />
+              <p
+                className={`font-body text-xs ${
+                  values.precioComparacionInvalido
+                    ? "text-risk-high"
+                    : "text-text-secondary"
+                }`}
+              >
+                {values.precioComparacionInvalido
+                  ? "Debe ser menor a 100%."
+                  : "Calcula el precio de comparación automáticamente."}
+              </p>
+            </div>
             <NumericField
               id="flete_base"
               name="flete_base"
@@ -539,7 +590,12 @@ export function CosteoCalculator({
             />
             <ResultRow
               label="Precio comparación"
-              value={formatMoney(values.precioComparacion)}
+              value={
+                values.precioComparacionInvalido
+                  ? "Inválido"
+                  : formatMoney(values.precioComparacion)
+              }
+              tone={values.precioComparacionInvalido ? "negative" : "default"}
             />
             <ResultRow label="Breakeven" value={formatMoney(values.breakeven)} />
             <ResultRow label="ROAS" value={formatMultiplier(values.roas)} />
