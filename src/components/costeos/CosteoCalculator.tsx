@@ -10,11 +10,14 @@ import { createCosteo, updateCosteo } from "@/app/(app)/costeos/actions";
 import { CampaignProjection } from "./CampaignProjection";
 
 type CosteoCalculatorProps = {
+  pais: CosteoPais;
   saved?: boolean;
   importeSaved?: boolean;
   costeoId?: string;
   initialValues?: CosteoCalculatorInitialValues;
 };
+
+type CosteoPais = 'CO' | 'MX';
 
 export type CosteoCalculatorInitialValues = {
   nombre_producto: string;
@@ -45,13 +48,20 @@ type NumericFieldProps = {
   required?: boolean;
 };
 
-const moneyFormatter = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  maximumFractionDigits: 0,
-});
+const currencyFormatter = {
+  CO: new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }),
+  MX: new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    maximumFractionDigits: 0,
+  }),
+} satisfies Record<CosteoPais, Intl.NumberFormat>;
 
-const percentFormatter = new Intl.NumberFormat("es-CO", {
+const percentFormatter = new Intl.NumberFormat("es", {
   style: "percent",
   maximumFractionDigits: 1,
 });
@@ -65,10 +75,6 @@ function formatInputNumber(value: number) {
   if (!Number.isFinite(value)) return "";
   const rounded = Math.round(value * 100) / 100;
   return String(rounded);
-}
-
-function formatMoney(value: number) {
-  return Number.isFinite(value) ? moneyFormatter.format(value) : "—";
 }
 
 function formatPercent(value: number) {
@@ -186,12 +192,16 @@ function SubmitButton({ label }: { label: string }) {
 }
 
 export function CosteoCalculator({
+  pais,
   saved = false,
   importeSaved = false,
   costeoId,
   initialValues,
 }: CosteoCalculatorProps) {
   const isEditing = Boolean(costeoId);
+  const moneyFormatter = currencyFormatter[pais];
+  const formatMoney = (value: number) =>
+    Number.isFinite(value) ? moneyFormatter.format(value) : "—";
   const [nombreProducto, setNombreProducto] = useState(
     initialValues?.nombre_producto ?? "",
   );
@@ -339,6 +349,7 @@ export function CosteoCalculator({
         action={formAction}
         className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]"
       >
+        <input type="hidden" name="pais" value={pais} />
         <div className="rounded-2xl border border-border bg-bg-surface p-6 shadow-lg">
           <div className="flex flex-col gap-2 border-b border-border pb-4">
             <p className="font-display text-lg font-semibold text-text-primary">

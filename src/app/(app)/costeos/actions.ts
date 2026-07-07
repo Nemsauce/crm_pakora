@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
+type Pais = "CO" | "MX";
+
 type CosteoInsert = {
-  pais: "CO";
+  pais: Pais;
   nombre_producto: string;
   precio_proveedor: number;
   flete_base: number;
@@ -54,6 +56,20 @@ function readNumber(formData: FormData, name: string) {
   return value;
 }
 
+function readPais(formData: FormData): Pais {
+  const pais = readString(formData, "pais");
+
+  if (pais === "CO" || pais === "MX") {
+    return pais;
+  }
+
+  throw new Error("El país del costeo debe ser CO o MX.");
+}
+
+function getCosteosPath(pais: Pais) {
+  return `/costeos/${pais.toLowerCase()}`;
+}
+
 function readCosteoPayload(formData: FormData): CosteoUpdate {
   const nombreProducto = readString(formData, "nombre_producto");
 
@@ -77,8 +93,9 @@ function readCosteoPayload(formData: FormData): CosteoUpdate {
 }
 
 export async function createCosteo(formData: FormData) {
+  const pais = readPais(formData);
   const payload: CosteoInsert = {
-    pais: "CO",
+    pais,
     ...readCosteoPayload(formData),
   };
 
@@ -89,23 +106,26 @@ export async function createCosteo(formData: FormData) {
     throw new Error(`No se pudo guardar el costeo: ${error.message}`);
   }
 
-  redirect("/costeos/co?guardado=1");
+  redirect(`${getCosteosPath(pais)}?guardado=1`);
 }
 
 export async function updateCosteo(costeoId: string, formData: FormData) {
+  const pais = readPais(formData);
   const payload = readCosteoPayload(formData);
   const supabase = (await createClient()) as unknown as CosteosTableClient;
   const { error } = await supabase
     .from("costeos")
     .update(payload)
     .eq("id", costeoId)
-    .eq("pais", "CO");
+    .eq("pais", pais);
 
   if (error) {
     throw new Error(`No se pudo actualizar el costeo: ${error.message}`);
   }
 
-  redirect(`/costeos/co?costeo=${encodeURIComponent(costeoId)}&guardado=1`);
+  redirect(
+    `${getCosteosPath(pais)}?costeo=${encodeURIComponent(costeoId)}&guardado=1`,
+  );
 }
 
 export async function updateCosteoImporteGastado(

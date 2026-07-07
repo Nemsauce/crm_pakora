@@ -121,6 +121,7 @@ export default async function CosteosColombiaPage({
 
       <CosteoCalculator
         key={selectedCosteo ? String(selectedCosteo.id) : "nuevo"}
+        pais="CO"
         saved={saved}
         importeSaved={importeSaved}
         costeoId={selectedCosteo ? String(selectedCosteo.id) : undefined}
