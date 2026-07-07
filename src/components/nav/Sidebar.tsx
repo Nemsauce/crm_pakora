@@ -1,6 +1,11 @@
 "use client";
 
-import { ClipboardList, LayoutDashboard, ListTodo } from "lucide-react";
+import {
+  Calculator,
+  ClipboardList,
+  LayoutDashboard,
+  ListTodo,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -18,6 +23,11 @@ const navItems = [
     label: "Tareas",
     href: "/tareas",
     icon: ListTodo,
+  },
+  {
+    label: "Costeos",
+    href: "/costeos",
+    icon: Calculator,
   },
   {
     label: "Command Center",
