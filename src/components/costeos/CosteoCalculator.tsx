@@ -37,6 +37,7 @@ export type CosteoCalculatorInitialValues = {
 type NumericFieldProps = {
   id: string;
   name: string;
+  submitValue?: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -47,6 +48,13 @@ type NumericFieldProps = {
   step?: string;
   required?: boolean;
 };
+
+type FxRate = {
+  rate: number;
+  timestamp: string;
+};
+
+type DisplayCurrency = CosteoPais | "COP";
 
 const currencyFormatter = {
   CO: new Intl.NumberFormat("es-CO", {
@@ -59,7 +67,17 @@ const currencyFormatter = {
     currency: "MXN",
     maximumFractionDigits: 0,
   }),
-} satisfies Record<CosteoPais, Intl.NumberFormat>;
+  COP: new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }),
+} satisfies Record<DisplayCurrency, Intl.NumberFormat>;
+
+const exchangeRateFormatter = new Intl.NumberFormat("es-CO", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 const percentFormatter = new Intl.NumberFormat("es", {
   style: "percent",
@@ -118,6 +136,7 @@ function getInitialDiscountPercentage(
 function NumericField({
   id,
   name,
+  submitValue,
   label,
   value,
   onChange,
@@ -128,12 +147,17 @@ function NumericField({
   step = "0.01",
   required = true,
 }: NumericFieldProps) {
+  const visibleInputName = submitValue === undefined ? name : undefined;
+
   return (
     <div className="space-y-2">
       <Label htmlFor={id} className="font-body text-sm text-text-primary">
         {label}
       </Label>
       <div className="relative">
+        {submitValue === undefined ? null : (
+          <input type="hidden" name={name} value={submitValue} />
+        )}
         {prefix ? (
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-body text-sm text-text-secondary">
             {prefix}
@@ -141,7 +165,7 @@ function NumericField({
         ) : null}
         <Input
           id={id}
-          name={name}
+          name={visibleInputName}
           type="number"
           inputMode="decimal"
           min={min}
@@ -229,9 +253,16 @@ export function CosteoCalculator({
   initialValues,
 }: CosteoCalculatorProps) {
   const isEditing = Boolean(costeoId);
-  const moneyFormatter = currencyFormatter[pais];
+  const [showCopValues, setShowCopValues] = useState(false);
+  const [fxRate, setFxRate] = useState<FxRate | null>(null);
+  const [fxError, setFxError] = useState("");
+  const [fxLoading, setFxLoading] = useState(false);
+  const showFxToggle = pais === "MX";
+  const fxDisplayEnabled = showFxToggle && showCopValues && fxRate !== null;
+  const displayMultiplier = fxDisplayEnabled ? fxRate.rate : 1;
+  const moneyFormatter = currencyFormatter[fxDisplayEnabled ? "COP" : pais];
   const formatMoney = (value: number) =>
-    Number.isFinite(value) ? moneyFormatter.format(value) : "—";
+    Number.isFinite(value) ? moneyFormatter.format(value * displayMultiplier) : "—";
   const [nombreProducto, setNombreProducto] = useState(
     initialValues?.nombre_producto ?? "",
   );
@@ -268,6 +299,75 @@ export function CosteoCalculator({
   );
   const formAction =
     costeoId === undefined ? createCosteo : updateCosteo.bind(null, costeoId);
+
+  function getDisplayedMoneyInput(value: string) {
+    if (!value.trim() || displayMultiplier === 1) {
+      return value;
+    }
+
+    return formatInputNumber(parseInputNumber(value) * displayMultiplier);
+  }
+
+  function getStoredMoneyInput(value: string) {
+    if (!value.trim() || displayMultiplier === 1) {
+      return value;
+    }
+
+    return formatInputNumber(parseInputNumber(value) / displayMultiplier);
+  }
+
+  function getMoneySubmitValue(value: string) {
+    return fxDisplayEnabled ? value : undefined;
+  }
+
+  async function handleFxToggle() {
+    if (fxDisplayEnabled) {
+      setShowCopValues(false);
+      return;
+    }
+
+    if (fxRate) {
+      setShowCopValues(true);
+      return;
+    }
+
+    setFxLoading(true);
+    setFxError("");
+
+    try {
+      const response = await fetch("/api/fx/mxn-cop");
+      const data = (await response.json()) as Partial<FxRate> & {
+        error?: string;
+      };
+
+      if (
+        !response.ok ||
+        !Number.isFinite(data.rate) ||
+        data.rate === undefined ||
+        data.rate <= 0
+      ) {
+        throw new Error(data.error ?? "No se pudo obtener la tasa de cambio");
+      }
+
+      setFxRate({
+        rate: data.rate,
+        timestamp:
+          typeof data.timestamp === "string"
+            ? data.timestamp
+            : new Date().toISOString(),
+      });
+      setShowCopValues(true);
+    } catch (error) {
+      setShowCopValues(false);
+      setFxError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo obtener la tasa de cambio",
+      );
+    } finally {
+      setFxLoading(false);
+    }
+  }
 
   const values = useMemo(() => {
     const precioProveedorValue = parseInputNumber(precioProveedor);
@@ -405,6 +505,45 @@ export function CosteoCalculator({
             </div>
           ) : null}
 
+          {showFxToggle ? (
+            <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-border bg-bg-page px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-body text-sm font-semibold text-text-primary">
+                  Ver importes en COP
+                </p>
+                <p
+                  className={`mt-1 font-body text-xs ${
+                    fxError ? "text-risk-high" : "text-text-secondary"
+                  }`}
+                >
+                  {fxDisplayEnabled && fxRate
+                    ? `1 MXN = ${exchangeRateFormatter.format(fxRate.rate)} COP`
+                    : fxLoading
+                      ? "Consultando tasa de cambio..."
+                      : fxError || "Los valores se guardan siempre en MXN."}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={fxDisplayEnabled}
+                disabled={fxLoading || Boolean(fxError)}
+                onClick={handleFxToggle}
+                className={`relative h-7 w-12 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${
+                  fxDisplayEnabled
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent)]"
+                    : "border-border bg-bg-surface"
+                }`}
+              >
+                <span
+                  className={`absolute top-1/2 size-5 -translate-y-1/2 rounded-full bg-bg-surface shadow-md transition-transform ${
+                    fxDisplayEnabled ? "translate-x-5" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+          ) : null}
+
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
               <Label
@@ -428,16 +567,20 @@ export function CosteoCalculator({
               id="precio_proveedor"
               name="precio_proveedor"
               label="Precio proveedor"
-              value={precioProveedor}
-              onChange={setPrecioProveedor}
+              value={getDisplayedMoneyInput(precioProveedor)}
+              onChange={(value) => setPrecioProveedor(getStoredMoneyInput(value))}
+              submitValue={getMoneySubmitValue(precioProveedor)}
               prefix="$"
             />
             <NumericField
               id="precio_venta"
               name="precio_venta"
               label="Precio venta"
-              value={precioVenta}
-              onChange={handlePrecioVentaChange}
+              value={getDisplayedMoneyInput(precioVenta)}
+              onChange={(value) =>
+                handlePrecioVentaChange(getStoredMoneyInput(value))
+              }
+              submitValue={getMoneySubmitValue(precioVenta)}
               prefix="$"
             />
             <div className="space-y-2">
@@ -466,8 +609,9 @@ export function CosteoCalculator({
               id="flete_base"
               name="flete_base"
               label="Flete base"
-              value={fleteBase}
-              onChange={setFleteBase}
+              value={getDisplayedMoneyInput(fleteBase)}
+              onChange={(value) => setFleteBase(getStoredMoneyInput(value))}
+              submitValue={getMoneySubmitValue(fleteBase)}
               prefix="$"
             />
             <NumericField
@@ -483,16 +627,20 @@ export function CosteoCalculator({
               id="costos_administrativos"
               name="costos_administrativos"
               label="Costos administrativos"
-              value={costosAdministrativos}
-              onChange={setCostosAdministrativos}
+              value={getDisplayedMoneyInput(costosAdministrativos)}
+              onChange={(value) =>
+                setCostosAdministrativos(getStoredMoneyInput(value))
+              }
+              submitValue={getMoneySubmitValue(costosAdministrativos)}
               prefix="$"
             />
             <NumericField
               id="fullfilment"
               name="fullfilment"
               label="Fullfilment"
-              value={fullfilment}
-              onChange={setFullfilment}
+              value={getDisplayedMoneyInput(fullfilment)}
+              onChange={(value) => setFullfilment(getStoredMoneyInput(value))}
+              submitValue={getMoneySubmitValue(fullfilment)}
               prefix="$"
             />
             <div className="space-y-2">
@@ -509,18 +657,23 @@ export function CosteoCalculator({
                 </button>
               </div>
               <div className="relative">
+                {fxDisplayEnabled ? (
+                  <input type="hidden" name="cpa_ads" value={cpaAds} />
+                ) : null}
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-body text-sm text-text-secondary">
                   $
                 </span>
                 <Input
                   id="cpa_ads"
-                  name="cpa_ads"
+                  name={fxDisplayEnabled ? undefined : "cpa_ads"}
                   type="number"
                   inputMode="decimal"
                   min="0"
                   step="0.01"
-                  value={cpaAds}
-                  onChange={(event) => handleCpaChange(event.target.value)}
+                  value={getDisplayedMoneyInput(cpaAds)}
+                  onChange={(event) =>
+                    handleCpaChange(getStoredMoneyInput(event.target.value))
+                  }
                   className="h-10 rounded-lg border-border bg-bg-surface pl-8 font-mono tabular-nums text-text-primary placeholder:text-text-secondary focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20"
                   required
                 />
