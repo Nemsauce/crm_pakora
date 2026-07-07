@@ -13,8 +13,10 @@ type CosteoInsert = {
   costos_administrativos: number;
   fullfilment: number;
   cpa_ads: number;
+  cpa_porcentaje_objetivo: number;
   tasa_cancelacion: number;
   precio_venta: number;
+  precio_comparacion: number;
 };
 
 type CosteoUpdate = Omit<CosteoInsert, "pais">;
@@ -67,8 +69,10 @@ function readCosteoPayload(formData: FormData): CosteoUpdate {
     costos_administrativos: readNumber(formData, "costos_administrativos"),
     fullfilment: readNumber(formData, "fullfilment"),
     cpa_ads: readNumber(formData, "cpa_ads"),
+    cpa_porcentaje_objetivo: readNumber(formData, "cpa_porcentaje_objetivo"),
     tasa_cancelacion: readNumber(formData, "tasa_cancelacion") / 100,
     precio_venta: readNumber(formData, "precio_venta"),
+    precio_comparacion: readNumber(formData, "precio_comparacion"),
   };
 }
 

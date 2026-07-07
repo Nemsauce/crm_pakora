@@ -24,8 +24,10 @@ export type CosteoCalculatorInitialValues = {
   costos_administrativos: number;
   fullfilment: number;
   cpa_ads: number;
+  cpa_porcentaje_objetivo: number;
   tasa_cancelacion: number;
   precio_venta: number;
+  precio_comparacion: number;
   importe_gastado: number | null;
 };
 
@@ -40,6 +42,7 @@ type NumericFieldProps = {
   min?: string;
   max?: string;
   step?: string;
+  required?: boolean;
 };
 
 const moneyFormatter = new Intl.NumberFormat("es-CO", {
@@ -87,6 +90,7 @@ function NumericField({
   min = "0",
   max,
   step = "0.01",
+  required = true,
 }: NumericFieldProps) {
   return (
     <div className="space-y-2">
@@ -112,7 +116,7 @@ function NumericField({
           className={`h-10 rounded-lg border-border bg-bg-surface font-mono tabular-nums text-text-primary placeholder:text-text-secondary focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20 ${
             prefix ? "pl-8" : ""
           } ${suffix ? "pr-10" : ""}`}
-          required
+          required={required}
         />
         {suffix ? (
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-body text-sm text-text-secondary">
@@ -209,6 +213,12 @@ export function CosteoCalculator({
   const [precioVenta, setPrecioVenta] = useState(
     formatInputNumber(initialValues?.precio_venta ?? 0),
   );
+  const [precioComparacion, setPrecioComparacion] = useState(
+    formatInputNumber(initialValues?.precio_comparacion ?? 0),
+  );
+  const [cpaPorcentajeObjetivo, setCpaPorcentajeObjetivo] = useState(
+    formatInputNumber(initialValues?.cpa_porcentaje_objetivo ?? 20),
+  );
   const [cpaAds, setCpaAds] = useState(
     formatInputNumber(initialValues?.cpa_ads ?? 0),
   );
@@ -228,6 +238,7 @@ export function CosteoCalculator({
     const cpaAdsValue = parseInputNumber(cpaAds);
     const tasaCancelacionValue = parseInputNumber(tasaCancelacion) / 100;
     const precioVentaValue = parseInputNumber(precioVenta);
+    const precioComparacionValue = parseInputNumber(precioComparacion);
 
     const fleteConDevoluciones = fleteBaseValue / tasaEfectividadValue;
     const cpaConDevolucionesYCancelaciones =
@@ -241,7 +252,6 @@ export function CosteoCalculator({
     const utilidadPorPedidoEntregado = precioVentaValue - costosTotales;
     const utilidadPromedioPorPedidoShopify =
       utilidadPorPedidoEntregado * tasaEfectividadValue * (1 - tasaCancelacionValue);
-    const precioComparacion = precioVentaValue / (1 - 0.3);
     const breakeven = cpaAdsValue + utilidadPromedioPorPedidoShopify;
     const roas = utilidadPorPedidoEntregado / cpaConDevolucionesYCancelaciones + 1;
 
@@ -257,7 +267,7 @@ export function CosteoCalculator({
       tasaEfectividad: tasaEfectividadValue,
       utilidadPorPedidoEntregado,
       utilidadPromedioPorPedidoShopify,
-      precioComparacion,
+      precioComparacion: precioComparacionValue,
       breakeven,
       roas,
       precioVenta: precioVentaValue,
@@ -271,6 +281,7 @@ export function CosteoCalculator({
     cpaAds,
     tasaCancelacion,
     precioVenta,
+    precioComparacion,
   ]);
 
   const utilidadTone =
@@ -280,7 +291,28 @@ export function CosteoCalculator({
     setPrecioVenta(value);
 
     if (!cpaManual) {
-      setCpaAds(value ? formatInputNumber(parseInputNumber(value) * 0.2) : "");
+      setCpaAds(
+        value
+          ? formatInputNumber(
+              parseInputNumber(value) *
+                (parseInputNumber(cpaPorcentajeObjetivo) / 100),
+            )
+          : "",
+      );
+    }
+  }
+
+  function handleCpaPorcentajeObjetivoChange(value: string) {
+    setCpaPorcentajeObjetivo(value);
+
+    if (!cpaManual) {
+      setCpaAds(
+        precioVenta
+          ? formatInputNumber(
+              parseInputNumber(precioVenta) * (parseInputNumber(value) / 100),
+            )
+          : "",
+      );
     }
   }
 
@@ -291,7 +323,14 @@ export function CosteoCalculator({
 
   function resetCpaAuto() {
     setCpaManual(false);
-    setCpaAds(precioVenta ? formatInputNumber(parseInputNumber(precioVenta) * 0.2) : "");
+    setCpaAds(
+      precioVenta
+        ? formatInputNumber(
+            parseInputNumber(precioVenta) *
+              (parseInputNumber(cpaPorcentajeObjetivo) / 100),
+          )
+        : "",
+    );
   }
 
   return (
@@ -353,6 +392,15 @@ export function CosteoCalculator({
               prefix="$"
             />
             <NumericField
+              id="precio_comparacion"
+              name="precio_comparacion"
+              label="Precio de comparación"
+              value={precioComparacion}
+              onChange={setPrecioComparacion}
+              prefix="$"
+              required={false}
+            />
+            <NumericField
               id="flete_base"
               name="flete_base"
               label="Flete base"
@@ -395,7 +443,7 @@ export function CosteoCalculator({
                   onClick={resetCpaAuto}
                   className="font-body text-xs font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline"
                 >
-                  Restablecer a 20%
+                  Restablecer a objetivo
                 </button>
               </div>
               <div className="relative">
@@ -418,9 +466,17 @@ export function CosteoCalculator({
               <p className="font-body text-xs text-text-secondary">
                 {cpaManual
                   ? "CPA manual: no se actualiza al cambiar el precio."
-                  : "CPA automático: 20% del precio de venta."}
+                  : "CPA automático: usa el porcentaje objetivo."}
               </p>
             </div>
+            <NumericField
+              id="cpa_porcentaje_objetivo"
+              name="cpa_porcentaje_objetivo"
+              label="% CPA objetivo"
+              value={cpaPorcentajeObjetivo}
+              onChange={handleCpaPorcentajeObjetivoChange}
+              suffix="%"
+            />
             <NumericField
               id="tasa_cancelacion"
               name="tasa_cancelacion"
