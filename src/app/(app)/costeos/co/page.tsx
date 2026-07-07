@@ -1,6 +1,11 @@
 import Link from "next/link";
 
-import { CosteoCalculator } from "@/components/costeos/CosteoCalculator";
+import {
+  CosteoCalculator,
+  type CosteoCalculatorInitialValues,
+} from "@/components/costeos/CosteoCalculator";
+import { CosteoList, type CosteoListItem } from "@/components/costeos/CosteoList";
+import { createClient } from "@/lib/supabase/server";
 
 const tabs = [
   { label: "Colombia", href: "/costeos/co", active: true },
@@ -10,7 +15,33 @@ const tabs = [
 type CosteosColombiaPageProps = {
   searchParams?: Promise<{
     guardado?: string | string[];
+    importe?: string | string[];
+    costeo?: string | string[];
   }>;
+};
+
+type CosteoRow = CosteoCalculatorInitialValues &
+  CosteoListItem & {
+    pais: "CO";
+  };
+
+type SupabaseError = {
+  message: string;
+};
+
+type CosteoQueryBuilder = {
+  eq(column: string, value: string): CosteoQueryBuilder;
+  order(
+    column: string,
+    options: { ascending: boolean },
+  ): Promise<{ data: CosteoRow[] | null; error: SupabaseError | null }>;
+  maybeSingle(): Promise<{ data: CosteoRow | null; error: SupabaseError | null }>;
+};
+
+type CosteosReadClient = {
+  from(table: "costeos"): {
+    select(columns: string): CosteoQueryBuilder;
+  };
 };
 
 function getSearchParam(value: string | string[] | undefined) {
@@ -22,6 +53,40 @@ export default async function CosteosColombiaPage({
 }: CosteosColombiaPageProps) {
   const params = await searchParams;
   const saved = getSearchParam(params?.guardado) === "1";
+  const importeSaved = getSearchParam(params?.importe) === "1";
+  const selectedCosteoId = getSearchParam(params?.costeo) ?? null;
+  const supabase = (await createClient()) as unknown as CosteosReadClient;
+  const { data: costeosData, error: costeosError } = await supabase
+    .from("costeos")
+    .select("*")
+    .eq("pais", "CO")
+    .order("created_at", { ascending: false });
+
+  if (costeosError) {
+    throw new Error(`No se pudieron cargar los costeos: ${costeosError.message}`);
+  }
+
+  let selectedCosteo: CosteoRow | null = null;
+
+  if (selectedCosteoId) {
+    const { data, error } = await supabase
+      .from("costeos")
+      .select("*")
+      .eq("pais", "CO")
+      .eq("id", selectedCosteoId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`No se pudo cargar el costeo: ${error.message}`);
+    }
+
+    selectedCosteo = data;
+  }
+
+  const costeos = (costeosData ?? []).map((costeo) => ({
+    ...costeo,
+    id: String(costeo.id),
+  }));
 
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
@@ -54,7 +119,15 @@ export default async function CosteosColombiaPage({
         ))}
       </nav>
 
-      <CosteoCalculator saved={saved} />
+      <CosteoCalculator
+        key={selectedCosteo ? String(selectedCosteo.id) : "nuevo"}
+        saved={saved}
+        importeSaved={importeSaved}
+        costeoId={selectedCosteo ? String(selectedCosteo.id) : undefined}
+        initialValues={selectedCosteo ?? undefined}
+      />
+
+      <CosteoList costeos={costeos} selectedId={selectedCosteoId} />
     </section>
   );
 }

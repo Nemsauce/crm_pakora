@@ -17,11 +17,22 @@ type CosteoInsert = {
   precio_venta: number;
 };
 
+type CosteoUpdate = Omit<CosteoInsert, "pais">;
+
 type CosteosTableClient = {
   from(table: "costeos"): {
-    insert(values: CosteoInsert): Promise<{
-      error: { message: string } | null;
-    }>;
+    insert(values: CosteoInsert): Promise<{ error: { message: string } | null }>;
+    update(values: Partial<CosteoInsert & { importe_gastado: number }>): {
+      eq(
+        column: string,
+        value: string,
+      ): {
+        eq(
+          nextColumn: string,
+          nextValue: string,
+        ): Promise<{ error: { message: string } | null }>;
+      };
+    };
   };
 };
 
@@ -41,15 +52,14 @@ function readNumber(formData: FormData, name: string) {
   return value;
 }
 
-export async function createCosteo(formData: FormData) {
+function readCosteoPayload(formData: FormData): CosteoUpdate {
   const nombreProducto = readString(formData, "nombre_producto");
 
   if (!nombreProducto) {
     throw new Error("El nombre del producto es obligatorio.");
   }
 
-  const payload: CosteoInsert = {
-    pais: "CO",
+  return {
     nombre_producto: nombreProducto,
     precio_proveedor: readNumber(formData, "precio_proveedor"),
     flete_base: readNumber(formData, "flete_base"),
@@ -60,6 +70,13 @@ export async function createCosteo(formData: FormData) {
     tasa_cancelacion: readNumber(formData, "tasa_cancelacion") / 100,
     precio_venta: readNumber(formData, "precio_venta"),
   };
+}
+
+export async function createCosteo(formData: FormData) {
+  const payload: CosteoInsert = {
+    pais: "CO",
+    ...readCosteoPayload(formData),
+  };
 
   const supabase = (await createClient()) as unknown as CosteosTableClient;
   const { error } = await supabase.from("costeos").insert(payload);
@@ -69,4 +86,39 @@ export async function createCosteo(formData: FormData) {
   }
 
   redirect("/costeos/co?guardado=1");
+}
+
+export async function updateCosteo(costeoId: string, formData: FormData) {
+  const payload = readCosteoPayload(formData);
+  const supabase = (await createClient()) as unknown as CosteosTableClient;
+  const { error } = await supabase
+    .from("costeos")
+    .update(payload)
+    .eq("id", costeoId)
+    .eq("pais", "CO");
+
+  if (error) {
+    throw new Error(`No se pudo actualizar el costeo: ${error.message}`);
+  }
+
+  redirect(`/costeos/co?costeo=${encodeURIComponent(costeoId)}&guardado=1`);
+}
+
+export async function updateCosteoImporteGastado(
+  costeoId: string,
+  formData: FormData,
+) {
+  const importeGastado = readNumber(formData, "importe_gastado");
+  const supabase = (await createClient()) as unknown as CosteosTableClient;
+  const { error } = await supabase
+    .from("costeos")
+    .update({ importe_gastado: importeGastado })
+    .eq("id", costeoId)
+    .eq("pais", "CO");
+
+  if (error) {
+    throw new Error(`No se pudo guardar el importe gastado: ${error.message}`);
+  }
+
+  redirect(`/costeos/co?costeo=${encodeURIComponent(costeoId)}&importe=1`);
 }
