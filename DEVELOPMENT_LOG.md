@@ -253,3 +253,9 @@ Pendiente cuando se retome 'notis':
 - Se verificó que `Comparar y filtrar cambios` asumía una sola página (`$('Dropi Consultar Pedidos').item.json.objects`). Como n8n pagination puede emitir un item por página, el script ahora parchea ese Code node para leer `$('Dropi Consultar Pedidos').all()` y aplanar todos los `objects`, usando el mismo patrón probado por `Preparar datos historico` en la migración.
 - No se cambian las ventanas de fecha en este commit: CO conserva su ventana dinámica existente y MX conserva el fix MX-only del commit anterior.
 - Pendiente: Alejo debe revisar el dry-run con el JSON de paginación y el snippet before/after de `Comparar y filtrar cambios`, y luego correr `--confirm` contra n8n de producción.
+
+### [Fase 4] Command Center — resumen por producto — COMPLETADO
+- Se agregó una sección nueva `Por producto` debajo de los bloques financieros existentes de `/command-center`, separada visualmente y marcada como `Histórico completo, todos los períodos` para dejar claro que no respeta el selector 7/30/90.
+- La sección usa el RPC `product_order_summary()` sin argumentos y renderiza dos tablas independientes (Colombia y México) con total de pedidos, pendientes de confirmación, cancelados y devoluciones por producto.
+- Se regeneró `src/lib/supabase/database.types.ts` desde el schema live porque el RPC todavía no existía en los tipos locales; el cambio también trajo otros additions aditivos del schema live que estaban pendientes en el archivo generado.
+- Verificado contra Supabase: `product_order_summary()` devuelve datos reales para ambos países (CO y MX).

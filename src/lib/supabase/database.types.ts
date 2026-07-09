@@ -46,6 +46,77 @@ export type Database = {
           },
         ]
       }
+      costeos: {
+        Row: {
+          costos_administrativos: number
+          cpa_ads: number
+          cpa_manual: boolean
+          cpa_porcentaje_objetivo: number
+          created_at: string
+          created_by: string | null
+          flete_base: number
+          fullfilment: number
+          id: number
+          importe_gastado: number | null
+          nombre_producto: string
+          pais: Database["public"]["Enums"]["pais_enum"]
+          precio_comparacion: number | null
+          precio_proveedor: number
+          precio_venta: number
+          tasa_cancelacion: number
+          tasa_efectividad: number
+          updated_at: string
+        }
+        Insert: {
+          costos_administrativos?: number
+          cpa_ads?: number
+          cpa_manual?: boolean
+          cpa_porcentaje_objetivo?: number
+          created_at?: string
+          created_by?: string | null
+          flete_base?: number
+          fullfilment?: number
+          id?: never
+          importe_gastado?: number | null
+          nombre_producto: string
+          pais: Database["public"]["Enums"]["pais_enum"]
+          precio_comparacion?: number | null
+          precio_proveedor?: number
+          precio_venta?: number
+          tasa_cancelacion?: number
+          tasa_efectividad?: number
+          updated_at?: string
+        }
+        Update: {
+          costos_administrativos?: number
+          cpa_ads?: number
+          cpa_manual?: boolean
+          cpa_porcentaje_objetivo?: number
+          created_at?: string
+          created_by?: string | null
+          flete_base?: number
+          fullfilment?: number
+          id?: never
+          importe_gastado?: number | null
+          nombre_producto?: string
+          pais?: Database["public"]["Enums"]["pais_enum"]
+          precio_comparacion?: number | null
+          precio_proveedor?: number
+          precio_venta?: number
+          tasa_cancelacion?: number
+          tasa_efectividad?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "costeos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -238,6 +309,8 @@ export type Database = {
           id: string
           nombre: string | null
           role: Database["public"]["Enums"]["role_enum"]
+          telegram_chat_id: string | null
+          titulo: string | null
           updated_at: string
         }
         Insert: {
@@ -247,6 +320,8 @@ export type Database = {
           id: string
           nombre?: string | null
           role?: Database["public"]["Enums"]["role_enum"]
+          telegram_chat_id?: string | null
+          titulo?: string | null
           updated_at?: string
         }
         Update: {
@@ -256,9 +331,52 @@ export type Database = {
           id?: string
           nombre?: string | null
           role?: Database["public"]["Enums"]["role_enum"]
+          telegram_chat_id?: string | null
+          titulo?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: number
+          last_used_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: never
+          last_used_at?: string | null
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: never
+          last_used_at?: string | null
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       status_catalog: {
         Row: {
@@ -506,6 +624,17 @@ export type Database = {
     }
     Functions: {
       is_authenticated_active_user: { Args: never; Returns: boolean }
+      product_order_summary: {
+        Args: never
+        Returns: {
+          cancelados: number
+          devoluciones: number
+          nombre_producto: string
+          pais: Database["public"]["Enums"]["pais_enum"]
+          pendientes_confirmacion: number
+          total: number
+        }[]
+      }
       wallet_summary: {
         Args: { p_date_from: string; p_date_to: string }
         Returns: {
@@ -548,6 +677,8 @@ export type Database = {
         | "pedido_nuevo"
         | "novedad"
         | "pedido_entregado"
+        | "pedido_devolucion"
+        | "pedido_en_reparto"
       pais_enum: "CO" | "MX"
       role_enum: "admin"
       tipo_movimiento_wallet_enum:
@@ -729,6 +860,8 @@ export const Constants = {
         "pedido_nuevo",
         "novedad",
         "pedido_entregado",
+        "pedido_devolucion",
+        "pedido_en_reparto",
       ],
       pais_enum: ["CO", "MX"],
       role_enum: ["admin"],

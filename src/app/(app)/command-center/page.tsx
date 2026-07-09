@@ -4,6 +4,7 @@ import {
   type WalletSummaryRow,
 } from "@/components/command-center/MovementBreakdownTable";
 import { NetProfitCard } from "@/components/command-center/NetProfitCard";
+import { ProductSummaryTable } from "@/components/command-center/ProductSummaryTable";
 import { createClient } from "@/lib/supabase/server";
 
 type SearchParams = {
@@ -82,16 +83,31 @@ export default async function CommandCenterPage({
   const range = getRange(params.range);
   const { dateFrom, dateTo } = getDateRange(Number(range));
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("wallet_summary", {
-    p_date_from: dateFrom,
-    p_date_to: dateTo,
-  });
+  const [
+    { data: walletSummaryData, error: walletSummaryError },
+    { data: productSummaryData, error: productSummaryError },
+  ] = await Promise.all([
+    supabase.rpc("wallet_summary", {
+      p_date_from: dateFrom,
+      p_date_to: dateTo,
+    }),
+    supabase.rpc("product_order_summary"),
+  ]);
 
-  if (error) {
-    throw new Error(`No se pudo cargar el resumen financiero: ${error.message}`);
+  if (walletSummaryError) {
+    throw new Error(
+      `No se pudo cargar el resumen financiero: ${walletSummaryError.message}`,
+    );
   }
 
-  const summaryRows = data ?? [];
+  if (productSummaryError) {
+    throw new Error(
+      `No se pudo cargar el resumen por producto: ${productSummaryError.message}`,
+    );
+  }
+
+  const summaryRows = walletSummaryData ?? [];
+  const productRows = productSummaryData ?? [];
 
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
@@ -140,6 +156,22 @@ export default async function CommandCenterPage({
             rows={getRowsByCountry(summaryRows, pais)}
           />
         ))}
+      </div>
+
+      <div className="mt-10 border-t border-border pt-6">
+        <div className="mb-4">
+          <p className="font-body text-xs uppercase text-text-secondary">
+            Por producto
+          </p>
+          <h2 className="mt-2 font-display text-xl font-semibold text-text-primary">
+            Pedidos por producto
+          </h2>
+          <p className="mt-2 font-body text-sm text-text-secondary">
+            Histórico completo, todos los períodos.
+          </p>
+        </div>
+
+        <ProductSummaryTable rows={productRows} />
       </div>
     </section>
   );
