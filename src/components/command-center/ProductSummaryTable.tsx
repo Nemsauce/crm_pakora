@@ -1,13 +1,17 @@
-type Pais = "CO" | "MX";
+import type { Database } from "@/lib/supabase/database.types";
 
-export type ProductSummaryRow = {
-  pais: Pais;
-  nombre_producto: string;
-  total: number;
-  pendientes_confirmacion: number;
-  cancelados: number;
-  devoluciones: number;
-};
+export type ProductSummaryRow =
+  Database["public"]["Functions"]["product_order_summary"]["Returns"][number];
+
+type Pais = ProductSummaryRow["pais"];
+type CountKey =
+  | "total"
+  | "pendientes"
+  | "confirmados"
+  | "en_transito"
+  | "entregados"
+  | "cancelados"
+  | "devoluciones";
 
 type ProductSummaryTableProps = {
   rows: ProductSummaryRow[];
@@ -18,7 +22,21 @@ const countryLabel: Record<Pais, string> = {
   MX: "México",
 };
 
-const countries = ["CO", "MX"] as const;
+const countries = ["CO", "MX"] as const satisfies readonly Pais[];
+
+const countColumns = [
+  { key: "total", label: "Total", className: "font-semibold text-text-primary" },
+  { key: "pendientes", label: "Pendientes", className: "text-risk-medium" },
+  { key: "confirmados", label: "Confirmados", className: "text-risk-low" },
+  { key: "en_transito", label: "En tránsito", className: "text-badge-en-ruta" },
+  { key: "entregados", label: "Entregados", className: "text-positive" },
+  { key: "cancelados", label: "Cancelados", className: "text-risk-high" },
+  { key: "devoluciones", label: "Devoluciones", className: "text-risk-high" },
+] satisfies {
+  key: CountKey;
+  label: string;
+  className: string;
+}[];
 
 const countFormatter = {
   CO: new Intl.NumberFormat("es-CO"),
@@ -54,24 +72,20 @@ function ProductCountryTable({
 
       {rows.length > 0 ? (
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[44rem] border-separate border-spacing-0">
+          <table className="w-full min-w-[68rem] border-separate border-spacing-0">
             <thead>
               <tr className="text-left font-body text-xs text-text-secondary">
                 <th className="border-b border-border pb-3 font-medium">
                   Producto
                 </th>
-                <th className="border-b border-border pb-3 text-right font-medium">
-                  Total
-                </th>
-                <th className="border-b border-border pb-3 text-right font-medium">
-                  Pendientes confirmación
-                </th>
-                <th className="border-b border-border pb-3 text-right font-medium">
-                  Cancelados
-                </th>
-                <th className="border-b border-border pb-3 text-right font-medium">
-                  Devoluciones
-                </th>
+                {countColumns.map((column) => (
+                  <th
+                    key={column.key}
+                    className="border-b border-border pb-3 text-right font-medium"
+                  >
+                    {column.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -80,18 +94,14 @@ function ProductCountryTable({
                   <td className="border-b border-border py-3 pr-4 font-body text-sm font-medium text-text-primary">
                     {row.nombre_producto}
                   </td>
-                  <td className="border-b border-border py-3 text-right font-mono text-sm font-semibold tabular-nums text-text-primary">
-                    {formatCount(pais, row.total)}
-                  </td>
-                  <td className="border-b border-border py-3 text-right font-mono text-sm tabular-nums text-risk-medium">
-                    {formatCount(pais, row.pendientes_confirmacion)}
-                  </td>
-                  <td className="border-b border-border py-3 text-right font-mono text-sm tabular-nums text-risk-high">
-                    {formatCount(pais, row.cancelados)}
-                  </td>
-                  <td className="border-b border-border py-3 text-right font-mono text-sm tabular-nums text-risk-high">
-                    {formatCount(pais, row.devoluciones)}
-                  </td>
+                  {countColumns.map((column) => (
+                    <td
+                      key={column.key}
+                      className={`border-b border-border py-3 text-right font-mono text-sm tabular-nums ${column.className}`}
+                    >
+                      {formatCount(pais, row[column.key])}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

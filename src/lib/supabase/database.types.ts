@@ -628,10 +628,13 @@ export type Database = {
         Args: never
         Returns: {
           cancelados: number
+          confirmados: number
           devoluciones: number
+          en_transito: number
+          entregados: number
           nombre_producto: string
           pais: Database["public"]["Enums"]["pais_enum"]
-          pendientes_confirmacion: number
+          pendientes: number
           total: number
         }[]
       }
