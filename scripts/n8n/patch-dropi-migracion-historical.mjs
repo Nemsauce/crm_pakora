@@ -775,7 +775,7 @@ return orders.map(o => {
         direccion: sanitize(o.dir),
         ciudad: sanitize(o.city),
         departamento: sanitize(o.state),
-        nombre_producto: sanitize(o.notes),
+        nombre_producto: sanitize((o.orderdetails && o.orderdetails[0] && o.orderdetails[0].product && o.orderdetails[0].product.name) || ''),
         total: parseFloat(o.total_order || 0),
         guia_envio: o.shipping_guide || null,
         transportadora: o.distribution_company?.name || null,

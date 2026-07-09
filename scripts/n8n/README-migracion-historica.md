@@ -33,6 +33,12 @@ Dropi returns order `created_at` values as UTC timestamps with a `Z` suffix, for
 
 `Preparar datos historico` now normalizes `orders.fecha` to Alejo's local date reference for both countries by applying a fixed UTC-5 offset before extracting `YYYY-MM-DD`. This is intentional for both CO and MX: the CRM uses one consistent Colombia-local business date, not each customer's local timezone.
 
+### Nombre de producto historico
+
+`Preparar datos historico` maps `orders.nombre_producto` from `orderdetails[0].product.name`, using only the first order detail item to match the live Shopify capture workflows' first-line-item behavior.
+
+Do not use Dropi's top-level `notes` field for `nombre_producto`: it is unreliable free text and can contain delivery notes, references, or concatenated product/variant text. Variant information from `orderdetails[0].variation` is intentionally not appended here; product reporting groups by clean base product name.
+
 It also adds a new wallet historical branch that did not exist in these migration workflows:
 
 ```text

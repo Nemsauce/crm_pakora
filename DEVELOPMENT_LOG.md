@@ -259,3 +259,9 @@ Pendiente cuando se retome 'notis':
 - La sección usa el RPC `product_order_summary()` sin argumentos y renderiza dos tablas independientes (Colombia y México) con total de pedidos, pendientes de confirmación, cancelados y devoluciones por producto.
 - Se regeneró `src/lib/supabase/database.types.ts` desde el schema live porque el RPC todavía no existía en los tipos locales; el cambio también trajo otros additions aditivos del schema live que estaban pendientes en el archivo generado.
 - Verificado contra Supabase: `product_order_summary()` devuelve datos reales para ambos países (CO y MX).
+
+### [Fix migración histórica] nombre_producto desde producto Dropi — SCRIPT LISTO, PENDIENTE DE EJECUCIÓN
+- Bug confirmado en los pedidos cargados por migración histórica el 2026-07-04: `Preparar datos historico` estaba guardando `nombre_producto` desde `o.notes`, campo libre de Dropi que puede traer instrucciones de entrega, referencias de dirección o texto concatenado producto/variante.
+- Se corrigió el mapping generado por `scripts/n8n/patch-dropi-migracion-historical.mjs` para usar solo el primer detalle de pedido, igual que el patrón live de Shopify con `line_items[0]`: `orderdetails[0].product.name`.
+- La variante (`orderdetails[0].variation`) queda fuera de alcance a propósito para mantener el reporte `Por producto` agrupado por nombre base limpio; no se tocaron fecha, costos, estados, wallet ni conexiones.
+- Pendiente: revisar dry-run y luego correr `--confirm` contra los workflows históricos CO/MX si el cambio se aprueba.
