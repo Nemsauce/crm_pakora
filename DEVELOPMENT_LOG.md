@@ -265,3 +265,9 @@ Pendiente cuando se retome 'notis':
 - Se corrigió el mapping generado por `scripts/n8n/patch-dropi-migracion-historical.mjs` para usar solo el primer detalle de pedido, igual que el patrón live de Shopify con `line_items[0]`: `orderdetails[0].product.name`.
 - La variante (`orderdetails[0].variation`) queda fuera de alcance a propósito para mantener el reporte `Por producto` agrupado por nombre base limpio; no se tocaron fecha, costos, estados, wallet ni conexiones.
 - Pendiente: revisar dry-run y luego correr `--confirm` contra los workflows históricos CO/MX si el cambio se aprueba.
+
+### [Fix migración histórica] upsert de órdenes por id_orden_shopify — SCRIPT LISTO, PENDIENTE DE EJECUCIÓN
+- Re-correr la migración histórica para refrescar `nombre_producto` podía fallar con `409 duplicate key` por la constraint `orders_id_orden_shopify_key`, o ignorar filas existentes si el nodo usaba `resolution=ignore-duplicates`.
+- Se extendió `scripts/n8n/patch-dropi-migracion-historical.mjs` para normalizar únicamente el nodo `Insertar orden historica`: agrega/actualiza `?on_conflict=id_orden_shopify` en la URL y fusiona `resolution=merge-duplicates` dentro del header `Prefer`, preservando otros directives como `return=representation`.
+- Esto mantiene seguro el caso de primera carga (inserta si no hay conflicto) y permite actualizar filas existentes cuando el mismo `id_orden_shopify` ya fue capturado.
+- Pendiente: revisar dry-run y luego correr `--confirm` contra los workflows históricos CO/MX si el cambio se aprueba.

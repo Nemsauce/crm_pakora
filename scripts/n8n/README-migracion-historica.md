@@ -39,6 +39,12 @@ Dropi returns order `created_at` values as UTC timestamps with a `Z` suffix, for
 
 Do not use Dropi's top-level `notes` field for `nombre_producto`: it is unreliable free text and can contain delivery notes, references, or concatenated product/variant text. Variant information from `orderdetails[0].variation` is intentionally not appended here; product reporting groups by clean base product name.
 
+### Upsert de orden historica
+
+`Insertar orden historica` is configured as an upsert against `orders.id_orden_shopify` with `?on_conflict=id_orden_shopify` and `Prefer: resolution=merge-duplicates`. This is required because the historical migration may be re-run to refresh already captured rows after mapping fixes, such as the `nombre_producto` correction above.
+
+`resolution=merge-duplicates` updates the existing row on conflict and still inserts brand-new orders normally when there is no conflict. Do not use `ignore-duplicates` here, because it would leave stale historical rows unchanged.
+
 It also adds a new wallet historical branch that did not exist in these migration workflows:
 
 ```text

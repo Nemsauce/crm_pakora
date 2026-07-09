@@ -33,9 +33,12 @@ const DROPI_HISTORICAL_ORDERS_NODE_NAME = "Dropi Consultar Historico";
 const DROPI_WALLET_TEMPLATE_NODE_NAME = "Dropi Consultar Wallet";
 const DROPI_WALLET_HISTORICAL_NODE_NAME = "Dropi Consultar Wallet Historico";
 const PREPARE_HISTORICAL_NODE_NAME = "Preparar datos historico";
+const INSERT_HISTORICAL_ORDER_NODE_NAME = "Insertar orden historica";
 const MAP_WALLET_NODE_NAME = "Mapear movimientos wallet completo";
 const INSERT_WALLET_NODE_NAME = "Insertar movimientos wallet";
 const WALLET_ON_CONFLICT_PARAM = "on_conflict=pais,id_movimiento_dropi";
+const ORDERS_ON_CONFLICT_COLUMN = "id_orden_shopify";
+const ORDERS_UPSERT_RESOLUTION_DIRECTIVE = "resolution=merge-duplicates";
 const ALLOWED_WORKFLOW_SETTINGS_KEYS = new Set([
   "executionOrder",
   "saveManualExecutions",
@@ -616,6 +619,34 @@ function upsertHeader(headers, name, value) {
   });
 }
 
+function getHeaderValue(parameters, name) {
+  const headers = getHeaderParameterList(parameters);
+  const header = headers.find(
+    (candidate) => candidate.name.toLowerCase() === name.toLowerCase(),
+  );
+
+  return header ? header.value : null;
+}
+
+function mergePreferDirective(value, directive) {
+  const directives = String(value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const [directiveKey] = directive.split("=");
+  const existingIndex = directives.findIndex((item) =>
+    item.toLowerCase().startsWith(`${directiveKey.toLowerCase()}=`),
+  );
+
+  if (existingIndex === -1) {
+    directives.push(directive);
+  } else {
+    directives[existingIndex] = directive;
+  }
+
+  return directives.join(",");
+}
+
 function isSupabaseRestNode(node) {
   return (
     node?.type === "n8n-nodes-base.httpRequest" &&
@@ -651,6 +682,40 @@ function ensureWalletOnConflictParam(urlValue) {
 
   const separator = urlValue.includes("?") ? "&" : "?";
   return `${urlValue}${separator}${WALLET_ON_CONFLICT_PARAM}`;
+}
+
+function setQueryParam(urlValue, name, value) {
+  const [urlWithoutHash, hash = ""] = urlValue.split("#");
+  const [baseUrl, query = ""] = urlWithoutHash.split("?");
+  const params = query
+    .split("&")
+    .filter(Boolean)
+    .map((part) => {
+      const [rawKey, ...rawValueParts] = part.split("=");
+
+      return {
+        key: rawKey,
+        value: rawValueParts.join("="),
+      };
+    });
+  const existingParam = params.find((param) => param.key === name);
+
+  if (existingParam) {
+    existingParam.value = value;
+  } else {
+    params.push({ key: name, value });
+  }
+
+  const nextQuery = params
+    .map((param) => `${param.key}=${param.value}`)
+    .join("&");
+  const nextHash = hash ? `#${hash}` : "";
+
+  return `${baseUrl}?${nextQuery}${nextHash}`;
+}
+
+function ensureOrdersOnConflictParam(urlValue) {
+  return setQueryParam(urlValue, "on_conflict", ORDERS_ON_CONFLICT_COLUMN);
 }
 
 function buildWalletMovementsUrl(supabaseSourceNode) {
@@ -1023,6 +1088,57 @@ function createOrUpdateWalletInsertNode(workflow, walletMappingNode, supabaseSou
   };
 }
 
+function patchHistoricalOrderInsertNode(workflow) {
+  const node = findNode(workflow, INSERT_HISTORICAL_ORDER_NODE_NAME);
+
+  if (!node) {
+    throw new Error(`Node "${INSERT_HISTORICAL_ORDER_NODE_NAME}" was not found.`);
+  }
+
+  if (node.type !== "n8n-nodes-base.httpRequest") {
+    throw new Error(
+      `"${INSERT_HISTORICAL_ORDER_NODE_NAME}" exists but is not an HTTP Request node. Found type: ${node.type ?? "(missing)"}.`,
+    );
+  }
+
+  if (
+    !node.parameters ||
+    typeof node.parameters !== "object" ||
+    Array.isArray(node.parameters)
+  ) {
+    throw new Error(`"${INSERT_HISTORICAL_ORDER_NODE_NAME}" does not have parameters.`);
+  }
+
+  const beforeUrl = getHttpRequestUrl(node);
+  const beforePrefer = getHeaderValue(node.parameters, "Prefer");
+  const headers = getHeaderParameterList(node.parameters);
+  const afterUrl = ensureOrdersOnConflictParam(beforeUrl);
+  const afterPrefer = mergePreferDirective(
+    beforePrefer,
+    ORDERS_UPSERT_RESOLUTION_DIRECTIVE,
+  );
+
+  upsertHeader(headers, "Prefer", afterPrefer);
+
+  node.parameters.url = afterUrl;
+  node.parameters.sendHeaders = true;
+  node.parameters.headerParameters = { parameters: headers };
+
+  return {
+    node,
+    status:
+      beforeUrl === afterUrl && beforePrefer === afterPrefer
+        ? "confirmed"
+        : "updated",
+    urlStatus: beforeUrl === afterUrl ? "confirmed" : "updated",
+    preferStatus: beforePrefer === afterPrefer ? "confirmed" : "updated",
+    beforeUrl,
+    afterUrl,
+    beforePrefer,
+    afterPrefer,
+  };
+}
+
 function findSourceNodeNameForTarget(workflow, targetNodeName) {
   const connections = workflow.connections ?? {};
 
@@ -1238,6 +1354,7 @@ function patchWorkflow(workflow, templateWorkflow, workflowTarget) {
 
   const windows = computeDateWindows(HISTORY_FROM_DATE);
   const prepareHistoricalPatch = patchPrepareHistoricalNode(workflow, workflowTarget.pais);
+  const historicalOrderInsertPatch = patchHistoricalOrderInsertNode(workflow);
   const orderWindowChanges = createOrUpdateDropiWindowNodes({
     workflow,
     baseNode: historicalOrdersBaseNode,
@@ -1353,6 +1470,13 @@ function patchWorkflow(workflow, templateWorkflow, workflowTarget) {
     prepareHistoricalStatus: prepareHistoricalPatch.status,
     prepareHistoricalJsCodeBefore: prepareHistoricalPatch.beforeJsCode,
     prepareHistoricalJsCodeAfter: prepareHistoricalPatch.afterJsCode,
+    historicalOrderInsertStatus: historicalOrderInsertPatch.status,
+    historicalOrderInsertUrlStatus: historicalOrderInsertPatch.urlStatus,
+    historicalOrderInsertPreferStatus: historicalOrderInsertPatch.preferStatus,
+    historicalOrderInsertUrlBefore: historicalOrderInsertPatch.beforeUrl,
+    historicalOrderInsertUrlAfter: historicalOrderInsertPatch.afterUrl,
+    historicalOrderInsertPreferBefore: historicalOrderInsertPatch.beforePrefer,
+    historicalOrderInsertPreferAfter: historicalOrderInsertPatch.afterPrefer,
     walletMappingNodeStatus: walletMappingNodeChange.status,
     walletInsertNodeStatus: walletInsertNodeChange.status,
     walletInsertOnConflictStatus: walletInsertNodeChange.onConflictStatus,
@@ -1400,6 +1524,15 @@ function printChangeSummary(workflow, workflowTarget, patchResult) {
   console.log(patchResult.prepareHistoricalJsCodeBefore);
   console.log(`- "${PREPARE_HISTORICAL_NODE_NAME}" jsCode after:`);
   console.log(patchResult.prepareHistoricalJsCodeAfter);
+  console.log(
+    `- "${INSERT_HISTORICAL_ORDER_NODE_NAME}" upsert config: ${patchResult.historicalOrderInsertStatus}`,
+  );
+  console.log(
+    `  url (${patchResult.historicalOrderInsertUrlStatus}): ${patchResult.historicalOrderInsertUrlBefore} -> ${patchResult.historicalOrderInsertUrlAfter}`,
+  );
+  console.log(
+    `  Prefer (${patchResult.historicalOrderInsertPreferStatus}): ${patchResult.historicalOrderInsertPreferBefore ?? "(none)"} -> ${patchResult.historicalOrderInsertPreferAfter}`,
+  );
   console.log("- wallet historical window nodes:");
   for (const change of patchResult.walletWindowChanges) {
     console.log(
