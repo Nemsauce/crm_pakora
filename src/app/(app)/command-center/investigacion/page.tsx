@@ -34,13 +34,7 @@ export default async function CommandCenterInvestigacionPage() {
     );
   }
 
-  const candidates = (candidatesData ?? [])
-    .filter(isSweetSpotCandidate)
-    .sort(
-      (a, b) =>
-        toNumber(b.tendencia_ratio) - toNumber(a.tendencia_ratio) ||
-        toNumber(b.ritmo_reciente) - toNumber(a.ritmo_reciente),
-    );
+  const candidates = (candidatesData ?? []).filter(isSweetSpotCandidate);
 
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
@@ -65,9 +59,9 @@ export default async function CommandCenterInvestigacionPage() {
           <SweetSpotCountrySection
             key={country}
             country={country}
-            candidates={candidates.filter(
-              (candidate) => candidate.country_code === country,
-            )}
+            candidates={candidates
+              .filter((candidate) => candidate.country_code === country)
+              .slice(0, 10)}
           />
         ))}
       </div>
@@ -123,18 +117,4 @@ function isSweetSpotCandidate(
     candidate.es_sweet_spot === true &&
     (candidate.country_code === "CO" || candidate.country_code === "MX")
   );
-}
-
-function toNumber(value: number | string | null) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
-  }
-
-  if (typeof value === "string") {
-    const parsed = Number(value);
-
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-
-  return 0;
 }
