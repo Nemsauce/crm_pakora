@@ -117,6 +117,81 @@ export type Database = {
           },
         ]
       }
+      dropkiller_config: {
+        Row: {
+          activo: boolean
+          country_code: string
+          id: number
+          platform: string
+        }
+        Insert: {
+          activo?: boolean
+          country_code: string
+          id?: never
+          platform: string
+        }
+        Update: {
+          activo?: boolean
+          country_code?: string
+          id?: never
+          platform?: string
+        }
+        Relationships: []
+      }
+      dropkiller_products_daily: {
+        Row: {
+          captured_at: string
+          country_code: string
+          created_at: string
+          dropkiller_uuid: string | null
+          external_id: string
+          history_30d: Json | null
+          id: number
+          nombre_producto: string
+          platform: string
+          sale_price: number | null
+          sold_units_last_30_days: number | null
+          sold_units_last_7_days: number | null
+          stock: number | null
+          suggested_price: number | null
+          total_sold_units: number | null
+        }
+        Insert: {
+          captured_at?: string
+          country_code: string
+          created_at?: string
+          dropkiller_uuid?: string | null
+          external_id: string
+          history_30d?: Json | null
+          id?: never
+          nombre_producto: string
+          platform: string
+          sale_price?: number | null
+          sold_units_last_30_days?: number | null
+          sold_units_last_7_days?: number | null
+          stock?: number | null
+          suggested_price?: number | null
+          total_sold_units?: number | null
+        }
+        Update: {
+          captured_at?: string
+          country_code?: string
+          created_at?: string
+          dropkiller_uuid?: string | null
+          external_id?: string
+          history_30d?: Json | null
+          id?: never
+          nombre_producto?: string
+          platform?: string
+          sale_price?: number | null
+          sold_units_last_30_days?: number | null
+          sold_units_last_7_days?: number | null
+          stock?: number | null
+          suggested_price?: number | null
+          total_sold_units?: number | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -623,6 +698,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      dropkiller_sweet_spot_candidates: {
+        Args: never
+        Returns: {
+          captured_at: string
+          country_code: string
+          cumple_banda_sweet_spot: boolean
+          cumple_consistencia: boolean
+          cumple_tendencia_ascendente: boolean
+          dias_con_venta_7d: number
+          es_sweet_spot: boolean
+          external_id: string
+          nombre_producto: string
+          percentil_ritmo: number
+          platform: string
+          ritmo_reciente: number
+          sale_price: number
+          sold_units_last_30_days: number
+          sold_units_last_7_days: number
+          stock: number
+          suggested_price: number
+          tendencia_ratio: number
+          tercio1_promedio: number
+          tercio2_promedio: number
+          tercio3_promedio: number
+          total_sold_units: number
+        }[]
+      }
       is_authenticated_active_user: { Args: never; Returns: boolean }
       product_order_summary: {
         Args: never

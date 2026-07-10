@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { Json } from "@/lib/supabase/database.types";
+
 const CLERK_QUERY =
   "__clerk_api_version=2026-05-12&_clerk_js_version=6.25.0";
 const CLERK_BASE_URL = "https://clerk.dropkiller.com/v1/client";
@@ -21,6 +23,7 @@ export type DropkillerConfig = {
 
 export type DropkillerProductDailyRow = {
   external_id: string;
+  dropkiller_uuid: string | null;
   platform: string;
   country_code: string;
   nombre_producto: string;
@@ -30,7 +33,7 @@ export type DropkillerProductDailyRow = {
   total_sold_units: number | null;
   sold_units_last_7_days: number | null;
   sold_units_last_30_days: number | null;
-  history_30d: unknown;
+  history_30d: Json | null;
   captured_at: string;
 };
 
@@ -277,9 +280,7 @@ function mapProduct(
   capturedAt: string,
 ): DropkillerProductDailyRow {
   const productRecord = asRecord(product);
-  const externalId = productRecord
-    ? productRecord.externalId ?? productRecord.id
-    : null;
+  const externalId = toStringValue(productRecord?.externalId);
 
   if (!externalId) {
     throw new DropkillerProductsError(
@@ -288,7 +289,8 @@ function mapProduct(
   }
 
   return {
-    external_id: String(externalId),
+    external_id: externalId,
+    dropkiller_uuid: toStringValue(productRecord?.id),
     platform: config.platform,
     country_code: config.country_code,
     nombre_producto: toStringValue(productRecord?.name) ?? "",
@@ -299,7 +301,7 @@ function mapProduct(
     sold_units_last_7_days: toNumberValue(productRecord?.soldUnitsLast7Days),
     sold_units_last_30_days: toNumberValue(productRecord?.soldUnitsLast30Days),
     history_30d: Array.isArray(productRecord?.history30d)
-      ? productRecord.history30d
+      ? (productRecord.history30d as Json)
       : null,
     captured_at: capturedAt,
   };

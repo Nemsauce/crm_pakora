@@ -5,32 +5,10 @@ import {
   fetchDropkillerProducts,
   isEnabledDropkillerConfig,
   type DropkillerConfig,
-  type DropkillerProductDailyRow,
 } from "@/lib/dropkiller/fetchDropkillerProducts";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
-
-type SupabaseError = {
-  message: string;
-};
-
-type UntypedSupabaseTable = {
-  select: (columns: string) => Promise<{
-    data: unknown[] | null;
-    error: SupabaseError | null;
-  }>;
-  upsert: (
-    rows: DropkillerProductDailyRow[],
-    options: { onConflict: string },
-  ) => Promise<{
-    error: SupabaseError | null;
-  }>;
-};
-
-type UntypedSupabaseClient = {
-  from: (table: string) => UntypedSupabaseTable;
-};
 
 function isAuthorized(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
@@ -46,7 +24,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createAdminClient() as unknown as UntypedSupabaseClient;
+    const supabase = createAdminClient();
     const { data: configRows, error: configError } = await supabase
       .from("dropkiller_config")
       .select("*");
