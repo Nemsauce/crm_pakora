@@ -1,12 +1,27 @@
-import { ExternalLink } from "lucide-react";
+"use client";
 
+import {
+  Bookmark,
+  BookmarkCheck,
+  ExternalLink,
+  ImageIcon,
+} from "lucide-react";
+import { useState } from "react";
+import { useFormStatus } from "react-dom";
+
+import {
+  saveDropkillerProduct,
+  type SaveDropkillerProductInput,
+} from "@/app/(app)/command-center/investigacion/actions";
 import { MomentumBadge } from "@/components/command-center/MomentumBadge";
+import { Button } from "@/components/ui/button";
 
 export type SweetSpotCountry = "CO" | "MX";
 
 export type SweetSpotCandidate = {
   external_id: string | number | null;
   dropkiller_uuid: string | null;
+  primary_image_url: string | null;
   platform: string | null;
   country_code: SweetSpotCountry;
   nombre_producto: string | null;
@@ -33,6 +48,7 @@ export type SweetSpotCandidate = {
 
 type SweetSpotCardProps = {
   candidate: SweetSpotCandidate;
+  isSaved?: boolean;
 };
 
 const currencyFormatter = {
@@ -53,7 +69,10 @@ const countFormatter = {
   MX: new Intl.NumberFormat("es-MX"),
 } satisfies Record<SweetSpotCountry, Intl.NumberFormat>;
 
-export function SweetSpotCard({ candidate }: SweetSpotCardProps) {
+export function SweetSpotCard({
+  candidate,
+  isSaved = false,
+}: SweetSpotCardProps) {
   const pais = candidate.country_code;
   const productName = candidate.nombre_producto || "Producto sin nombre";
   const productUrl = getDropkillerProductUrl(candidate.dropkiller_uuid);
@@ -65,6 +84,10 @@ export function SweetSpotCard({ candidate }: SweetSpotCardProps) {
     percentil: candidate.percentil_ritmo,
     tendenciaRatio: candidate.tendencia_ratio,
   });
+  const saveAction = saveDropkillerProduct.bind(
+    null,
+    getSavePayload(candidate),
+  );
 
   return (
     <article
@@ -89,42 +112,64 @@ export function SweetSpotCard({ candidate }: SweetSpotCardProps) {
       <div
         className={`relative z-10 ${productUrl ? "pointer-events-none" : ""}`}
       >
-        <div className="flex min-w-0 items-start justify-between gap-4">
-          <h4 className="min-w-0 break-words font-display text-lg font-semibold text-text-primary">
-            {productName}
-          </h4>
+        <div className="flex min-w-0 items-start gap-4">
+          <ProductThumbnail
+            src={candidate.primary_image_url}
+            productName={productName}
+          />
 
-          <div className="flex shrink-0 items-center gap-2">
-            <p className="font-mono text-lg font-semibold tabular-nums text-text-primary">
-              {formatCurrency(pais, candidate.sale_price)}
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-4">
+              <h4 className="min-w-0 break-words font-display text-lg font-semibold text-text-primary">
+                {productName}
+              </h4>
+
+              <div className="flex shrink-0 items-center gap-2">
+                <p className="font-mono text-lg font-semibold tabular-nums text-text-primary">
+                  {formatCurrency(pais, candidate.sale_price)}
+                </p>
+                {productUrl ? (
+                  <ExternalLink
+                    aria-hidden="true"
+                    className="h-4 w-4 text-text-secondary"
+                  />
+                ) : null}
+              </div>
+            </div>
+
+            <p className="mt-3 font-body text-sm leading-relaxed text-text-secondary">
+              {summary}
             </p>
-            {productUrl ? (
-              <ExternalLink
-                aria-hidden="true"
-                className="h-4 w-4 text-text-secondary"
-              />
-            ) : null}
           </div>
         </div>
 
-        <p className="mt-3 font-body text-sm leading-relaxed text-text-secondary">
-          {summary}
-        </p>
-
-        {hasMomentumBadge ? (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            <span className="font-body text-xs font-semibold uppercase text-text-secondary">
-              Tendencia reciente
-            </span>
-            <div className={productUrl ? "pointer-events-auto" : ""}>
-              <MomentumBadge
-                tendenciaRatio={candidate.tendencia_ratio}
-                tercio1Promedio={candidate.tercio1_promedio}
-                tercio3Promedio={candidate.tercio3_promedio}
-              />
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+          {hasMomentumBadge ? (
+            <div>
+              <span className="font-body text-xs font-semibold uppercase text-text-secondary">
+                Tendencia reciente
+              </span>
+              <div
+                className={`mt-2 ${productUrl ? "pointer-events-auto" : ""}`}
+              >
+                <MomentumBadge
+                  tendenciaRatio={candidate.tendencia_ratio}
+                  tercio1Promedio={candidate.tercio1_promedio}
+                  tercio3Promedio={candidate.tercio3_promedio}
+                />
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : (
+            <span />
+          )}
+
+          <form
+            action={saveAction}
+            className="pointer-events-auto relative z-20"
+          >
+            <SaveButton isSaved={isSaved} disabled={!candidate.external_id} />
+          </form>
+        </div>
 
         <div className="mt-5 border-t border-border pt-4">
           <p className="font-body text-xs font-semibold uppercase text-text-secondary">
@@ -160,6 +205,86 @@ export function SweetSpotCard({ candidate }: SweetSpotCardProps) {
       </div>
     </article>
   );
+}
+
+function ProductThumbnail({
+  src,
+  productName,
+}: {
+  src: string | null;
+  productName: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (!src || failed) {
+    return (
+      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-page text-text-secondary">
+        <ImageIcon aria-hidden="true" className="h-7 w-7" />
+        <span className="sr-only">Imagen no disponible</span>
+      </div>
+    );
+  }
+
+  return (
+    // Dropkiller serves product images from dynamic CDN hosts not configured in Next/Image.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={productName}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="h-20 w-20 shrink-0 rounded-xl border border-border bg-bg-page object-cover"
+    />
+  );
+}
+
+function SaveButton({
+  isSaved,
+  disabled,
+}: {
+  isSaved: boolean;
+  disabled: boolean;
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button
+      type="submit"
+      size="sm"
+      variant={isSaved ? "secondary" : "default"}
+      disabled={isSaved || disabled || pending}
+      className={[
+        "rounded-full",
+        isSaved
+          ? "bg-positive-bg text-positive hover:bg-positive-bg"
+          : "bg-gradient-to-r from-accent-from to-accent-to text-bg-surface hover:opacity-90",
+      ].join(" ")}
+    >
+      {isSaved ? (
+        <BookmarkCheck aria-hidden="true" />
+      ) : (
+        <Bookmark aria-hidden="true" />
+      )}
+      {pending ? "Guardando..." : isSaved ? "Guardado" : "Guardar"}
+    </Button>
+  );
+}
+
+function getSavePayload(
+  candidate: SweetSpotCandidate,
+): SaveDropkillerProductInput {
+  return {
+    external_id: candidate.external_id,
+    dropkiller_uuid: candidate.dropkiller_uuid,
+    country_code: candidate.country_code,
+    nombre_producto: candidate.nombre_producto,
+    sale_price: candidate.sale_price,
+    primary_image_url: candidate.primary_image_url,
+    sold_units_last_7_days: candidate.sold_units_last_7_days,
+    sold_units_last_30_days: candidate.sold_units_last_30_days,
+    total_sold_units: candidate.total_sold_units,
+    providers_count: candidate.providers_count,
+  };
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

@@ -25,6 +25,7 @@ export type DropkillerConfig = {
 export type DropkillerProductDailyRow = {
   external_id: string;
   dropkiller_uuid: string | null;
+  primary_image_url: string | null;
   platform: string;
   country_code: string;
   nombre_producto: string;
@@ -343,6 +344,7 @@ function mapProduct(
   return {
     external_id: externalId,
     dropkiller_uuid: toStringValue(productRecord?.id),
+    primary_image_url: toStringValue(productRecord?.primaryImageUrl),
     platform: config.platform,
     country_code: config.country_code,
     nombre_producto: toStringValue(productRecord?.name) ?? "",

@@ -33,6 +33,13 @@ type ProvidersCountTable = {
   update: (values: { providers_count: number }) => ProvidersCountUpdateFilter;
 };
 
+type ProductDailyUpsertTable = {
+  upsert: (
+    values: Array<Record<string, unknown>>,
+    options: { onConflict: string },
+  ) => PromiseLike<{ error: { message: string } | null }>;
+};
+
 function isAuthorized(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
 
@@ -73,9 +80,13 @@ export async function GET(request: NextRequest) {
     const rows = results.flatMap((result) => result.products);
 
     if (rows.length > 0) {
-      const { error: upsertError } = await supabase
-        .from("dropkiller_products_daily")
-        .upsert(rows, { onConflict: "external_id,captured_at" });
+      const table = supabase.from(
+        "dropkiller_products_daily",
+      ) as unknown as ProductDailyUpsertTable;
+      const { error: upsertError } = await table.upsert(
+        rows as unknown as Array<Record<string, unknown>>,
+        { onConflict: "external_id,captured_at" },
+      );
 
       if (upsertError) {
         return NextResponse.json(

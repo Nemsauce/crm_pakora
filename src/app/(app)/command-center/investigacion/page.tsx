@@ -1,3 +1,9 @@
+import Link from "next/link";
+
+import {
+  SavedProductCard,
+  type SavedDropkillerProduct,
+} from "@/components/command-center/SavedProductCard";
 import {
   SweetSpotCard,
   type SweetSpotCandidate,
@@ -14,6 +20,23 @@ type SweetSpotRpcClient = {
   }>;
 };
 
+type SavedProductsReadClient = {
+  from(table: "dropkiller_saved_products"): {
+    select: (columns: "*") => Promise<{
+      data: SavedDropkillerProduct[] | null;
+      error: { message: string } | null;
+    }>;
+  };
+};
+
+type PageProps = {
+  searchParams: Promise<{
+    vista?: string | string[];
+  }>;
+};
+
+type InvestigationView = "sugeridos" | "guardados";
+
 const countryLabel: Record<SweetSpotCountry, string> = {
   CO: "Colombia",
   MX: "México",
@@ -21,8 +44,32 @@ const countryLabel: Record<SweetSpotCountry, string> = {
 
 const countries = ["CO", "MX"] as const satisfies readonly SweetSpotCountry[];
 
-export default async function CommandCenterInvestigacionPage() {
+export default async function CommandCenterInvestigacionPage({
+  searchParams,
+}: PageProps) {
+  const params = await searchParams;
+  const view = getView(params.vista);
   const supabase = await createClient();
+  const savedProductsClient = supabase as unknown as SavedProductsReadClient;
+  const { data: savedProductsData, error: savedProductsError } =
+    await savedProductsClient.from("dropkiller_saved_products").select("*");
+
+  if (savedProductsError) {
+    throw new Error(
+      `No se pudieron cargar los productos guardados: ${savedProductsError.message}`,
+    );
+  }
+
+  const savedProducts = (savedProductsData ?? []).filter(isSavedProduct);
+
+  if (view === "guardados") {
+    return (
+      <InvestigationShell view={view}>
+        <SavedProductsSection products={savedProducts} />
+      </InvestigationShell>
+    );
+  }
+
   const { data: candidatesData, error: candidatesError } =
     await (supabase as unknown as SweetSpotRpcClient).rpc(
       "dropkiller_sweet_spot_candidates",
@@ -35,7 +82,37 @@ export default async function CommandCenterInvestigacionPage() {
   }
 
   const candidates = (candidatesData ?? []).filter(isSweetSpotCandidate);
+  const savedKeys = new Set(
+    savedProducts.map((product) =>
+      getSavedProductKey(product.country_code, product.external_id),
+    ),
+  );
 
+  return (
+    <InvestigationShell view={view}>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {countries.map((country) => (
+          <SweetSpotCountrySection
+            key={country}
+            country={country}
+            candidates={candidates
+              .filter((candidate) => candidate.country_code === country)
+              .slice(0, 10)}
+            savedKeys={savedKeys}
+          />
+        ))}
+      </div>
+    </InvestigationShell>
+  );
+}
+
+function InvestigationShell({
+  view,
+  children,
+}: {
+  view: InvestigationView;
+  children: React.ReactNode;
+}) {
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
       <div className="border-b border-border pb-5">
@@ -52,29 +129,64 @@ export default async function CommandCenterInvestigacionPage() {
         <p className="mt-2 font-body text-sm text-text-secondary">
           Curado automáticamente desde Dropkiller.
         </p>
+
+        <nav
+          aria-label="Vista de investigación"
+          className="mt-5 inline-flex rounded-xl border border-border bg-bg-page p-1"
+        >
+          <ViewTab
+            href="/command-center/investigacion"
+            active={view === "sugeridos"}
+          >
+            Sugeridos
+          </ViewTab>
+          <ViewTab
+            href="/command-center/investigacion?vista=guardados"
+            active={view === "guardados"}
+          >
+            Guardados
+          </ViewTab>
+        </nav>
       </div>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-2">
-        {countries.map((country) => (
-          <SweetSpotCountrySection
-            key={country}
-            country={country}
-            candidates={candidates
-              .filter((candidate) => candidate.country_code === country)
-              .slice(0, 10)}
-          />
-        ))}
-      </div>
+      <div className="mt-6">{children}</div>
     </section>
+  );
+}
+
+function ViewTab({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={[
+        "rounded-lg px-4 py-2 font-body text-sm font-semibold transition-colors",
+        active
+          ? "bg-bg-surface text-text-primary shadow-sm"
+          : "text-text-secondary hover:text-text-primary",
+      ].join(" ")}
+    >
+      {children}
+    </Link>
   );
 }
 
 function SweetSpotCountrySection({
   country,
   candidates,
+  savedKeys,
 }: {
   country: SweetSpotCountry;
   candidates: SweetSpotCandidate[];
+  savedKeys: Set<string>;
 }) {
   return (
     <section className="min-w-0">
@@ -98,12 +210,54 @@ function SweetSpotCountrySection({
             <SweetSpotCard
               key={`${candidate.country_code}-${candidate.external_id}`}
               candidate={candidate}
+              isSaved={savedKeys.has(
+                getSavedProductKey(
+                  candidate.country_code,
+                  candidate.external_id,
+                ),
+              )}
             />
           ))}
         </div>
       ) : (
         <div className="mt-5 rounded-2xl bg-bg-page p-4 font-body text-sm text-text-secondary">
           Sin datos
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SavedProductsSection({
+  products,
+}: {
+  products: SavedDropkillerProduct[];
+}) {
+  return (
+    <section>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="font-body text-xs uppercase text-text-secondary">
+            Lista compartida
+          </p>
+          <h2 className="mt-2 font-display text-lg font-semibold text-text-primary">
+            Productos guardados
+          </h2>
+        </div>
+        <p className="font-body text-sm text-text-secondary">
+          {products.length} {products.length === 1 ? "producto" : "productos"}
+        </p>
+      </div>
+
+      {products.length > 0 ? (
+        <div className="mt-5 grid gap-3 xl:grid-cols-2">
+          {products.map((product) => (
+            <SavedProductCard key={String(product.id)} product={product} />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 rounded-2xl border border-border bg-bg-surface p-6 font-body text-sm text-text-secondary shadow-lg">
+          Aún no hay productos guardados.
         </div>
       )}
     </section>
@@ -117,4 +271,27 @@ function isSweetSpotCandidate(
     candidate.es_sweet_spot === true &&
     (candidate.country_code === "CO" || candidate.country_code === "MX")
   );
+}
+
+function isSavedProduct(
+  product: SavedDropkillerProduct,
+): product is SavedDropkillerProduct {
+  return (
+    product.id !== null &&
+    product.id !== undefined &&
+    Boolean(String(product.external_id).trim()) &&
+    (product.country_code === "CO" || product.country_code === "MX")
+  );
+}
+
+function getSavedProductKey(
+  country: SweetSpotCountry,
+  externalId: string | number | null,
+) {
+  return `${country}:${externalId === null ? "" : String(externalId).trim()}`;
+}
+
+function getView(value: string | string[] | undefined): InvestigationView {
+  const resolved = Array.isArray(value) ? value[0] : value;
+  return resolved === "guardados" ? "guardados" : "sugeridos";
 }
