@@ -11,6 +11,11 @@ type StatusCountKey =
   | "entregados"
   | "cancelados"
   | "devoluciones";
+type PercentageKey =
+  | "pct_confirmacion"
+  | "pct_cancelacion"
+  | "pct_entrega"
+  | "pct_devolucion";
 
 type ProductSummaryTableProps = {
   rows: ProductSummaryRow[];
@@ -60,6 +65,33 @@ const statusChips = [
   className: string;
 }[];
 
+const percentageMetrics = [
+  {
+    key: "pct_confirmacion",
+    label: "Confirmación",
+    className: "bg-[var(--color-accent)]/10 text-[var(--color-accent)]",
+  },
+  {
+    key: "pct_entrega",
+    label: "Entrega",
+    className: "bg-risk-low-bg text-risk-low",
+  },
+  {
+    key: "pct_cancelacion",
+    label: "Cancelación",
+    className: "bg-risk-high-bg text-risk-high",
+  },
+  {
+    key: "pct_devolucion",
+    label: "Devolución",
+    className: "bg-risk-high-bg text-risk-high",
+  },
+] satisfies {
+  key: PercentageKey;
+  label: string;
+  className: string;
+}[];
+
 const countFormatter = {
   CO: new Intl.NumberFormat("es-CO"),
   MX: new Intl.NumberFormat("es-MX"),
@@ -67,6 +99,18 @@ const countFormatter = {
 
 function formatCount(pais: Pais, value: number) {
   return countFormatter[pais].format(value);
+}
+
+function formatPercentage(total: number, value: number | null | undefined) {
+  if (total === 0 || value === null || value === undefined) {
+    return "—";
+  }
+
+  if (!Number.isFinite(value)) {
+    return "—";
+  }
+
+  return `${value.toFixed(1)}%`;
 }
 
 function ProductCard({ pais, row }: { pais: Pais; row: ProductSummaryRow }) {
@@ -104,6 +148,22 @@ function ProductCard({ pais, row }: { pais: Pais; row: ProductSummaryRow }) {
           ))}
         </div>
       ) : null}
+
+      <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border pt-3 sm:grid-cols-4">
+        {percentageMetrics.map((metric) => (
+          <div
+            key={metric.key}
+            className={`rounded-2xl px-3 py-2 ${metric.className}`}
+          >
+            <p className="font-body text-[0.7rem] font-semibold">
+              {metric.label}
+            </p>
+            <p className="mt-1 font-mono text-sm font-semibold tabular-nums">
+              {formatPercentage(row.total, row[metric.key])}
+            </p>
+          </div>
+        ))}
+      </div>
     </article>
   );
 }

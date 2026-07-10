@@ -629,11 +629,16 @@ export type Database = {
         Returns: {
           cancelados: number
           confirmados: number
+          confirmados_alguna_vez: number
           devoluciones: number
           en_transito: number
           entregados: number
           nombre_producto: string
           pais: Database["public"]["Enums"]["pais_enum"]
+          pct_cancelacion: number
+          pct_confirmacion: number
+          pct_devolucion: number
+          pct_entrega: number
           pendientes: number
           total: number
         }[]
