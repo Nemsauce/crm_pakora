@@ -1,177 +1,73 @@
-import { DateRangeSelector } from "@/components/command-center/DateRangeSelector";
-import {
-  MovementBreakdownTable,
-  type WalletSummaryRow,
-} from "@/components/command-center/MovementBreakdownTable";
-import { NetProfitCard } from "@/components/command-center/NetProfitCard";
-import { ProductSummaryTable } from "@/components/command-center/ProductSummaryTable";
-import { createClient } from "@/lib/supabase/server";
+import { BarChart3, DollarSign } from "lucide-react";
+import Link from "next/link";
 
-type SearchParams = {
-  range?: string;
-};
+const sections = [
+  {
+    title: "Finanzas",
+    description: "Ganancia neta y movimientos por categoría.",
+    href: "/command-center/finanzas",
+    icon: DollarSign,
+  },
+  {
+    title: "Métricas",
+    description: "Pedidos, estados y desempeño por producto.",
+    href: "/command-center/metricas",
+    icon: BarChart3,
+  },
+] as const;
 
-type CommandCenterPageProps = {
-  searchParams: Promise<SearchParams>;
-};
-
-type Pais = "CO" | "MX";
-
-const validRanges = new Set(["7", "30", "90"]);
-const countries = ["CO", "MX"] as const;
-
-function getRange(value: string | undefined) {
-  return value && validRanges.has(value) ? value : "30";
-}
-
-function formatDateInput(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function getDateRange(days: number) {
-  const dateTo = new Date();
-  const dateFrom = new Date(dateTo);
-  dateFrom.setDate(dateTo.getDate() - days);
-
-  return {
-    dateFrom: formatDateInput(dateFrom),
-    dateTo: formatDateInput(dateTo),
-  };
-}
-
-function toNumber(value: number | string | null) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
-  }
-
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-
-  return 0;
-}
-
-function getRowsByCountry(rows: WalletSummaryRow[], pais: Pais) {
-  return rows.filter((row) => row.pais === pais);
-}
-
-function getCountryTotals(rows: WalletSummaryRow[]) {
-  return rows.reduce(
-    (totals, row) => {
-      const total = toNumber(row.total);
-      const tipo = row.tipo?.toUpperCase();
-
-      if (tipo === "ENTRADA") {
-        totals.entradas += total;
-      }
-
-      if (tipo === "SALIDA") {
-        totals.salidas += total;
-      }
-
-      return totals;
-    },
-    { entradas: 0, salidas: 0 },
-  );
-}
-
-export default async function CommandCenterPage({
-  searchParams,
-}: CommandCenterPageProps) {
-  const params = await searchParams;
-  const range = getRange(params.range);
-  const { dateFrom, dateTo } = getDateRange(Number(range));
-  const supabase = await createClient();
-  const [
-    { data: walletSummaryData, error: walletSummaryError },
-    { data: productSummaryData, error: productSummaryError },
-  ] = await Promise.all([
-    supabase.rpc("wallet_summary", {
-      p_date_from: dateFrom,
-      p_date_to: dateTo,
-    }),
-    supabase.rpc("product_order_summary"),
-  ]);
-
-  if (walletSummaryError) {
-    throw new Error(
-      `No se pudo cargar el resumen financiero: ${walletSummaryError.message}`,
-    );
-  }
-
-  if (productSummaryError) {
-    throw new Error(
-      `No se pudo cargar el resumen por producto: ${productSummaryError.message}`,
-    );
-  }
-
-  const summaryRows = walletSummaryData ?? [];
-  const productRows = productSummaryData ?? [];
-
+export default function CommandCenterPage() {
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
-      <div className="flex flex-col gap-4 border-b border-border pb-5 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <p className="font-body text-xs uppercase text-text-secondary">
-            Command Center
-          </p>
-          <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
-            Resumen financiero
-          </h1>
-          <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
-            Ganancia neta por país: entradas menos salidas agrupadas por
-            categoría.
-          </p>
-          <p className="mt-2 font-mono text-xs tabular-nums text-text-secondary">
-            {dateFrom} - {dateTo}
-          </p>
-        </div>
-
-        <DateRangeSelector currentRange={range} />
+      <div className="border-b border-border pb-5">
+        <p className="font-body text-xs uppercase text-text-secondary">
+          Command Center
+        </p>
+        <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
+          Torre de control
+        </h1>
+        <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
+          Elige una vista para revisar la operación financiera o las métricas
+          comerciales por producto.
+        </p>
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-2">
-        {countries.map((pais) => {
-          const rows = getRowsByCountry(summaryRows, pais);
-          const totals = getCountryTotals(rows);
+        {sections.map((section) => {
+          const Icon = section.icon;
 
           return (
-            <NetProfitCard
-              key={pais}
-              pais={pais}
-              entradas={totals.entradas}
-              salidas={totals.salidas}
-              hasMovements={rows.length > 0}
-            />
+            <Link
+              key={section.href}
+              href={section.href}
+              className="group rounded-2xl border border-border bg-bg-surface p-6 text-text-primary shadow-lg outline-none transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-[var(--color-accent)]/30 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-body text-xs uppercase text-text-secondary">
+                    Command Center
+                  </p>
+                  <h2 className="mt-3 font-display text-xl font-semibold text-text-primary">
+                    {section.title}
+                  </h2>
+                </div>
+                <div
+                  className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-badge-nuevo-bg)] text-[var(--color-badge-nuevo)] ring-1 ring-[var(--color-badge-nuevo-bg)]"
+                  aria-hidden="true"
+                >
+                  <Icon className="h-5 w-5" />
+                </div>
+              </div>
+
+              <p className="mt-5 max-w-xl font-body text-sm text-text-secondary">
+                {section.description}
+              </p>
+              <p className="mt-6 font-body text-sm font-semibold text-[var(--color-accent)]">
+                Abrir {section.title}
+              </p>
+            </Link>
           );
         })}
-      </div>
-
-      <div className="mt-6 grid gap-4 xl:grid-cols-2">
-        {countries.map((pais) => (
-          <MovementBreakdownTable
-            key={pais}
-            pais={pais}
-            rows={getRowsByCountry(summaryRows, pais)}
-          />
-        ))}
-      </div>
-
-      <div className="mt-10 border-t border-border pt-6">
-        <div className="mb-4">
-          <p className="font-body text-xs uppercase text-text-secondary">
-            Por producto
-          </p>
-          <h2 className="mt-2 font-display text-xl font-semibold text-text-primary">
-            Pedidos por producto
-          </h2>
-          <p className="mt-2 font-body text-sm text-text-secondary">
-            Histórico completo, todos los períodos.
-          </p>
-        </div>
-
-        <ProductSummaryTable rows={productRows} />
       </div>
     </section>
   );
