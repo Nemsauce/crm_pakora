@@ -13,6 +13,7 @@ export type SweetSpotCandidate = {
   sale_price: number | string | null;
   suggested_price: number | string | null;
   stock: number | string | null;
+  providers_count: number | string | null;
   total_sold_units: number | string | null;
   sold_units_last_7_days: number | string | null;
   sold_units_last_30_days: number | string | null;
@@ -129,7 +130,7 @@ export function SweetSpotCard({ candidate }: SweetSpotCardProps) {
           <p className="font-body text-xs font-semibold uppercase text-text-secondary">
             Datos duros
           </p>
-          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
             <Stat
               label="Vendidas"
               value={formatCount(pais, candidate.total_sold_units)}
@@ -142,6 +143,7 @@ export function SweetSpotCard({ candidate }: SweetSpotCardProps) {
               label="Últimos 30 días"
               value={formatCount(pais, candidate.sold_units_last_30_days)}
             />
+            <CompetitionStat pais={pais} value={candidate.providers_count} />
             <div>
               <dt className="font-body text-xs text-text-secondary">Demanda</dt>
               <dd className="mt-1 font-body text-sm font-semibold text-text-primary">
@@ -166,6 +168,34 @@ function Stat({ label, value }: { label: string; value: string }) {
       <dt className="font-body text-xs text-text-secondary">{label}</dt>
       <dd className="mt-1 font-mono text-base font-semibold tabular-nums text-text-primary">
         {value}
+      </dd>
+    </div>
+  );
+}
+
+function CompetitionStat({
+  pais,
+  value,
+}: {
+  pais: SweetSpotCountry;
+  value: number | string | null;
+}) {
+  const providersCount = toNumberOrNull(value);
+
+  return (
+    <div>
+      <dt className="font-body text-xs text-text-secondary">Competencia</dt>
+      <dd className="mt-1 font-body text-sm font-semibold text-text-primary">
+        {providersCount === null ? (
+          "Sin datos"
+        ) : (
+          <>
+            <span className="font-mono text-base tabular-nums">
+              {formatCount(pais, providersCount)}
+            </span>{" "}
+            {providersCount === 1 ? "vendedor" : "vendedores"}
+          </>
+        )}
       </dd>
     </div>
   );
