@@ -14,15 +14,16 @@ export type SweetSpotCandidate = {
   sold_units_last_7_days: number | string | null;
   sold_units_last_30_days: number | string | null;
   captured_at: string | null;
-  ritmo_7d: number | string | null;
-  ritmo_23d_previo: number | string | null;
-  momentum_ratio: number | string | null;
-  precio_hace_30d: number | string | null;
-  variacion_precio_pct: number | string | null;
-  cumple_no_muerto: boolean | null;
-  cumple_no_saturado: boolean | null;
-  cumple_momentum: boolean | null;
-  cumple_precio_sano: boolean | null;
+  ritmo_reciente: number | string | null;
+  percentil_ritmo: number | string | null;
+  dias_con_venta_7d: number | string | null;
+  tercio1_promedio: number | string | null;
+  tercio2_promedio: number | string | null;
+  tercio3_promedio: number | string | null;
+  tendencia_ratio: number | string | null;
+  cumple_banda_sweet_spot: boolean | null;
+  cumple_consistencia: boolean | null;
+  cumple_tendencia_ascendente: boolean | null;
   es_sweet_spot: boolean | null;
 };
 
@@ -82,11 +83,14 @@ export function SweetSpotCard({ candidate }: SweetSpotCardProps) {
           </p>
         </div>
 
-        <div className="shrink-0">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:max-w-[55%] sm:justify-end">
+          <span className="inline-flex items-center rounded-full bg-bg-page px-3 py-1 font-body text-xs font-semibold text-text-secondary">
+            {formatDemandPercentile(candidate.percentil_ritmo)}
+          </span>
           <MomentumBadge
-            momentumRatio={candidate.momentum_ratio}
-            ritmo7d={candidate.ritmo_7d}
-            ritmo23dPrevio={candidate.ritmo_23d_previo}
+            tendenciaRatio={candidate.tendencia_ratio}
+            tercio1Promedio={candidate.tercio1_promedio}
+            tercio3Promedio={candidate.tercio3_promedio}
           />
         </div>
       </div>
@@ -137,6 +141,28 @@ function toNumberOrNull(value: number | string | null) {
 
 function formatCount(pais: SweetSpotCountry, value: number) {
   return countFormatter[pais].format(value);
+}
+
+function formatDemandPercentile(value: number | string | null) {
+  const percentile = toNumberOrNull(value);
+
+  if (percentile === null) {
+    return "Demanda sin percentil";
+  }
+
+  const readablePercentile = Math.round(
+    Math.min(Math.max(percentile, 0), 1) * 100,
+  );
+
+  return (
+    <>
+      Percentil{" "}
+      <span className="font-mono tabular-nums text-text-primary">
+        {readablePercentile}
+      </span>{" "}
+      de demanda
+    </>
+  );
 }
 
 function toNumber(value: number | string | null) {

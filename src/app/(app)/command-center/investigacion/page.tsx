@@ -38,9 +38,8 @@ export default async function CommandCenterInvestigacionPage() {
     .filter(isSweetSpotCandidate)
     .sort(
       (a, b) =>
-        toNumber(b.momentum_ratio) - toNumber(a.momentum_ratio) ||
-        toNumber(b.sold_units_last_7_days) -
-          toNumber(a.sold_units_last_7_days),
+        toNumber(b.tendencia_ratio) - toNumber(a.tendencia_ratio) ||
+        toNumber(b.ritmo_reciente) - toNumber(a.ritmo_reciente),
     );
 
   return (
@@ -53,8 +52,8 @@ export default async function CommandCenterInvestigacionPage() {
           Investigación
         </h1>
         <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
-          Productos sugeridos para testear según ventas recientes, momentum y
-          salud de precio.
+          Productos sugeridos para testear según su nivel de demanda,
+          consistencia y tendencia ascendente.
         </p>
         <p className="mt-2 font-body text-sm text-text-secondary">
           Curado automáticamente desde Dropkiller.

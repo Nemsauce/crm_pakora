@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import { Tooltip as TooltipPrimitive } from "radix-ui";
 
 type MomentumBadgeProps = {
-  momentumRatio: number | string | null;
-  ritmo7d: number | string | null;
-  ritmo23dPrevio: number | string | null;
+  tendenciaRatio: number | string | null;
+  tercio1Promedio: number | string | null;
+  tercio3Promedio: number | string | null;
 };
 
 type MomentumTier = "explosivo" | "acelerando" | "subiendo";
@@ -34,18 +34,23 @@ const tierConfig = {
 >;
 
 export function MomentumBadge({
-  momentumRatio,
-  ritmo7d,
-  ritmo23dPrevio,
+  tendenciaRatio,
+  tercio1Promedio,
+  tercio3Promedio,
 }: MomentumBadgeProps) {
-  const ratio = toNumber(momentumRatio);
+  const ratio = toNumberOrNull(tendenciaRatio);
   const tier = getMomentumTier(ratio);
+
+  if (!tier || ratio === null) {
+    return null;
+  }
+
   const config = tierConfig[tier];
   const tooltipText = getTooltipText({
     tier,
-    momentumRatio: ratio,
-    ritmo7d: toNumber(ritmo7d),
-    ritmo23dPrevio: toNumber(ritmo23dPrevio),
+    tendenciaRatio: ratio,
+    tercio1Promedio: toNumberOrNull(tercio1Promedio),
+    tercio3Promedio: toNumberOrNull(tercio3Promedio),
   });
 
   return (
@@ -73,12 +78,16 @@ export function MomentumBadge({
   );
 }
 
-function getMomentumTier(momentumRatio: number): MomentumTier {
-  if (momentumRatio >= 3) {
+function getMomentumTier(tendenciaRatio: number | null): MomentumTier | null {
+  if (tendenciaRatio === null || tendenciaRatio < 1.2) {
+    return null;
+  }
+
+  if (tendenciaRatio >= 3) {
     return "explosivo";
   }
 
-  if (momentumRatio >= 1.5) {
+  if (tendenciaRatio >= 1.5) {
     return "acelerando";
   }
 
@@ -87,27 +96,27 @@ function getMomentumTier(momentumRatio: number): MomentumTier {
 
 function getTooltipText({
   tier,
-  momentumRatio,
-  ritmo7d,
-  ritmo23dPrevio,
+  tendenciaRatio,
+  tercio1Promedio,
+  tercio3Promedio,
 }: {
   tier: MomentumTier;
-  momentumRatio: number;
-  ritmo7d: number;
-  ritmo23dPrevio: number;
+  tendenciaRatio: number;
+  tercio1Promedio: number | null;
+  tercio3Promedio: number | null;
 }) {
-  const currentPace = formatDecimal(ritmo7d);
-  const previousPace = formatDecimal(ritmo23dPrevio);
-  const ratio = formatDecimal(momentumRatio);
+  const firstThirdPace = formatDecimal(tercio1Promedio);
+  const latestThirdPace = formatDecimal(tercio3Promedio);
+  const ratio = formatDecimal(tendenciaRatio);
 
   if (tier === "explosivo") {
     return (
       <>
-        Se está vendiendo ~<TooltipNumber>{currentPace}</TooltipNumber>{" "}
-        unidades por día en la última semana; eso es{" "}
-        <TooltipNumber>{ratio}x</TooltipNumber> más rápido que el ritmo de las 3
-        semanas anteriores (~<TooltipNumber>{previousPace}/día</TooltipNumber>
-        ).
+        El ritmo se disparó: en los primeros 10 días del período vendía ~
+        <TooltipNumber>{firstThirdPace}</TooltipNumber> unidades por día; en los
+        últimos 10 días ya vende ~
+        <TooltipNumber>{latestThirdPace}/día</TooltipNumber>,{" "}
+        <TooltipNumber>{ratio}x</TooltipNumber> el ritmo inicial.
       </>
     );
   }
@@ -115,21 +124,22 @@ function getTooltipText({
   if (tier === "acelerando") {
     return (
       <>
-        La demanda está tomando velocidad: ~
-        <TooltipNumber>{currentPace}</TooltipNumber> unidades por día esta semana
-        frente a ~<TooltipNumber>{previousPace}/día</TooltipNumber> en las 3
-        semanas previas, una mejora de{" "}
-        <TooltipNumber>{ratio}x</TooltipNumber>.
+        La demanda ganó velocidad: pasó de ~
+        <TooltipNumber>{firstThirdPace}</TooltipNumber> unidades por día en el
+        primer tercio a ~
+        <TooltipNumber>{latestThirdPace}/día</TooltipNumber> en el tercio más
+        reciente, un ritmo <TooltipNumber>{ratio}x</TooltipNumber> mayor.
       </>
     );
   }
 
   return (
     <>
-      Está subiendo de forma sana: ~<TooltipNumber>{currentPace}</TooltipNumber>{" "}
-      unidades por día en los últimos 7 días versus ~
-      <TooltipNumber>{previousPace}/día</TooltipNumber> antes, con{" "}
-      <TooltipNumber>{ratio}x</TooltipNumber> de momentum.
+      La tendencia va al alza: el promedio pasó de ~
+      <TooltipNumber>{firstThirdPace}</TooltipNumber> unidades por día en los
+      primeros 10 días a ~
+      <TooltipNumber>{latestThirdPace}/día</TooltipNumber> en los últimos 10
+      días, una relación de <TooltipNumber>{ratio}x</TooltipNumber>.
     </>
   );
 }
@@ -138,23 +148,23 @@ function TooltipNumber({ children }: { children: ReactNode }) {
   return <span className="font-mono tabular-nums">{children}</span>;
 }
 
-function toNumber(value: number | string | null) {
+function toNumberOrNull(value: number | string | null) {
   if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
+    return Number.isFinite(value) ? value : null;
   }
 
-  if (typeof value === "string") {
+  if (typeof value === "string" && value.trim()) {
     const parsed = Number(value);
 
-    return Number.isFinite(parsed) ? parsed : 0;
+    return Number.isFinite(parsed) ? parsed : null;
   }
 
-  return 0;
+  return null;
 }
 
-function formatDecimal(value: number) {
-  if (!Number.isFinite(value)) {
-    return "0.0";
+function formatDecimal(value: number | null) {
+  if (value === null || !Number.isFinite(value)) {
+    return "—";
   }
 
   return value.toFixed(1);
