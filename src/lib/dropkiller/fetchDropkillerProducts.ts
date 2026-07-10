@@ -6,6 +6,7 @@ const CLERK_QUERY =
   "__clerk_api_version=2026-05-12&_clerk_js_version=6.25.0";
 const CLERK_BASE_URL = "https://clerk.dropkiller.com/v1/client";
 const PRODUCTS_URL = "https://www.dropkiller.com/api/products";
+const SATURATION_TIMEOUT_MS = 10_000;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -97,6 +98,7 @@ export function isEnabledDropkillerConfig(config: DropkillerConfig) {
 export async function fetchDropkillerProducts(
   configs: DropkillerConfig[],
   capturedAt = getTodayDate(),
+  jwt?: string,
 ): Promise<DropkillerProductsResult[]> {
   const enabledConfigs = configs.filter(isEnabledDropkillerConfig);
 
@@ -104,13 +106,63 @@ export async function fetchDropkillerProducts(
     return [];
   }
 
-  const jwt = await loginFresh();
+  const sessionToken = jwt ?? (await loginFresh());
 
   return Promise.all(
     enabledConfigs.map((config) =>
-      fetchProductsForConfig(config, jwt, capturedAt),
+      fetchProductsForConfig(config, sessionToken, capturedAt),
     ),
   );
+}
+
+export async function createDropkillerSessionToken() {
+  return loginFresh();
+}
+
+export async function fetchProductSaturation(
+  jwt: string,
+  dropkillerUuid: string,
+  countryCode: string,
+) {
+  const uuid = dropkillerUuid.trim();
+  const country = countryCode.trim();
+
+  if (!jwt || !uuid || !country) {
+    return null;
+  }
+
+  const url = new URL(
+    `${PRODUCTS_URL}/${encodeURIComponent(uuid)}/saturation`,
+  );
+  url.searchParams.set("country", country);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        accept: "application/json",
+        authorization: `Bearer ${jwt}`,
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(SATURATION_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const body = await readJson(response);
+    const providersCount = toNumberValue(
+      getValueAtPath(body, ["result", "signals", "providers", "count"]),
+    );
+
+    return providersCount !== null &&
+      Number.isInteger(providersCount) &&
+      providersCount >= 0
+      ? providersCount
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function getCredentials(): DropkillerCredentials {
