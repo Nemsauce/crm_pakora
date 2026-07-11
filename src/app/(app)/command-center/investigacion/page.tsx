@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { RefreshDropkillerButton } from "@/components/command-center/RefreshDropkillerButton";
 import {
   SavedProductCard,
   type SavedDropkillerProduct,
@@ -116,19 +117,25 @@ function InvestigationShell({
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
       <div className="border-b border-border pb-5">
-        <p className="font-body text-xs uppercase text-text-secondary">
-          Command Center
-        </p>
-        <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
-          Investigación
-        </h1>
-        <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
-          Productos sugeridos para testear según su nivel de demanda,
-          consistencia y tendencia ascendente.
-        </p>
-        <p className="mt-2 font-body text-sm text-text-secondary">
-          Curado automáticamente desde Dropkiller.
-        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="font-body text-xs uppercase text-text-secondary">
+              Command Center
+            </p>
+            <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
+              Investigación
+            </h1>
+            <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
+              Productos sugeridos para testear según su nivel de demanda,
+              consistencia y tendencia ascendente.
+            </p>
+            <p className="mt-2 font-body text-sm text-text-secondary">
+              Curado automáticamente desde Dropkiller.
+            </p>
+          </div>
+
+          <RefreshDropkillerButton />
+        </div>
 
         <nav
           aria-label="Vista de investigación"

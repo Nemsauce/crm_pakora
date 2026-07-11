@@ -40,6 +40,27 @@ type ProductDailyUpsertTable = {
   ) => PromiseLike<{ error: { message: string } | null }>;
 };
 
+export type DropkillerSyncResult = {
+  capturedAt: string;
+  summary: Array<{
+    platform: string;
+    country: string;
+    productsStored: number;
+  }>;
+  totalProductsStored: number;
+  saturation: {
+    finalists: number;
+    providersCountResolved: number;
+  };
+};
+
+class DropkillerSyncOperationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DropkillerSyncOperationError";
+  }
+}
+
 function isAuthorized(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
 
@@ -54,63 +75,15 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createAdminClient();
-    const { data: configRows, error: configError } = await supabase
-      .from("dropkiller_config")
-      .select("*");
-
-    if (configError) {
+    return NextResponse.json(await runDropkillerSync());
+  } catch (error) {
+    if (error instanceof DropkillerSyncOperationError) {
       return NextResponse.json(
-        { error: "Failed to load Dropkiller config" },
+        { error: error.message },
         { status: 500 },
       );
     }
 
-    const configs = normalizeConfigs(configRows).filter(
-      isEnabledDropkillerConfig,
-    );
-    const capturedAt = new Date().toISOString().slice(0, 10);
-    const jwt =
-      configs.length > 0 ? await createDropkillerSessionToken() : null;
-    const results = await fetchDropkillerProducts(
-      configs,
-      capturedAt,
-      jwt ?? undefined,
-    );
-    const rows = results.flatMap((result) => result.products);
-
-    if (rows.length > 0) {
-      const table = supabase.from(
-        "dropkiller_products_daily",
-      ) as unknown as ProductDailyUpsertTable;
-      const { error: upsertError } = await table.upsert(
-        rows as unknown as Array<Record<string, unknown>>,
-        { onConflict: "external_id,captured_at" },
-      );
-
-      if (upsertError) {
-        return NextResponse.json(
-          { error: "Failed to store Dropkiller products" },
-          { status: 500 },
-        );
-      }
-    }
-
-    const saturation = jwt
-      ? await resolveFinalistProviderCounts(supabase, jwt)
-      : { finalists: 0, providersCountResolved: 0 };
-
-    return NextResponse.json({
-      capturedAt,
-      summary: results.map((result) => ({
-        platform: result.platform,
-        country: result.country,
-        productsStored: result.products.length,
-      })),
-      totalProductsStored: rows.length,
-      saturation,
-    });
-  } catch (error) {
     const errorMessage =
       error instanceof DropkillerAuthError
         ? error.message
@@ -123,6 +96,62 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
+}
+
+export async function runDropkillerSync(): Promise<DropkillerSyncResult> {
+  const supabase = createAdminClient();
+  const { data: configRows, error: configError } = await supabase
+    .from("dropkiller_config")
+    .select("*");
+
+  if (configError) {
+    throw new DropkillerSyncOperationError(
+      "Failed to load Dropkiller config",
+    );
+  }
+
+  const configs = normalizeConfigs(configRows).filter(
+    isEnabledDropkillerConfig,
+  );
+  const capturedAt = new Date().toISOString().slice(0, 10);
+  const jwt = configs.length > 0 ? await createDropkillerSessionToken() : null;
+  const results = await fetchDropkillerProducts(
+    configs,
+    capturedAt,
+    jwt ?? undefined,
+  );
+  const rows = results.flatMap((result) => result.products);
+
+  if (rows.length > 0) {
+    const table = supabase.from(
+      "dropkiller_products_daily",
+    ) as unknown as ProductDailyUpsertTable;
+    const { error: upsertError } = await table.upsert(
+      rows as unknown as Array<Record<string, unknown>>,
+      { onConflict: "external_id,captured_at" },
+    );
+
+    if (upsertError) {
+      throw new DropkillerSyncOperationError(
+        "Failed to store Dropkiller products",
+      );
+    }
+  }
+
+  const saturation = jwt
+    ? await resolveFinalistProviderCounts(supabase, jwt)
+    : { finalists: 0, providersCountResolved: 0 };
+
+  return {
+    capturedAt,
+    summary: results.map((result) => ({
+      platform: result.platform,
+      country: result.country,
+      productsStored: result.products.length,
+    })),
+    totalProductsStored: rows.length,
+    saturation,
+  };
 }
 
 async function resolveFinalistProviderCounts(

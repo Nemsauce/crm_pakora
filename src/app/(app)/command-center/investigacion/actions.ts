@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { runDropkillerSync } from "@/app/api/cron/dropkiller-sync/route";
 import { createClient } from "@/lib/supabase/server";
 
 const INVESTIGACION_PATH = "/command-center/investigacion";
@@ -48,6 +49,46 @@ type SavedProductsMutationClient = {
     };
   };
 };
+
+export type TriggerDropkillerSyncResult =
+  | { ok: true; message: string }
+  | { ok: false; message: string };
+
+export async function triggerDropkillerSync(): Promise<TriggerDropkillerSyncResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return {
+      ok: false,
+      message: "Debes iniciar sesión para actualizar la investigación.",
+    };
+  }
+
+  try {
+    const result = await runDropkillerSync();
+
+    revalidatePath(INVESTIGACION_PATH);
+
+    return {
+      ok: true,
+      message: `${result.totalProductsStored} productos actualizados, ${result.saturation.providersCountResolved} finalistas con datos de competencia.`,
+    };
+  } catch (error) {
+    console.error(
+      "Manual Dropkiller sync failed",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+
+    return {
+      ok: false,
+      message: "No se pudo actualizar Dropkiller. Intenta nuevamente.",
+    };
+  }
+}
 
 export async function saveDropkillerProduct(
   input: SaveDropkillerProductInput,
