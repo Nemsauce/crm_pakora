@@ -38,11 +38,6 @@ type WebhookEventTable = {
   insert(values: { webhook_id: string }): PromiseLike<{
     error: DatabaseError | null;
   }>;
-  delete(): {
-    eq(column: "webhook_id", value: string): PromiseLike<{
-      error: DatabaseError | null;
-    }>;
-  };
 };
 
 type WebhookClaim = "claimed" | "duplicate";
@@ -92,22 +87,22 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const supabase = createAdminClient();
-  let claim: WebhookClaim;
+  let isDuplicate: boolean;
 
   try {
-    claim = await claimWebhookEvent(supabase, webhookId);
+    isDuplicate = await webhookEventExists(supabase, webhookId);
   } catch (error) {
-    console.error("Failed to claim Shopify webhook", {
+    console.error("Failed to check Shopify webhook", {
       webhookId,
       message: getErrorMessage(error),
     });
     return NextResponse.json(
-      { error: "Failed to register Shopify webhook" },
+      { error: "Failed to check Shopify webhook" },
       { status: 500 },
     );
   }
 
-  if (claim === "duplicate") {
+  if (isDuplicate) {
     return NextResponse.json({ ok: true, duplicate: true });
   }
 
@@ -119,7 +114,6 @@ export async function POST(request: Request, context: RouteContext) {
         ? mapShopifyOrderCO(rawOrder)
         : mapShopifyOrderMX(rawOrder);
   } catch (error) {
-    await releaseWebhookClaim(supabase, webhookId);
     console.error("Invalid Shopify order payload", {
       webhookId,
       country,
@@ -132,29 +126,60 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const { comentario, ...orderFields } = mappedOrder;
-  const { data: order, error: orderError } = await supabase
-    .from("orders")
-    .upsert(
-      { ...orderFields, pais: country },
-      {
-        onConflict: "id_orden_shopify",
-        ignoreDuplicates: false,
-      },
-    )
-    .select("*")
-    .single();
+  let order: Order;
 
-  if (orderError || !order) {
-    await releaseWebhookClaim(supabase, webhookId);
-    console.error("Failed to upsert Shopify order", {
-      webhookId,
-      country,
-      message: orderError?.message ?? "Order row was not returned",
-    });
+  try {
+    const { data, error } = await supabase
+      .from("orders")
+      .upsert(
+        { ...orderFields, pais: country },
+        {
+          onConflict: "id_orden_shopify",
+          ignoreDuplicates: false,
+        },
+      )
+      .select("*")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      throw new Error("Order row was not returned");
+    }
+
+    order = data;
+  } catch (error) {
+    console.error(
+      "Failed to upsert Shopify order",
+      { webhookId, country },
+      error,
+    );
     return NextResponse.json(
       { error: "Failed to store Shopify order" },
       { status: 500 },
     );
+  }
+
+  let claim: WebhookClaim;
+
+  try {
+    claim = await claimWebhookEvent(supabase, webhookId);
+  } catch (error) {
+    console.error("Failed to claim persisted Shopify webhook", {
+      webhookId,
+      country,
+      message: getErrorMessage(error),
+    });
+    return NextResponse.json(
+      { error: "Failed to register Shopify webhook" },
+      { status: 500 },
+    );
+  }
+
+  if (claim === "duplicate") {
+    return NextResponse.json({ ok: true, duplicate: true });
   }
 
   after(async () => {
@@ -194,10 +219,10 @@ function getShopifySecret(country: CountryParam) {
     : process.env.SHOPIFY_MX_API_SECRET;
 }
 
-async function claimWebhookEvent(
+async function webhookEventExists(
   supabase: ReturnType<typeof createAdminClient>,
   webhookId: string,
-): Promise<WebhookClaim> {
+): Promise<boolean> {
   const table = supabase.from(
     "shopify_webhook_events" as never,
   ) as unknown as WebhookEventTable;
@@ -210,9 +235,16 @@ async function claimWebhookEvent(
     throw lookupError;
   }
 
-  if (existingEvent) {
-    return "duplicate";
-  }
+  return Boolean(existingEvent);
+}
+
+async function claimWebhookEvent(
+  supabase: ReturnType<typeof createAdminClient>,
+  webhookId: string,
+): Promise<WebhookClaim> {
+  const table = supabase.from(
+    "shopify_webhook_events" as never,
+  ) as unknown as WebhookEventTable;
 
   const { error: insertError } = await table.insert({
     webhook_id: webhookId,
@@ -227,23 +259,6 @@ async function claimWebhookEvent(
   }
 
   return "claimed";
-}
-
-async function releaseWebhookClaim(
-  supabase: ReturnType<typeof createAdminClient>,
-  webhookId: string,
-) {
-  const table = supabase.from(
-    "shopify_webhook_events" as never,
-  ) as unknown as WebhookEventTable;
-  const { error } = await table.delete().eq("webhook_id", webhookId);
-
-  if (error) {
-    console.error("Failed to release Shopify webhook claim", {
-      webhookId,
-      message: error.message,
-    });
-  }
 }
 
 async function createTaskAndComment(
