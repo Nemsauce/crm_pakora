@@ -349,9 +349,9 @@ function failure(step: string, errorMessage: string): DropiAuthResult {
 }
 
 export async function dropiAuth(): Promise<DropiAuthResult> {
-  const email = process.env.DROPI_EMAIL;
-  const password = process.env.DROPI_PASSWORD;
-  const totpSecret = process.env.DROPI_TOTP_SECRET;
+  const email = process.env.DROPI_EMAIL_CO;
+  const password = process.env.DROPI_PASSWORD_CO;
+  const totpSecret = process.env.DROPI_TOTP_SECRET_CO;
 
   if (!email || !password || !totpSecret) {
     return failure(
