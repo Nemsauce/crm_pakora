@@ -3,7 +3,7 @@ import "server-only";
 const DROPI_API_BASE_URL = "https://api.dropi.co/api";
 const IPIFY_URL = "https://api.ipify.org/?format=json";
 
-const BROWSER_HEADERS = {
+export const DROPI_BROWSER_HEADERS = {
   accept: "application/json, text/plain, */*",
   "accept-language": "es-419,es;q=0.8",
   "content-type": "application/json",
@@ -23,6 +23,10 @@ type DropiAuthResult = {
   success: boolean;
   errorMessage?: string;
 };
+
+export type DropiAuthWithTokenResult =
+  | { success: true; token: string }
+  | { success: false; errorMessage: string };
 
 type DropiRequestResult =
   | { success: true; data: unknown }
@@ -153,7 +157,7 @@ async function postToDropi(
     const response = await fetch(`${DROPI_API_BASE_URL}${path}`, {
       method: "POST",
       headers: {
-        ...BROWSER_HEADERS,
+        ...DROPI_BROWSER_HEADERS,
         "x-authorization": authorization,
         "x-captcha-token": "",
       },
@@ -342,13 +346,16 @@ function generateTotp(secret: string, offset = 0): string {
   return String(code).padStart(6, "0");
 }
 
-function failure(step: string, errorMessage: string): DropiAuthResult {
+function failure(
+  step: string,
+  errorMessage: string,
+): Extract<DropiAuthWithTokenResult, { success: false }> {
   console.error(`${step}: failed - ${errorMessage}`);
 
   return { success: false, errorMessage };
 }
 
-export async function dropiAuth(): Promise<DropiAuthResult> {
+export async function dropiAuthWithToken(): Promise<DropiAuthWithTokenResult> {
   const email = process.env.DROPI_EMAIL_CO;
   const password = process.env.DROPI_PASSWORD_CO;
   const totpSecret = process.env.DROPI_TOTP_SECRET_CO;
@@ -481,6 +488,16 @@ export async function dropiAuth(): Promise<DropiAuthResult> {
   }
 
   console.info("final login: ok");
+
+  return { success: true, token: sessionToken };
+}
+
+export async function dropiAuth(): Promise<DropiAuthResult> {
+  const result = await dropiAuthWithToken();
+
+  if (!result.success) {
+    return result;
+  }
 
   return { success: true };
 }
