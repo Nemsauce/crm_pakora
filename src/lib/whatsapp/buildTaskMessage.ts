@@ -73,6 +73,10 @@ export function buildTaskWhatsAppMessage(
   tarea: { tipo: string },
   order: TaskWhatsAppOrder,
 ): string | null {
+  if (order.pais === "MX" && tarea.tipo === "llamar_confirmacion") {
+    return null;
+  }
+
   const nombre = clean(order.nombre);
   const greeting = `${getGreeting(nombre)} 😊 Te escribe Leidy de Pakora.`;
 

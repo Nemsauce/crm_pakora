@@ -199,21 +199,7 @@ function getWhatsappNumber(order: Pick<Order, "telefono" | "pais">) {
     return null;
   }
 
-  if (order.pais === "CO") {
-    return formatPhoneForWhatsApp(telefono, order.pais) || null;
-  }
-
-  const digits = telefono.replace(/\D/g, "");
-
-  if (!digits) {
-    return null;
-  }
-
-  if (digits.length === 10 && order.pais === "MX") {
-    return `52${digits}`;
-  }
-
-  return digits;
+  return formatPhoneForWhatsApp(telefono, order.pais) || null;
 }
 
 function buildDetailHref(pathname: string, params: URLSearchParams) {
