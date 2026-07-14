@@ -26,6 +26,8 @@ import {
 import { completeTask, reassignTask } from "@/app/(app)/tareas/actions";
 import { Button } from "@/components/ui/button";
 import type { Database, Tables } from "@/lib/supabase/database.types";
+import { buildTaskWhatsAppMessage } from "@/lib/whatsapp/buildTaskMessage";
+import { formatPhoneForWhatsApp } from "@/lib/whatsapp/formatPhoneForWhatsApp";
 
 type Order = Tables<"orders">;
 type StatusHistory = Tables<"status_history">;
@@ -191,14 +193,20 @@ function stopKeyPropagation(event: KeyboardEvent<HTMLElement>) {
 }
 
 function getWhatsappNumber(order: Pick<Order, "telefono" | "pais">) {
-  const digits = order.telefono?.replace(/\D/g, "") ?? "";
+  const telefono = order.telefono?.trim() ?? "";
 
-  if (!digits) {
+  if (!telefono) {
     return null;
   }
 
-  if (digits.length === 10 && order.pais === "CO") {
-    return `57${digits}`;
+  if (order.pais === "CO") {
+    return formatPhoneForWhatsApp(telefono, order.pais) || null;
+  }
+
+  const digits = telefono.replace(/\D/g, "");
+
+  if (!digits) {
+    return null;
   }
 
   if (digits.length === 10 && order.pais === "MX") {
@@ -694,7 +702,12 @@ function SelectedTaskSection({
   const deadline = getDeadline(task.fecha_limite, task.estado);
   const isCompleted = task.estado === "completada";
   const whatsappNumber = getWhatsappNumber(order);
-  const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}` : null;
+  const whatsappMessage = buildTaskWhatsAppMessage(task, order);
+  const whatsappUrl = whatsappNumber
+    ? `https://wa.me/${whatsappNumber}${
+        whatsappMessage ? `?text=${encodeURIComponent(whatsappMessage)}` : ""
+      }`
+    : null;
 
   return (
     <section className="rounded-2xl border border-[var(--color-accent)] bg-bg-surface p-4 shadow-lg">
