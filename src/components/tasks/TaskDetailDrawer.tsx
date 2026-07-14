@@ -704,8 +704,8 @@ function SelectedTaskSection({
   const whatsappNumber = getWhatsappNumber(order);
   const whatsappMessage = buildTaskWhatsAppMessage(task, order);
   const whatsappUrl = whatsappNumber
-    ? `https://wa.me/${whatsappNumber}${
-        whatsappMessage ? `?text=${encodeURIComponent(whatsappMessage)}` : ""
+    ? `https://api.whatsapp.com/send/?phone=${whatsappNumber}${
+        whatsappMessage ? `&text=${encodeURIComponent(whatsappMessage)}` : ""
       }`
     : null;
 
