@@ -1,3 +1,4 @@
+import { CapitalMovementsCard } from "@/components/command-center/CapitalMovementsCard";
 import { DateRangeSelector } from "@/components/command-center/DateRangeSelector";
 import {
   MovementBreakdownTable,
@@ -61,17 +62,38 @@ function getCountryTotals(rows: WalletSummaryRow[]) {
       const total = toNumber(row.total);
       const tipo = row.tipo?.toUpperCase();
 
+      if (row.categoria === "recarga") {
+        totals.recargas += total;
+        totals.hasCapitalMovements = true;
+        return totals;
+      }
+
+      if (row.categoria === "retiro") {
+        totals.retiros += total;
+        totals.hasCapitalMovements = true;
+        return totals;
+      }
+
       if (tipo === "ENTRADA") {
-        totals.entradas += total;
+        totals.entradasOperativas += total;
+        totals.hasOperationalMovements = true;
       }
 
       if (tipo === "SALIDA") {
-        totals.salidas += total;
+        totals.salidasOperativas += total;
+        totals.hasOperationalMovements = true;
       }
 
       return totals;
     },
-    { entradas: 0, salidas: 0 },
+    {
+      entradasOperativas: 0,
+      salidasOperativas: 0,
+      recargas: 0,
+      retiros: 0,
+      hasOperationalMovements: false,
+      hasCapitalMovements: false,
+    },
   );
 }
 
@@ -107,8 +129,8 @@ export default async function CommandCenterFinanzasPage({
             Finanzas
           </h1>
           <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
-            Ganancia neta por país: entradas menos salidas agrupadas por
-            categoría.
+            Utilidad operativa por país, separada de las recargas y retiros de
+            capital.
           </p>
           <p className="mt-2 font-mono text-xs tabular-nums text-text-secondary">
             {dateFrom} - {dateTo}
@@ -118,24 +140,75 @@ export default async function CommandCenterFinanzasPage({
         <DateRangeSelector currentRange={range} />
       </div>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-2">
-        {countries.map((pais) => {
-          const rows = getRowsByCountry(summaryRows, pais);
-          const totals = getCountryTotals(rows);
+      <section className="mt-6" aria-labelledby="operational-profit-heading">
+        <div>
+          <p className="font-body text-xs uppercase text-text-secondary">
+            Operación
+          </p>
+          <h2
+            id="operational-profit-heading"
+            className="mt-2 font-display text-xl font-semibold text-text-primary"
+          >
+            Utilidad operativa neta
+          </h2>
+        </div>
 
-          return (
-            <NetProfitCard
-              key={pais}
-              pais={pais}
-              entradas={totals.entradas}
-              salidas={totals.salidas}
-              hasMovements={rows.length > 0}
-            />
-          );
-        })}
-      </div>
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+          {countries.map((pais) => {
+            const totals = getCountryTotals(
+              getRowsByCountry(summaryRows, pais),
+            );
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-2">
+            return (
+              <NetProfitCard
+                key={pais}
+                pais={pais}
+                entradasOperativas={totals.entradasOperativas}
+                salidasOperativas={totals.salidasOperativas}
+                hasMovements={totals.hasOperationalMovements}
+              />
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="mt-8" aria-labelledby="capital-movements-heading">
+        <div>
+          <p className="font-body text-xs uppercase text-text-secondary">
+            Fuera de la operación
+          </p>
+          <h2
+            id="capital-movements-heading"
+            className="mt-2 font-display text-xl font-semibold text-text-primary"
+          >
+            Movimientos de capital (no cuentan como ganancia)
+          </h2>
+          <p className="mt-2 font-body text-sm text-text-secondary">
+            Dinero ingresado o retirado por el dueño, mostrado sin mezclarlo
+            con la utilidad operativa.
+          </p>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+          {countries.map((pais) => {
+            const totals = getCountryTotals(
+              getRowsByCountry(summaryRows, pais),
+            );
+
+            return (
+              <CapitalMovementsCard
+                key={pais}
+                pais={pais}
+                recargas={totals.recargas}
+                retiros={totals.retiros}
+                hasMovements={totals.hasCapitalMovements}
+              />
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="mt-8 grid gap-4 xl:grid-cols-2">
         {countries.map((pais) => (
           <MovementBreakdownTable
             key={pais}

@@ -4,8 +4,8 @@ type Pais = "CO" | "MX";
 
 type NetProfitCardProps = {
   pais: Pais;
-  entradas: number;
-  salidas: number;
+  entradasOperativas: number;
+  salidasOperativas: number;
   hasMovements: boolean;
 };
 
@@ -33,11 +33,11 @@ function formatCurrency(pais: Pais, value: number) {
 
 export function NetProfitCard({
   pais,
-  entradas,
-  salidas,
+  entradasOperativas,
+  salidasOperativas,
   hasMovements,
 }: NetProfitCardProps) {
-  const net = entradas - salidas;
+  const net = entradasOperativas - salidasOperativas;
   const netTone = net < 0 ? "text-negative" : "text-positive";
 
   return (
@@ -81,7 +81,7 @@ export function NetProfitCard({
             {countryLabel[pais]}
           </p>
           <h2 className="mt-2 font-display text-lg font-semibold text-text-primary">
-            Ganancia neta
+            Utilidad operativa neta
           </h2>
         </div>
         <div
@@ -102,18 +102,18 @@ export function NetProfitCard({
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl bg-risk-low-bg p-3">
               <p className="font-body text-xs font-medium text-risk-low">
-                Entradas
+                Entradas operativas
               </p>
               <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-low">
-                {formatCurrency(pais, entradas)}
+                {formatCurrency(pais, entradasOperativas)}
               </p>
             </div>
             <div className="rounded-2xl bg-risk-high-bg p-3">
               <p className="font-body text-xs font-medium text-risk-high">
-                Salidas
+                Salidas operativas
               </p>
               <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-high">
-                {formatCurrency(pais, salidas)}
+                {formatCurrency(pais, salidasOperativas)}
               </p>
             </div>
           </div>
