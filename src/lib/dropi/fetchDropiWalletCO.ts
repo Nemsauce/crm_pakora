@@ -23,7 +23,7 @@ type DropiWalletMovement = {
 export type DropiWalletMovementCO = {
   id_movimiento_dropi: number;
   wallet_id: number | null;
-  id_orden_dropi: number;
+  id_orden_dropi: number | null;
   identification_code: string | null;
   tipo: string | null;
   amount: number;
@@ -133,19 +133,11 @@ function mapWalletMovements(payload: unknown): DropiWalletMovementCO[] {
   const rows: DropiWalletMovementCO[] = [];
 
   for (const movement of getObjects(payload)) {
-    if (
-      !movement ||
-      movement.order_id === null ||
-      movement.order_id === undefined ||
-      movement.order_id === ""
-    ) {
-      continue;
-    }
-
     rows.push({
       id_movimiento_dropi: movement.id,
       wallet_id: movement.wallet_id ?? null,
-      id_orden_dropi: movement.order_id,
+      id_orden_dropi:
+        movement.order_id === "" ? null : (movement.order_id ?? null),
       identification_code:
         movement.identification_code != null
           ? String(movement.identification_code)
