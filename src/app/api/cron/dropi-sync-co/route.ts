@@ -12,6 +12,10 @@ import {
 } from "@/lib/dropi/syncDropiOrdersCO";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
+import {
+  checkStaleOrders,
+  type CheckStaleOrdersResult,
+} from "@/lib/tasks/checkStaleOrders";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -22,6 +26,10 @@ type WalletMovementInsert =
 type SyncDropiCOResult = SyncDropiOrdersCOResult & {
   walletMovementsFetched: number;
   walletMovementsStored: number;
+  staleOrdersChecked: number;
+  staleTasksCreated: number;
+  staleOrderErrors: CheckStaleOrdersResult["errors"];
+  staleOrdersError: string | null;
 };
 
 const WALLET_UPSERT_MAX_ATTEMPTS = 3;
@@ -43,6 +51,10 @@ function failureSummary(errorMessage: string): SyncDropiCOResult {
     orderUpdateErrors: [errorMessage],
     walletMovementsFetched: 0,
     walletMovementsStored: 0,
+    staleOrdersChecked: 0,
+    staleTasksCreated: 0,
+    staleOrderErrors: [],
+    staleOrdersError: null,
   };
 }
 
@@ -85,6 +97,39 @@ async function storeWalletMovements(
   return 0;
 }
 
+async function getStaleOrdersSummary(): Promise<
+  Pick<
+    SyncDropiCOResult,
+    | "staleOrdersChecked"
+    | "staleTasksCreated"
+    | "staleOrderErrors"
+    | "staleOrdersError"
+  >
+> {
+  try {
+    const result = await checkStaleOrders();
+
+    return {
+      staleOrdersChecked: result.processed,
+      staleTasksCreated: result.tasksCreated,
+      staleOrderErrors: result.errors,
+      staleOrdersError: null,
+    };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown stale-orders error";
+
+    console.error("Failed to check stale orders during Dropi CO sync", error);
+
+    return {
+      staleOrdersChecked: 0,
+      staleTasksCreated: 0,
+      staleOrderErrors: [],
+      staleOrdersError: errorMessage,
+    };
+  }
+}
+
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -105,11 +150,13 @@ export async function GET(request: NextRequest) {
     const walletMovements = await fetchDropiWalletCO(authResult.token);
     const walletMovementsStored =
       await storeWalletMovements(walletMovements);
+    const staleOrdersSummary = await getStaleOrdersSummary();
 
     return NextResponse.json({
       ...result,
       walletMovementsFetched: walletMovements.length,
       walletMovementsStored,
+      ...staleOrdersSummary,
     });
   } catch (error) {
     const errorMessage =
