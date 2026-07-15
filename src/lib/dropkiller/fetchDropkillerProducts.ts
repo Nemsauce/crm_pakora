@@ -7,6 +7,10 @@ const CLERK_QUERY =
 const CLERK_BASE_URL = "https://clerk.dropkiller.com/v1/client";
 const PRODUCTS_URL = "https://www.dropkiller.com/api/products";
 const SATURATION_TIMEOUT_MS = 10_000;
+const PRODUCTS_PER_PAGE = 50;
+const MAX_PRODUCTS_PER_CONFIG = 500;
+const MAX_PRODUCT_PAGES = MAX_PRODUCTS_PER_CONFIG / PRODUCTS_PER_PAGE;
+const PRODUCT_PAGE_DELAY_MS = 450;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -288,42 +292,97 @@ async function fetchProductsForConfig(
   jwt: string,
   capturedAt: string,
 ): Promise<DropkillerProductsResult> {
-  const url = new URL(PRODUCTS_URL);
-  url.searchParams.set("sort", "daily");
-  url.searchParams.set("order", "desc");
-  url.searchParams.set("limit", "50");
-  url.searchParams.set("platform", config.platform);
-  url.searchParams.set("country", config.country_code);
+  const products: DropkillerProductDailyRow[] = [];
+  const seenExternalIds = new Set<string>();
+  const seenCursors = new Set<string>();
+  let cursor: string | null = null;
 
-  const response = await fetch(url, {
-    headers: {
-      accept: "application/json",
-      authorization: `Bearer ${jwt}`,
-    },
-    cache: "no-store",
-  });
-  const body = await readJson(response);
+  for (let page = 0; page < MAX_PRODUCT_PAGES; page += 1) {
+    const url = new URL(PRODUCTS_URL);
+    url.searchParams.set("sort", "daily");
+    url.searchParams.set("order", "desc");
+    url.searchParams.set("limit", String(PRODUCTS_PER_PAGE));
+    url.searchParams.set("platform", config.platform);
+    url.searchParams.set("country", config.country_code);
 
-  if (!response.ok) {
-    throw new DropkillerProductsError(
-      `Dropkiller products fetch failed for ${config.platform}/${config.country_code}`,
+    if (cursor) {
+      url.searchParams.set("cursor", cursor);
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        accept: "application/json",
+        authorization: `Bearer ${jwt}`,
+      },
+      cache: "no-store",
+    });
+    const body = await readJson(response);
+
+    if (!response.ok) {
+      throw new DropkillerProductsError(
+        `Dropkiller products fetch failed for ${config.platform}/${config.country_code}`,
+      );
+    }
+
+    const pageProducts = getArrayAtPath(body, ["data"]);
+
+    if (!pageProducts) {
+      throw new DropkillerProductsError(
+        `Dropkiller products response was not an array for ${config.platform}/${config.country_code}`,
+      );
+    }
+
+    for (const product of pageProducts) {
+      const mappedProduct = mapProduct(product, config, capturedAt);
+
+      if (seenExternalIds.has(mappedProduct.external_id)) {
+        continue;
+      }
+
+      seenExternalIds.add(mappedProduct.external_id);
+      products.push(mappedProduct);
+
+      if (products.length >= MAX_PRODUCTS_PER_CONFIG) {
+        break;
+      }
+    }
+
+    const hasNext =
+      getValueAtPath(body, ["pagination", "hasNext"]) === true;
+
+    if (!hasNext || products.length >= MAX_PRODUCTS_PER_CONFIG) {
+      break;
+    }
+
+    if (page === MAX_PRODUCT_PAGES - 1) {
+      break;
+    }
+
+    const nextCursor = toStringValue(
+      getValueAtPath(body, ["pagination", "nextCursor"]),
     );
-  }
 
-  const products = getArrayAtPath(body, ["data"]);
+    if (!nextCursor) {
+      throw new DropkillerProductsError(
+        `Dropkiller products response was missing the next cursor for ${config.platform}/${config.country_code}`,
+      );
+    }
 
-  if (!products) {
-    throw new DropkillerProductsError(
-      `Dropkiller products response was not an array for ${config.platform}/${config.country_code}`,
-    );
+    if (seenCursors.has(nextCursor)) {
+      throw new DropkillerProductsError(
+        `Dropkiller products pagination repeated a cursor for ${config.platform}/${config.country_code}`,
+      );
+    }
+
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
+    await delay(PRODUCT_PAGE_DELAY_MS);
   }
 
   return {
     platform: config.platform,
     country: config.country_code,
-    products: products.map((product) =>
-      mapProduct(product, config, capturedAt),
-    ),
+    products,
   };
 }
 
@@ -454,4 +513,8 @@ function toStringValue(value: unknown) {
 
 function getTodayDate() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function delay(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
