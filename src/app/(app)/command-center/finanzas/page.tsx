@@ -4,11 +4,16 @@ import {
   MovementBreakdownTable,
   type WalletSummaryRow,
 } from "@/components/command-center/MovementBreakdownTable";
-import { NetProfitCard } from "@/components/command-center/NetProfitCard";
+import {
+  NetProfitCard,
+  type NetProfitTrendPoint,
+} from "@/components/command-center/NetProfitCard";
 import { createClient } from "@/lib/supabase/server";
 
 type SearchParams = {
   range?: string;
+  from?: string;
+  to?: string;
 };
 
 type CommandCenterFinanzasPageProps = {
@@ -17,8 +22,27 @@ type CommandCenterFinanzasPageProps = {
 
 type Pais = "CO" | "MX";
 
+type WalletDailySummaryRow = {
+  pais: Pais;
+  dia: string;
+  entradas: number | string | null;
+  salidas: number | string | null;
+  neto: number | string | null;
+};
+
+type WalletDailySummaryRpcClient = {
+  rpc: (
+    functionName: "wallet_daily_summary",
+    args: { p_date_from: string; p_date_to: string },
+  ) => PromiseLike<{
+    data: WalletDailySummaryRow[] | null;
+    error: { message: string } | null;
+  }>;
+};
+
 const validRanges = new Set(["7", "30", "90"]);
 const countries = ["CO", "MX"] as const;
+const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1_000;
 
 function getRange(value: string | undefined) {
   return value && validRanges.has(value) ? value : "30";
@@ -36,6 +60,61 @@ function getDateRange(days: number) {
   return {
     dateFrom: formatDateInput(dateFrom),
     dateTo: formatDateInput(dateTo),
+  };
+}
+
+function parseDateInput(value: string | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const date = new Date(`${value}T00:00:00Z`);
+
+  return !Number.isNaN(date.getTime()) && formatDateInput(date) === value
+    ? date
+    : null;
+}
+
+function getSelectedDateRange(params: SearchParams) {
+  const customFrom = parseDateInput(params.from);
+  const customTo = parseDateInput(params.to);
+
+  if (
+    params.range === "custom" &&
+    customFrom &&
+    customTo &&
+    customFrom.getTime() <= customTo.getTime()
+  ) {
+    return {
+      currentRange: "custom",
+      dateFrom: formatDateInput(customFrom),
+      dateTo: formatDateInput(customTo),
+    };
+  }
+
+  const currentRange = getRange(params.range);
+
+  return {
+    currentRange,
+    ...getDateRange(Number(currentRange)),
+  };
+}
+
+function getPreviousDateRange(dateFrom: string, dateTo: string) {
+  const currentFrom = parseDateInput(dateFrom)!;
+  const currentTo = parseDateInput(dateTo)!;
+  const periodLength =
+    Math.floor(
+      (currentTo.getTime() - currentFrom.getTime()) / DAY_IN_MILLISECONDS,
+    ) + 1;
+  const previousTo = new Date(currentFrom.getTime() - DAY_IN_MILLISECONDS);
+  const previousFrom = new Date(
+    previousTo.getTime() - (periodLength - 1) * DAY_IN_MILLISECONDS,
+  );
+
+  return {
+    dateFrom: formatDateInput(previousFrom),
+    dateTo: formatDateInput(previousTo),
   };
 }
 
@@ -97,26 +176,104 @@ function getCountryTotals(rows: WalletSummaryRow[]) {
   );
 }
 
+function getCountryDailyNet(rows: WalletDailySummaryRow[], pais: Pais) {
+  return rows.reduce(
+    (total, row) => total + (row.pais === pais ? toNumber(row.neto) : 0),
+    0,
+  );
+}
+
+function getComparisonPercentage(currentNet: number, previousNet: number) {
+  if (previousNet === 0) {
+    return currentNet === 0 ? 0 : null;
+  }
+
+  return ((currentNet - previousNet) / Math.abs(previousNet)) * 100;
+}
+
+function getCountryTrend(
+  rows: WalletDailySummaryRow[],
+  pais: Pais,
+  dateFrom: string,
+  dateTo: string,
+): NetProfitTrendPoint[] {
+  const valuesByDate = new Map(
+    rows
+      .filter((row) => row.pais === pais)
+      .map((row) => [row.dia, toNumber(row.neto)]),
+  );
+  const firstDate = parseDateInput(dateFrom)!;
+  const lastDate = parseDateInput(dateTo)!;
+  const trend: NetProfitTrendPoint[] = [];
+
+  for (
+    let timestamp = firstDate.getTime();
+    timestamp <= lastDate.getTime();
+    timestamp += DAY_IN_MILLISECONDS
+  ) {
+    const dia = formatDateInput(new Date(timestamp));
+    trend.push({ dia, neto: valuesByDate.get(dia) ?? 0 });
+  }
+
+  return trend;
+}
+
+function getWalletDailySummary(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  dateFrom: string,
+  dateTo: string,
+) {
+  return (supabase as unknown as WalletDailySummaryRpcClient).rpc(
+    "wallet_daily_summary",
+    {
+      p_date_from: dateFrom,
+      p_date_to: dateTo,
+    },
+  );
+}
+
 export default async function CommandCenterFinanzasPage({
   searchParams,
 }: CommandCenterFinanzasPageProps) {
   const params = await searchParams;
-  const range = getRange(params.range);
-  const { dateFrom, dateTo } = getDateRange(Number(range));
+  const { currentRange, dateFrom, dateTo } = getSelectedDateRange(params);
+  const previousDateRange = getPreviousDateRange(dateFrom, dateTo);
   const supabase = await createClient();
-  const { data: walletSummaryData, error: walletSummaryError } =
-    await supabase.rpc("wallet_summary", {
-      p_date_from: dateFrom,
-      p_date_to: dateTo,
-    });
+  const [walletSummaryResult, dailySummaryResult, previousDailySummaryResult] =
+    await Promise.all([
+      supabase.rpc("wallet_summary", {
+        p_date_from: dateFrom,
+        p_date_to: dateTo,
+      }),
+      getWalletDailySummary(supabase, dateFrom, dateTo),
+      getWalletDailySummary(
+        supabase,
+        previousDateRange.dateFrom,
+        previousDateRange.dateTo,
+      ),
+    ]);
 
-  if (walletSummaryError) {
+  if (walletSummaryResult.error) {
     throw new Error(
-      `No se pudo cargar el resumen financiero: ${walletSummaryError.message}`,
+      `No se pudo cargar el resumen financiero: ${walletSummaryResult.error.message}`,
     );
   }
 
-  const summaryRows = walletSummaryData ?? [];
+  if (dailySummaryResult.error) {
+    throw new Error(
+      `No se pudo cargar la tendencia financiera: ${dailySummaryResult.error.message}`,
+    );
+  }
+
+  if (previousDailySummaryResult.error) {
+    throw new Error(
+      `No se pudo cargar el período anterior: ${previousDailySummaryResult.error.message}`,
+    );
+  }
+
+  const summaryRows = walletSummaryResult.data ?? [];
+  const dailySummaryRows = dailySummaryResult.data ?? [];
+  const previousDailySummaryRows = previousDailySummaryResult.data ?? [];
 
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
@@ -137,7 +294,11 @@ export default async function CommandCenterFinanzasPage({
           </p>
         </div>
 
-        <DateRangeSelector currentRange={range} />
+        <DateRangeSelector
+          currentRange={currentRange}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+        />
       </div>
 
       <section className="mt-6" aria-labelledby="operational-profit-heading">
@@ -158,6 +319,11 @@ export default async function CommandCenterFinanzasPage({
             const totals = getCountryTotals(
               getRowsByCountry(summaryRows, pais),
             );
+            const currentDailyNet = getCountryDailyNet(dailySummaryRows, pais);
+            const previousDailyNet = getCountryDailyNet(
+              previousDailySummaryRows,
+              pais,
+            );
 
             return (
               <NetProfitCard
@@ -166,6 +332,16 @@ export default async function CommandCenterFinanzasPage({
                 entradasOperativas={totals.entradasOperativas}
                 salidasOperativas={totals.salidasOperativas}
                 hasMovements={totals.hasOperationalMovements}
+                trendData={getCountryTrend(
+                  dailySummaryRows,
+                  pais,
+                  dateFrom,
+                  dateTo,
+                )}
+                comparisonPercentage={getComparisonPercentage(
+                  currentDailyNet,
+                  previousDailyNet,
+                )}
               />
             );
           })}

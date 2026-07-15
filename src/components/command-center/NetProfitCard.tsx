@@ -1,12 +1,31 @@
+"use client";
+
 import { TrendingUp } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  type TooltipContentProps,
+} from "recharts";
 
 type Pais = "CO" | "MX";
+
+export type NetProfitTrendPoint = {
+  dia: string;
+  neto: number;
+};
 
 type NetProfitCardProps = {
   pais: Pais;
   entradasOperativas: number;
   salidasOperativas: number;
   hasMovements: boolean;
+  trendData: NetProfitTrendPoint[];
+  comparisonPercentage: number | null;
 };
 
 const countryLabel: Record<Pais, string> = {
@@ -31,51 +50,84 @@ function formatCurrency(pais: Pais, value: number) {
   return currencyFormatter[pais].format(value);
 }
 
+const chartDateFormatter = new Intl.DateTimeFormat("es-CO", {
+  day: "2-digit",
+  month: "short",
+  timeZone: "UTC",
+});
+
+function formatChartDate(value: string) {
+  const date = new Date(`${value}T00:00:00Z`);
+
+  return Number.isNaN(date.getTime()) ? value : chartDateFormatter.format(date);
+}
+
+function ComparisonBadge({ value }: { value: number | null }) {
+  if (value === null) {
+    return (
+      <span className="rounded-full bg-bg-page px-3 py-1 font-body text-xs font-semibold text-text-secondary">
+        Sin base anterior
+      </span>
+    );
+  }
+
+  const tone =
+    value > 0
+      ? "bg-risk-low-bg text-risk-low"
+      : value < 0
+        ? "bg-risk-high-bg text-risk-high"
+        : "bg-bg-page text-text-secondary";
+  const prefix = value > 0 ? "+" : "";
+
+  return (
+    <span
+      className={`rounded-full px-3 py-1 font-mono text-xs font-semibold tabular-nums ${tone}`}
+    >
+      {prefix}
+      {value.toFixed(1)}% vs. período anterior
+    </span>
+  );
+}
+
+function DailyTrendTooltip({
+  active,
+  payload,
+  label,
+  pais,
+}: TooltipContentProps & { pais: Pais }) {
+  if (!active || payload.length === 0) {
+    return null;
+  }
+
+  const net = Number(payload[0]?.value ?? 0);
+
+  return (
+    <div className="rounded-2xl border border-border bg-bg-surface px-3 py-2 shadow-lg">
+      <p className="font-body text-xs text-text-secondary">
+        {formatChartDate(String(label ?? ""))}
+      </p>
+      <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-text-primary">
+        {formatCurrency(pais, net)}
+      </p>
+    </div>
+  );
+}
+
 export function NetProfitCard({
   pais,
   entradasOperativas,
   salidasOperativas,
   hasMovements,
+  trendData,
+  comparisonPercentage,
 }: NetProfitCardProps) {
   const net = entradasOperativas - salidasOperativas;
   const netTone = net < 0 ? "text-negative" : "text-positive";
+  const gradientId = `daily-operating-profit-${pais}`;
 
   return (
     <article className="relative overflow-hidden rounded-2xl border border-border bg-bg-surface p-5 text-text-primary shadow-xl">
-      <svg
-        className="pointer-events-none absolute bottom-0 right-0 z-0 h-[72%] w-[58%] text-[var(--color-positive)] opacity-[0.16] dark:opacity-[0.24]"
-        viewBox="0 0 360 210"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-        focusable="false"
-      >
-        <defs>
-          <linearGradient
-            id={`net-profit-area-${pais}`}
-            x1="180"
-            y1="24"
-            x2="180"
-            y2="210"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop stopColor="currentColor" stopOpacity="0.7" />
-            <stop offset="1" stopColor="currentColor" stopOpacity="0.08" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M0 210H360V28C334 20 318 25 301 47C282 72 266 69 245 64C219 58 201 72 184 99C166 128 146 128 125 126C98 123 82 143 66 169C48 198 25 201 0 190V210Z"
-          fill={`url(#net-profit-area-${pais})`}
-        />
-        <path
-          d="M0 190C25 201 48 198 66 169C82 143 98 123 125 126C146 128 166 128 184 99C201 72 219 58 245 64C266 69 282 72 301 47C318 25 334 20 360 28"
-          fill="none"
-          stroke="currentColor"
-          strokeOpacity="0.55"
-          strokeWidth="2"
-        />
-      </svg>
-
-      <div className="relative z-10 flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
             {countryLabel[pais]}
@@ -93,12 +145,15 @@ export function NetProfitCard({
       </div>
 
       {hasMovements ? (
-        <div className="relative z-10">
-          <p
-            className={`mt-6 font-mono text-3xl font-semibold tabular-nums ${netTone}`}
-          >
-            {formatCurrency(pais, net)}
-          </p>
+        <div>
+          <div className="mt-6 flex flex-wrap items-end gap-3">
+            <p
+              className={`font-mono text-3xl font-semibold tabular-nums ${netTone}`}
+            >
+              {formatCurrency(pais, net)}
+            </p>
+            <ComparisonBadge value={comparisonPercentage} />
+          </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl bg-risk-low-bg p-3">
               <p className="font-body text-xs font-medium text-risk-low">
@@ -119,15 +174,84 @@ export function NetProfitCard({
           </div>
         </div>
       ) : (
-        <div className="relative z-10 mt-6 rounded-2xl bg-bg-page p-4">
-          <p className="font-body text-sm font-medium text-text-primary">
-            Sin movimientos en este rango
-          </p>
-          <p className="mt-2 font-mono text-2xl font-semibold tabular-nums text-text-secondary">
-            {formatCurrency(pais, 0)}
-          </p>
+        <div className="mt-6 rounded-2xl bg-bg-page p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <p className="font-body text-sm font-medium text-text-primary">
+                Sin movimientos en este rango
+              </p>
+              <p className="mt-2 font-mono text-2xl font-semibold tabular-nums text-text-secondary">
+                {formatCurrency(pais, 0)}
+              </p>
+            </div>
+            <ComparisonBadge value={comparisonPercentage} />
+          </div>
         </div>
       )}
+
+      <div className="mt-5 border-t border-border pt-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-body text-sm font-semibold text-text-primary">
+            Tendencia diaria
+          </p>
+          <p className="font-body text-xs text-text-secondary">Neto por día</p>
+        </div>
+        <div className="mt-3 h-44 w-full" aria-label={`Tendencia diaria ${countryLabel[pais]}`}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={trendData}
+              margin={{ top: 8, right: 4, left: 4, bottom: 0 }}
+              accessibilityLayer
+            >
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor="var(--color-accent)"
+                    stopOpacity={0.42}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="var(--color-accent)"
+                    stopOpacity={0.04}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                vertical={false}
+                stroke="var(--color-border)"
+                strokeDasharray="3 3"
+              />
+              <XAxis
+                dataKey="dia"
+                axisLine={false}
+                tickLine={false}
+                minTickGap={28}
+                tickFormatter={formatChartDate}
+                tick={{
+                  fill: "var(--color-text-secondary)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 11,
+                }}
+              />
+              <ReferenceLine y={0} stroke="var(--color-border)" />
+              <Tooltip
+                cursor={{ stroke: "var(--color-accent)", strokeOpacity: 0.35 }}
+                content={(props) => <DailyTrendTooltip {...props} pais={pais} />}
+              />
+              <Area
+                type="linear"
+                dataKey="neto"
+                name="Neto diario"
+                stroke="var(--color-accent)"
+                strokeWidth={2}
+                fill={`url(#${gradientId})`}
+                isAnimationActive={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     </article>
   );
 }
