@@ -110,6 +110,10 @@ export function MovementBreakdownTable({
       net: row.entradas - row.salidas,
     }))
     .sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+  const largestAbsoluteNet = Math.max(
+    ...groupedRows.map((row) => Math.abs(row.net)),
+    0,
+  );
 
   return (
     <section className="rounded-2xl border border-border bg-bg-surface p-5 text-text-primary shadow-lg">
@@ -128,52 +132,68 @@ export function MovementBreakdownTable({
       </div>
 
       {groupedRows.length > 0 ? (
-        <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[38rem] border-separate border-spacing-0">
-            <thead>
-              <tr className="text-left font-body text-xs text-text-secondary">
-                <th className="border-b border-border pb-3 font-medium">
-                  Categoría
-                </th>
-                <th className="border-b border-border pb-3 text-right font-medium">
-                  Entrada
-                </th>
-                <th className="border-b border-border pb-3 text-right font-medium">
-                  Salida
-                </th>
-                <th className="border-b border-border pb-3 text-right font-medium">
-                  Neto
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {groupedRows.map((row) => {
-                const netTone = row.net < 0 ? "text-negative" : "text-positive";
+        <ul className="mt-5 divide-y divide-border">
+          {groupedRows.map((row) => {
+            const barPercentage =
+              largestAbsoluteNet > 0
+                ? (Math.abs(row.net) / largestAbsoluteNet) * 100
+                : 0;
+            const netTone =
+              row.net > 0
+                ? "text-positive"
+                : row.net < 0
+                  ? "text-negative"
+                  : "text-text-secondary";
+            const barTone = row.net < 0 ? "bg-negative" : "bg-positive";
 
-                return (
-                  <tr key={row.categoria ?? "sin_categoria"}>
-                    <td className="border-b border-border py-3 pr-4">
-                      <span className="rounded-full bg-bg-page px-3 py-1 font-body text-xs font-semibold text-text-primary">
-                        {getCategoryLabel(row.categoria)}
-                      </span>
-                    </td>
-                    <td className="border-b border-border py-3 text-right font-mono text-sm tabular-nums text-risk-low">
+            return (
+              <li
+                key={row.categoria ?? "sin_categoria"}
+                className="py-4 first:pt-0 last:pb-0"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <p className="font-body text-sm font-semibold text-text-primary">
+                    {getCategoryLabel(row.categoria)}
+                  </p>
+                  <p
+                    className={`shrink-0 font-mono text-sm font-semibold tabular-nums ${netTone}`}
+                  >
+                    {formatCurrency(pais, row.net)}
+                  </p>
+                </div>
+
+                <div
+                  className="mt-2 h-2.5 overflow-hidden rounded-full bg-bg-page"
+                  role="meter"
+                  aria-label={`Neto de ${getCategoryLabel(row.categoria)}`}
+                  aria-valuenow={Math.abs(row.net)}
+                  aria-valuemin={0}
+                  aria-valuemax={largestAbsoluteNet || 1}
+                >
+                  <div
+                    className={`h-full rounded-full ${barTone}`}
+                    style={{ width: `${barPercentage}%` }}
+                  />
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-body text-xs text-text-secondary">
+                  <span>
+                    Entrada{" "}
+                    <span className="font-mono font-medium tabular-nums text-positive">
                       {formatCurrency(pais, row.entradas)}
-                    </td>
-                    <td className="border-b border-border py-3 text-right font-mono text-sm tabular-nums text-risk-high">
+                    </span>
+                  </span>
+                  <span>
+                    Salida{" "}
+                    <span className="font-mono font-medium tabular-nums text-negative">
                       {formatCurrency(pais, row.salidas)}
-                    </td>
-                    <td
-                      className={`border-b border-border py-3 text-right font-mono text-sm font-semibold tabular-nums ${netTone}`}
-                    >
-                      {formatCurrency(pais, row.net)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    </span>
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       ) : (
         <div className="mt-5 rounded-2xl bg-bg-page p-4 font-body text-sm text-text-secondary">
           Sin movimientos en este rango.
