@@ -49,6 +49,8 @@ export type SweetSpotCandidate = {
 type SweetSpotCardProps = {
   candidate: SweetSpotCandidate;
   isSaved?: boolean;
+  comparisonLabel?: string;
+  showRawSignals?: boolean;
 };
 
 const currencyFormatter = {
@@ -72,6 +74,8 @@ const countFormatter = {
 export function SweetSpotCard({
   candidate,
   isSaved = false,
+  comparisonLabel,
+  showRawSignals = false,
 }: SweetSpotCardProps) {
   const pais = candidate.country_code;
   const productName = candidate.nombre_producto || "Producto sin nombre";
@@ -83,6 +87,7 @@ export function SweetSpotCard({
     pais,
     percentil: candidate.percentil_ritmo,
     tendenciaRatio: candidate.tendencia_ratio,
+    comparisonIsSample: Boolean(comparisonLabel),
   });
   const saveAction = saveDropkillerProduct.bind(
     null,
@@ -140,6 +145,20 @@ export function SweetSpotCard({
             <p className="mt-3 font-body text-sm leading-relaxed text-text-secondary">
               {summary}
             </p>
+
+            {comparisonLabel ? (
+              <div className="mt-3 rounded-2xl bg-[var(--color-accent)]/10 px-3 py-2">
+                <p className="font-body text-xs font-semibold text-[var(--color-accent)]">
+                  Percentil{" "}
+                  <span className="font-mono tabular-nums">
+                    P{formatPercentile(candidate.percentil_ritmo)}
+                  </span>
+                </p>
+                <p className="mt-1 font-body text-xs leading-relaxed text-text-secondary">
+                  {comparisonLabel}
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -201,6 +220,44 @@ export function SweetSpotCard({
               </dd>
             </div>
           </dl>
+
+          {showRawSignals ? (
+            <div className="mt-4 border-t border-border pt-4">
+              <p className="font-body text-xs font-semibold uppercase text-text-secondary">
+                Señales calculadas
+              </p>
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+                <Stat
+                  label="Ritmo reciente"
+                  value={formatSignal(candidate.ritmo_reciente, "/día")}
+                />
+                <Stat
+                  label="Días con venta 7d"
+                  value={formatSignal(
+                    candidate.dias_con_venta_7d,
+                    " días",
+                    0,
+                  )}
+                />
+                <Stat
+                  label="Tercio 1"
+                  value={formatSignal(candidate.tercio1_promedio, "/día")}
+                />
+                <Stat
+                  label="Tercio 2"
+                  value={formatSignal(candidate.tercio2_promedio, "/día")}
+                />
+                <Stat
+                  label="Tercio 3"
+                  value={formatSignal(candidate.tercio3_promedio, "/día")}
+                />
+                <Stat
+                  label="Tendencia"
+                  value={formatSignal(candidate.tendencia_ratio, "x")}
+                />
+              </dl>
+            </div>
+          ) : null}
         </div>
       </div>
     </article>
@@ -391,14 +448,42 @@ function getDemandSignal(value: number | string | null) {
   return { label: "Baja", percentile };
 }
 
+function formatPercentile(value: number | string | null) {
+  const percentileValue = toNumberOrNull(value);
+
+  if (percentileValue === null) {
+    return "—";
+  }
+
+  return String(
+    Math.round(Math.min(Math.max(percentileValue, 0), 1) * 100),
+  );
+}
+
+function formatSignal(
+  value: number | string | null,
+  suffix: string,
+  fractionDigits = 2,
+) {
+  const numberValue = toNumberOrNull(value);
+
+  if (numberValue === null) {
+    return "—";
+  }
+
+  return `${numberValue.toFixed(fractionDigits)}${suffix}`;
+}
+
 function getCandidateSummary({
   pais,
   percentil,
   tendenciaRatio,
+  comparisonIsSample = false,
 }: {
   pais: SweetSpotCountry;
   percentil: number | string | null;
   tendenciaRatio: number | string | null;
+  comparisonIsSample?: boolean;
 }) {
   const country = pais === "CO" ? "Colombia" : "México";
   const percentileValue = toNumberOrNull(percentil);
@@ -407,6 +492,22 @@ function getCandidateSummary({
 
   if (percentileValue === null) {
     return `Su demanda aún no tiene percentil en ${country}, pero ${trend}.`;
+  }
+
+  if (comparisonIsSample) {
+    if (percentileValue >= 0.75) {
+      return `Dentro de la muestra diaria de ${country}, se ubica en demanda alta y ${trend}.`;
+    }
+
+    if (percentileValue >= 0.6) {
+      return `Dentro de la muestra diaria de ${country}, se ubica en demanda media-alta y ${trend}.`;
+    }
+
+    if (percentileValue >= 0.5) {
+      return `Dentro de la muestra diaria de ${country}, se mueve en la franja media y ${trend}.`;
+    }
+
+    return `Dentro de la muestra diaria de ${country}, aún está en una franja de demanda baja, aunque ${trend}.`;
   }
 
   if (percentileValue >= 0.75) {

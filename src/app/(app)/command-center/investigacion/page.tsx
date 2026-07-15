@@ -1,4 +1,6 @@
+import { Search } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { RefreshDropkillerButton } from "@/components/command-center/RefreshDropkillerButton";
 import {
@@ -10,6 +12,12 @@ import {
   type SweetSpotCandidate,
   type SweetSpotCountry,
 } from "@/components/command-center/SweetSpotCard";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  searchDropkillerProduct,
+  type DropkillerProductSearchResult,
+} from "@/lib/dropkiller/searchDropkillerProduct";
 import { createClient } from "@/lib/supabase/server";
 
 type SweetSpotRpcClient = {
@@ -33,10 +41,18 @@ type SavedProductsReadClient = {
 type PageProps = {
   searchParams: Promise<{
     vista?: string | string[];
+    producto?: string | string[];
+    pais_producto?: string | string[];
   }>;
 };
 
 type InvestigationView = "sugeridos" | "guardados";
+
+type ProductLookupState =
+  | { status: "idle" }
+  | { status: "found"; result: DropkillerProductSearchResult }
+  | { status: "not_found"; productId: string; country: SweetSpotCountry }
+  | { status: "error" };
 
 const countryLabel: Record<SweetSpotCountry, string> = {
   CO: "Colombia",
@@ -45,15 +61,40 @@ const countryLabel: Record<SweetSpotCountry, string> = {
 
 const countries = ["CO", "MX"] as const satisfies readonly SweetSpotCountry[];
 
+async function submitProductLookup(formData: FormData) {
+  "use server";
+
+  const productId = String(formData.get("product_id") ?? "").trim();
+  const countryValue = String(formData.get("product_country") ?? "CO");
+  const viewValue = String(formData.get("view") ?? "sugeridos");
+  const country = countryValue === "MX" ? "MX" : "CO";
+  const params = new URLSearchParams({
+    producto: productId.slice(0, 100),
+    pais_producto: country,
+  });
+
+  if (viewValue === "guardados") {
+    params.set("vista", "guardados");
+  }
+
+  redirect(`/command-center/investigacion?${params.toString()}`);
+}
+
 export default async function CommandCenterInvestigacionPage({
   searchParams,
 }: PageProps) {
   const params = await searchParams;
   const view = getView(params.vista);
+  const searchedProductId = getSingleValue(params.producto).trim().slice(0, 100);
+  const searchedCountry = getSearchCountry(params.pais_producto);
   const supabase = await createClient();
   const savedProductsClient = supabase as unknown as SavedProductsReadClient;
+  const [savedProductsResult, productLookup] = await Promise.all([
+    savedProductsClient.from("dropkiller_saved_products").select("*"),
+    loadProductLookup(searchedProductId, searchedCountry),
+  ]);
   const { data: savedProductsData, error: savedProductsError } =
-    await savedProductsClient.from("dropkiller_saved_products").select("*");
+    savedProductsResult;
 
   if (savedProductsError) {
     throw new Error(
@@ -62,10 +103,21 @@ export default async function CommandCenterInvestigacionPage({
   }
 
   const savedProducts = (savedProductsData ?? []).filter(isSavedProduct);
+  const savedKeys = new Set(
+    savedProducts.map((product) =>
+      getSavedProductKey(product.country_code, product.external_id),
+    ),
+  );
 
   if (view === "guardados") {
     return (
-      <InvestigationShell view={view}>
+      <InvestigationShell
+        view={view}
+        searchedProductId={searchedProductId}
+        searchedCountry={searchedCountry}
+        productLookup={productLookup}
+        savedKeys={savedKeys}
+      >
         <SavedProductsSection products={savedProducts} />
       </InvestigationShell>
     );
@@ -83,14 +135,15 @@ export default async function CommandCenterInvestigacionPage({
   }
 
   const candidates = (candidatesData ?? []).filter(isSweetSpotCandidate);
-  const savedKeys = new Set(
-    savedProducts.map((product) =>
-      getSavedProductKey(product.country_code, product.external_id),
-    ),
-  );
 
   return (
-    <InvestigationShell view={view}>
+    <InvestigationShell
+      view={view}
+      searchedProductId={searchedProductId}
+      searchedCountry={searchedCountry}
+      productLookup={productLookup}
+      savedKeys={savedKeys}
+    >
       <div className="grid gap-4 xl:grid-cols-2">
         {countries.map((country) => (
           <SweetSpotCountrySection
@@ -109,9 +162,17 @@ export default async function CommandCenterInvestigacionPage({
 
 function InvestigationShell({
   view,
+  searchedProductId,
+  searchedCountry,
+  productLookup,
+  savedKeys,
   children,
 }: {
   view: InvestigationView;
+  searchedProductId: string;
+  searchedCountry: SweetSpotCountry;
+  productLookup: ProductLookupState;
+  savedKeys: Set<string>;
   children: React.ReactNode;
 }) {
   return (
@@ -156,7 +217,128 @@ function InvestigationShell({
         </nav>
       </div>
 
+      <div className="mt-6">
+        <ProductLookupSection
+          view={view}
+          productId={searchedProductId}
+          country={searchedCountry}
+          lookup={productLookup}
+          savedKeys={savedKeys}
+        />
+      </div>
+
       <div className="mt-6">{children}</div>
+    </section>
+  );
+}
+
+function ProductLookupSection({
+  view,
+  productId,
+  country,
+  lookup,
+  savedKeys,
+}: {
+  view: InvestigationView;
+  productId: string;
+  country: SweetSpotCountry;
+  lookup: ProductLookupState;
+  savedKeys: Set<string>;
+}) {
+  const clearHref =
+    view === "guardados"
+      ? "/command-center/investigacion?vista=guardados"
+      : "/command-center/investigacion";
+
+  return (
+    <section className="rounded-2xl border border-border bg-bg-surface p-5 shadow-lg">
+      <div>
+        <p className="font-body text-xs uppercase text-text-secondary">
+          Consulta puntual
+        </p>
+        <h2 className="mt-2 font-display text-lg font-semibold text-text-primary">
+          Analizar producto por ID
+        </h2>
+        <p className="mt-2 max-w-3xl font-body text-sm text-text-secondary">
+          Consulta el producto en vivo y compara su ritmo con la muestra diaria
+          almacenada para el país seleccionado.
+        </p>
+      </div>
+
+      <form
+        action={submitProductLookup}
+        className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_10rem_auto] md:items-end"
+      >
+        <input type="hidden" name="view" value={view} />
+        <label className="grid gap-1.5">
+          <span className="font-body text-xs text-text-secondary">
+            ID Dropi / Dropkiller
+          </span>
+          <Input
+            name="product_id"
+            defaultValue={productId}
+            required
+            maxLength={100}
+            inputMode="numeric"
+            placeholder="Ej. 2091078"
+            className="h-11 rounded-xl border-border bg-bg-page font-mono tabular-nums text-text-primary"
+          />
+        </label>
+        <label className="grid gap-1.5">
+          <span className="font-body text-xs text-text-secondary">País</span>
+          <select
+            name="product_country"
+            defaultValue={country}
+            className="h-11 rounded-xl border border-border bg-bg-page px-3 font-body text-sm text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="CO">Colombia</option>
+            <option value="MX">México</option>
+          </select>
+        </label>
+        <Button
+          type="submit"
+          className="h-11 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 text-bg-surface hover:opacity-90"
+        >
+          <Search className="h-4 w-4" aria-hidden="true" />
+          Buscar
+        </Button>
+      </form>
+
+      {lookup.status === "not_found" ? (
+        <div className="mt-5 rounded-2xl border border-border bg-bg-page p-4 font-body text-sm text-text-secondary">
+          Producto {lookup.productId} no encontrado en {countryLabel[lookup.country]}.
+        </div>
+      ) : null}
+
+      {lookup.status === "error" ? (
+        <div className="mt-5 rounded-2xl border border-risk-high/20 bg-risk-high-bg p-4 font-body text-sm text-risk-high">
+          No se pudo consultar Dropkiller en este momento. Intenta nuevamente.
+        </div>
+      ) : null}
+
+      {lookup.status === "found" ? (
+        <div className="mt-5">
+          <div className="mb-3 flex justify-end">
+            <Link
+              href={clearHref}
+              className="font-body text-xs font-semibold text-[var(--color-accent)] hover:underline"
+            >
+              Limpiar consulta
+            </Link>
+          </div>
+          <SweetSpotCard
+            candidate={lookup.result.product}
+            isSaved={savedKeys.has(
+              getSavedProductKey(
+                lookup.result.product.country_code,
+                lookup.result.product.external_id,
+              ),
+            )}
+            comparisonLabel={`Comparado contra los ${lookup.result.comparisonSize} productos de mayor movimiento hoy en ${countryLabel[lookup.result.product.country_code]}.`}
+            showRawSignals
+          />
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -301,4 +483,38 @@ function getSavedProductKey(
 function getView(value: string | string[] | undefined): InvestigationView {
   const resolved = Array.isArray(value) ? value[0] : value;
   return resolved === "guardados" ? "guardados" : "sugeridos";
+}
+
+function getSearchCountry(
+  value: string | string[] | undefined,
+): SweetSpotCountry {
+  return getSingleValue(value) === "MX" ? "MX" : "CO";
+}
+
+function getSingleValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+}
+
+async function loadProductLookup(
+  productId: string,
+  country: SweetSpotCountry,
+): Promise<ProductLookupState> {
+  if (!productId) {
+    return { status: "idle" };
+  }
+
+  try {
+    const result = await searchDropkillerProduct(productId, country);
+
+    return result
+      ? { status: "found", result }
+      : { status: "not_found", productId, country };
+  } catch (error) {
+    console.error(
+      "On-demand Dropkiller product lookup failed",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+
+    return { status: "error" };
+  }
 }
