@@ -62,6 +62,9 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
   let query = supabase
     .from("tasks")
     .select("*, orders!inner(id,nombre,apellido,numero_orden,pais)")
+    .or(
+      `snoozed_until.is.null,snoozed_until.lte.${new Date().toISOString()}`,
+    )
     .order("fecha_limite", { ascending: true, nullsFirst: false });
 
   if (estadoVista === "abiertas") {

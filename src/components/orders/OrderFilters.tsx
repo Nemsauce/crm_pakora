@@ -9,13 +9,22 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Select } from "radix-ui";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type FilterValue = "todos" | string;
+
+type StoredOrderFilters = {
+  pais: string;
+  estado_crm: string;
+  nivel_riesgo: string;
+};
+
+const FILTER_STORAGE_KEY = "pedidos-filters";
+const FILTER_KEYS = ["pais", "estado_crm", "nivel_riesgo"] as const;
 
 const countryOptions = [
   { value: "todos", label: "Todos" },
@@ -39,6 +48,65 @@ const riskOptions = [
   { value: "bajo", label: "Bajo" },
   { value: "sin_datos", label: "Sin datos" },
 ];
+
+function isValidOption(
+  value: unknown,
+  options: { value: string; label: string }[],
+) {
+  return (
+    typeof value === "string" &&
+    options.some((option) => option.value === value)
+  );
+}
+
+function getFiltersFromParams(params: URLSearchParams): StoredOrderFilters {
+  return {
+    pais: params.get("pais") ?? "todos",
+    estado_crm: params.get("estado_crm") ?? "todos",
+    nivel_riesgo: params.get("nivel_riesgo") ?? "todos",
+  };
+}
+
+function readStoredFilters(): StoredOrderFilters | null {
+  try {
+    const rawValue = window.localStorage.getItem(FILTER_STORAGE_KEY);
+
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsed = JSON.parse(rawValue) as Partial<StoredOrderFilters>;
+
+    if (
+      !isValidOption(parsed.pais, countryOptions) ||
+      !isValidOption(parsed.estado_crm, statusOptions) ||
+      !isValidOption(parsed.nivel_riesgo, riskOptions)
+    ) {
+      window.localStorage.removeItem(FILTER_STORAGE_KEY);
+      return null;
+    }
+
+    return parsed as StoredOrderFilters;
+  } catch {
+    return null;
+  }
+}
+
+function persistFilters(filters: StoredOrderFilters) {
+  try {
+    const hasActiveFilter = Object.values(filters).some(
+      (value) => value !== "todos",
+    );
+
+    if (hasActiveFilter) {
+      window.localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
+    } else {
+      window.localStorage.removeItem(FILTER_STORAGE_KEY);
+    }
+  } catch {
+    // localStorage may be unavailable in privacy-restricted browser contexts.
+  }
+}
 
 function FilterSelect({
   label,
@@ -106,6 +174,7 @@ export function OrderFilters() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const hasInitializedPersistence = useRef(false);
 
   const pais = searchParams.get("pais") ?? "todos";
   const estadoCrm = searchParams.get("estado_crm") ?? "todos";
@@ -118,6 +187,47 @@ export function OrderFilters() {
     nivelRiesgo !== "todos" ||
     q !== "";
 
+  useEffect(() => {
+    if (hasInitializedPersistence.current) {
+      if (FILTER_KEYS.some((key) => searchParams.has(key))) {
+        persistFilters(getFiltersFromParams(new URLSearchParams(searchParams)));
+      }
+
+      return;
+    }
+
+    hasInitializedPersistence.current = true;
+    const hasUrlFilter = FILTER_KEYS.some((key) => searchParams.has(key));
+
+    if (hasUrlFilter) {
+      persistFilters(getFiltersFromParams(new URLSearchParams(searchParams)));
+      return;
+    }
+
+    const storedFilters = readStoredFilters();
+
+    if (!storedFilters) {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams);
+
+    for (const key of FILTER_KEYS) {
+      const value = storedFilters[key];
+
+      if (value === "todos") {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    }
+
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }, [pathname, router, searchParams]);
+
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams);
 
@@ -128,6 +238,8 @@ export function OrderFilters() {
     } else {
       params.set(key, value);
     }
+
+    persistFilters(getFiltersFromParams(params));
 
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
@@ -140,6 +252,11 @@ export function OrderFilters() {
 
   function clearFilters() {
     setSearchDraft("");
+    persistFilters({
+      pais: "todos",
+      estado_crm: "todos",
+      nivel_riesgo: "todos",
+    });
     router.push(pathname);
   }
 

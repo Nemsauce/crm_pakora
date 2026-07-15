@@ -1,6 +1,7 @@
 "use client";
 
-import { X } from "lucide-react";
+import { UserRound, X } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Dialog } from "radix-ui";
 import { useEffect, useMemo, useState } from "react";
@@ -363,6 +364,20 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
           Cliente sin historial en Dropi
         </p>
       )}
+
+      {order.telefono?.trim() ? (
+        <Button
+          asChild
+          type="button"
+          variant="outline"
+          className="mt-4 rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+        >
+          <Link href={`/clientes/${encodeURIComponent(order.telefono)}`}>
+            <UserRound className="h-4 w-4" aria-hidden="true" />
+            Ver perfil del cliente
+          </Link>
+        </Button>
+      ) : null}
     </section>
   );
 }

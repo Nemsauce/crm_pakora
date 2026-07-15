@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { GlobalSearch } from "@/components/search/GlobalSearch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -91,6 +92,8 @@ export function TopBar({ profile }: TopBarProps) {
   return (
     <header className="flex h-20 shrink-0 items-center justify-end border-b border-border bg-bg-surface px-6 sm:px-8">
       <div className="flex items-center gap-2">
+        <GlobalSearch />
+
         <NotificationBell />
 
         <ThemeToggle />

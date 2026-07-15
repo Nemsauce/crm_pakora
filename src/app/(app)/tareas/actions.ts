@@ -53,6 +53,63 @@ export type ReassignTaskResult = {
   error: string | null;
 };
 
+export type SnoozeTaskResult = {
+  error: string | null;
+};
+
+type TasksSnoozeClient = {
+  from(table: "tasks"): {
+    update(values: { snoozed_until: string; updated_at: string }): {
+      eq(column: "id", value: number): {
+        in(
+          column: "estado",
+          values: ["pendiente", "en_progreso"],
+        ): PromiseLike<{ error: { message: string } | null }>;
+      };
+    };
+  };
+};
+
+export async function snoozeTask(
+  taskId: number,
+  snoozeUntil: Date,
+): Promise<SnoozeTaskResult> {
+  if (!Number.isInteger(taskId) || taskId <= 0) {
+    return { error: "Tarea inválida." };
+  }
+
+  const snoozeTimestamp =
+    snoozeUntil instanceof Date ? snoozeUntil.getTime() : Number.NaN;
+
+  if (!Number.isFinite(snoozeTimestamp) || snoozeTimestamp <= Date.now()) {
+    return { error: "La nueva fecha debe estar en el futuro." };
+  }
+
+  const supabase = await createClient();
+  const tasksClient = supabase as unknown as TasksSnoozeClient;
+  const updatedAt = new Date().toISOString();
+  const { error } = await tasksClient
+    .from("tasks")
+    .update({
+      snoozed_until: new Date(snoozeTimestamp).toISOString(),
+      updated_at: updatedAt,
+    })
+    .eq("id", taskId)
+    .in("estado", ["pendiente", "en_progreso"]);
+
+  if (error) {
+    console.error("Failed to snooze task", {
+      taskId,
+      message: error.message,
+    });
+    return { error: "No se pudo posponer la tarea." };
+  }
+
+  revalidatePath("/tareas");
+
+  return { error: null };
+}
+
 async function notifyAssignee({
   userId,
   taskId,

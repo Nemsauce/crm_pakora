@@ -77,6 +77,7 @@ export function NotificationBell() {
   const supabase = useMemo(() => createClient(), []);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const notificationsRef = useRef<Notification[]>([]);
+  const baseDocumentTitleRef = useRef<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +124,24 @@ export function NotificationBell() {
     );
     setUnreadCount(0);
   }, [setNotificationList]);
+
+  useEffect(() => {
+    const baseTitle = document.title.replace(/^\(\d+\)\s*/, "");
+    baseDocumentTitleRef.current = baseTitle;
+
+    return () => {
+      document.title = baseTitle;
+    };
+  }, []);
+
+  useEffect(() => {
+    const baseTitle =
+      baseDocumentTitleRef.current ??
+      document.title.replace(/^\(\d+\)\s*/, "");
+
+    baseDocumentTitleRef.current = baseTitle;
+    document.title = unreadCount > 0 ? `(${unreadCount}) ${baseTitle}` : baseTitle;
+  }, [unreadCount]);
 
   useEffect(() => {
     let isActive = true;

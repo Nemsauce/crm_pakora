@@ -4,7 +4,10 @@ import {
   AlertTriangle,
   Check,
   ChevronDown,
+  Clock3,
   Copy,
+  Eye,
+  Loader2,
   MessageCircle,
   PackageCheck,
   Phone,
@@ -13,6 +16,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Collapsible, Dialog, Select } from "radix-ui";
 import {
@@ -23,8 +27,18 @@ import {
   useTransition,
 } from "react";
 
-import { completeTask, reassignTask } from "@/app/(app)/tareas/actions";
+import {
+  completeTask,
+  reassignTask,
+  snoozeTask,
+} from "@/app/(app)/tareas/actions";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 import { buildTaskWhatsAppMessage } from "@/lib/whatsapp/buildTaskMessage";
 import { formatPhoneForWhatsApp } from "@/lib/whatsapp/formatPhoneForWhatsApp";
@@ -319,6 +333,105 @@ function AssigneeSelect({
   );
 }
 
+type SnoozeOption = "one_hour" | "three_hours" | "tomorrow";
+
+function getTomorrowAtNineInBogota() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const day = Number(parts.find((part) => part.type === "day")?.value);
+
+  return new Date(Date.UTC(year, month - 1, day + 1, 14));
+}
+
+function getSnoozeUntil(option: SnoozeOption) {
+  if (option === "one_hour") {
+    return new Date(Date.now() + 60 * 60 * 1000);
+  }
+
+  if (option === "three_hours") {
+    return new Date(Date.now() + 3 * 60 * 60 * 1000);
+  }
+
+  return getTomorrowAtNineInBogota();
+}
+
+function SnoozeTaskControl({ taskId }: { taskId: number }) {
+  const router = useRouter();
+  const [isSnoozing, startSnoozing] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function handleSnooze(option: SnoozeOption) {
+    startSnoozing(async () => {
+      const result = await snoozeTask(taskId, getSnoozeUntil(option));
+
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      setError(null);
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isSnoozing}
+            className="rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)] disabled:opacity-60"
+          >
+            {isSnoozing ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Clock3 className="h-4 w-4" aria-hidden="true" />
+            )}
+            Posponer
+            <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          sideOffset={6}
+          className="min-w-40 rounded-2xl border border-border bg-bg-surface p-1 text-[var(--foreground)] shadow-md"
+        >
+          <DropdownMenuItem
+            onSelect={() => handleSnooze("one_hour")}
+            className="rounded-lg font-body text-sm focus:bg-[var(--color-accent)]/10 focus:text-[var(--color-accent)]"
+          >
+            1 hora
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => handleSnooze("three_hours")}
+            className="rounded-lg font-body text-sm focus:bg-[var(--color-accent)]/10 focus:text-[var(--color-accent)]"
+          >
+            3 horas
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => handleSnooze("tomorrow")}
+            className="rounded-lg font-body text-sm focus:bg-[var(--color-accent)]/10 focus:text-[var(--color-accent)]"
+          >
+            Mañana
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {error ? (
+        <span className="font-body text-xs text-risk-high">{error}</span>
+      ) : null}
+    </div>
+  );
+}
+
 export function TaskDetailRow({
   task,
   assigneeOptions,
@@ -450,6 +563,32 @@ export function TaskDetailRow({
               {deadline.label}
             </div>
           )}
+          {orderId !== null ? (
+            <Button
+              asChild
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+            >
+              <Link
+                href={`/pedidos?detalle=${orderId}`}
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={stopKeyPropagation}
+              >
+                <Eye className="h-4 w-4" aria-hidden="true" />
+                Ver pedido
+              </Link>
+            </Button>
+          ) : null}
+          {task.estado === "pendiente" || task.estado === "en_progreso" ? (
+            <div
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={stopKeyPropagation}
+            >
+              <SnoozeTaskControl taskId={task.id} />
+            </div>
+          ) : null}
         </div>
       </div>
     </article>
