@@ -1,3 +1,5 @@
+import { format, isValid, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,8 @@ type SearchParams = {
   q?: string;
   detalle?: string;
   page?: string;
+  fecha_desde?: string;
+  fecha_hasta?: string;
 };
 
 type PedidosPageProps = {
@@ -49,6 +53,70 @@ function getPage(value: string | undefined) {
   return page;
 }
 
+function parseDateParam(value: string | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const date = parseISO(value);
+
+  return isValid(date) && format(date, "yyyy-MM-dd") === value ? date : null;
+}
+
+function getSelectedDateRange(params: SearchParams) {
+  const parsedFrom = parseDateParam(params.fecha_desde);
+  const parsedTo = parseDateParam(params.fecha_hasta);
+
+  if (!parsedFrom && !parsedTo) {
+    return null;
+  }
+
+  const firstDate = parsedFrom ?? parsedTo;
+  const lastDate = parsedTo ?? parsedFrom;
+
+  if (!firstDate || !lastDate) {
+    return null;
+  }
+
+  const from = firstDate <= lastDate ? firstDate : lastDate;
+  const to = firstDate <= lastDate ? lastDate : firstDate;
+
+  return {
+    from: format(from, "yyyy-MM-dd"),
+    to: format(to, "yyyy-MM-dd"),
+    fromDate: from,
+    toDate: to,
+  };
+}
+
+function getDateCountDescription(
+  dateRange: ReturnType<typeof getSelectedDateRange>,
+) {
+  if (!dateRange) {
+    return "";
+  }
+
+  if (dateRange.from === dateRange.to) {
+    return ` del ${format(dateRange.fromDate, "d 'de' MMMM", {
+      locale: es,
+    })}`;
+  }
+
+  const sameMonth =
+    format(dateRange.fromDate, "yyyy-MM") ===
+    format(dateRange.toDate, "yyyy-MM");
+
+  if (sameMonth) {
+    return ` del ${format(dateRange.fromDate, "d", {
+      locale: es,
+    })} al ${format(dateRange.toDate, "d 'de' MMMM", { locale: es })}`;
+  }
+
+  return ` del ${format(dateRange.fromDate, "d 'de' MMMM", {
+    locale: es,
+  })} al ${format(dateRange.toDate, "d 'de' MMMM", { locale: es })}`;
+}
+
 function createPageHref(searchParams: SearchParams, page: number) {
   const params = new URLSearchParams();
 
@@ -72,9 +140,10 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
   const supabase = await createClient();
+  const selectedDateRange = getSelectedDateRange(params);
   let query = supabase
     .from("orders")
-    .select("*")
+    .select("*", { count: "exact" })
     .order("fecha", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .range(from, to);
@@ -95,6 +164,12 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     }
   }
 
+  if (selectedDateRange) {
+    query = query
+      .gte("fecha", selectedDateRange.from)
+      .lte("fecha", selectedDateRange.to);
+  }
+
   const searchTerm = params.q?.trim();
 
   if (searchTerm) {
@@ -104,16 +179,18 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     );
   }
 
-  const { data: orders, error } = await query;
+  const { data: orders, error, count } = await query;
 
   if (error) {
     throw new Error(`No se pudieron cargar los pedidos: ${error.message}`);
   }
 
   const orderList = orders ?? [];
+  const totalCount = count ?? orderList.length;
   const selectedOrderId = params.detalle ?? null;
   const hasPreviousPage = page > 1;
-  const hasNextPage = orderList.length === PAGE_SIZE;
+  const hasNextPage = to + 1 < totalCount;
+  const dateCountDescription = getDateCountDescription(selectedDateRange);
 
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
@@ -156,8 +233,16 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
         <OrderFilters />
       </div>
 
+      <p className="mt-5 font-body text-sm text-text-secondary" aria-live="polite">
+        <span className="font-mono font-semibold tabular-nums text-text-primary">
+          {totalCount}
+        </span>{" "}
+        {totalCount === 1 ? "pedido" : "pedidos"}
+        {dateCountDescription}
+      </p>
+
       {orderList.length > 0 ? (
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {orderList.map((order, index) => (
             <div
               key={order.id}
@@ -174,7 +259,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
           ))}
         </div>
       ) : (
-        <div className="mt-5 rounded-lg border border-border bg-bg-base p-6 font-body text-sm text-text-secondary">
+        <div className="mt-3 rounded-lg border border-border bg-bg-base p-6 font-body text-sm text-text-secondary">
           No hay pedidos que coincidan con estos filtros.
         </div>
       )}
