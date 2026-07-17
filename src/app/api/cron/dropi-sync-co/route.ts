@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { dropiAuthWithToken } from "@/lib/dropi/dropiAuth";
 import { fetchDropiOrdersCO } from "@/lib/dropi/fetchDropiOrdersCO";
 import {
   fetchDropiWalletCO,
@@ -10,6 +9,10 @@ import {
   syncDropiOrdersCO,
   type SyncDropiOrdersCOResult,
 } from "@/lib/dropi/syncDropiOrdersCO";
+import {
+  DropiSessionError,
+  withDropiSessionRetry,
+} from "@/lib/dropi/getDropiSession";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
 import {
@@ -135,19 +138,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const authResult = await dropiAuthWithToken();
-
-  if (!authResult.success) {
-    return NextResponse.json(
-      failureSummary(`Dropi login failed: ${authResult.errorMessage}`),
-      { status: 502 },
-    );
-  }
-
   try {
-    const dropiOrders = await fetchDropiOrdersCO(authResult.token);
+    const dropiOrders = await withDropiSessionRetry("CO", fetchDropiOrdersCO);
     const result = await syncDropiOrdersCO(dropiOrders);
-    const walletMovements = await fetchDropiWalletCO(authResult.token);
+    const walletMovements = await withDropiSessionRetry(
+      "CO",
+      fetchDropiWalletCO,
+    );
     const walletMovementsStored =
       await storeWalletMovements(walletMovements);
     const staleOrdersSummary = await getStaleOrdersSummary();
@@ -164,6 +161,9 @@ export async function GET(request: NextRequest) {
 
     console.error("Dropi CO sync failed", errorMessage);
 
-    return NextResponse.json(failureSummary(errorMessage), { status: 500 });
+    return NextResponse.json(failureSummary(errorMessage), {
+      status:
+        error instanceof DropiSessionError && error.kind === "login" ? 502 : 500,
+    });
   }
 }

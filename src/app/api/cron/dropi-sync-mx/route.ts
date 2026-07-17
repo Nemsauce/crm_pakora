@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { dropiAuthMXWithToken } from "@/lib/dropi/dropiAuthMX";
 import { fetchDropiOrdersMX } from "@/lib/dropi/fetchDropiOrdersMX";
 import {
   fetchDropiWalletMX,
@@ -10,6 +9,10 @@ import {
   syncDropiOrdersMX,
   type SyncDropiOrdersMXResult,
 } from "@/lib/dropi/syncDropiOrdersMX";
+import {
+  DropiSessionError,
+  withDropiSessionRetry,
+} from "@/lib/dropi/getDropiSession";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -90,19 +93,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const authResult = await dropiAuthMXWithToken();
-
-  if (!authResult.success) {
-    return NextResponse.json(
-      failureSummary(`Dropi login failed: ${authResult.errorMessage}`),
-      { status: 502 },
-    );
-  }
-
   try {
-    const dropiOrders = await fetchDropiOrdersMX(authResult.token);
+    const dropiOrders = await withDropiSessionRetry("MX", fetchDropiOrdersMX);
     const result = await syncDropiOrdersMX(dropiOrders);
-    const walletMovements = await fetchDropiWalletMX(authResult.token);
+    const walletMovements = await withDropiSessionRetry(
+      "MX",
+      fetchDropiWalletMX,
+    );
     const walletMovementsStored =
       await storeWalletMovements(walletMovements);
 
@@ -117,6 +114,9 @@ export async function GET(request: NextRequest) {
 
     console.error("Dropi MX sync failed", errorMessage);
 
-    return NextResponse.json(failureSummary(errorMessage), { status: 500 });
+    return NextResponse.json(failureSummary(errorMessage), {
+      status:
+        error instanceof DropiSessionError && error.kind === "login" ? 502 : 500,
+    });
   }
 }
