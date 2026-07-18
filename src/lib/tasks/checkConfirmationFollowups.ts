@@ -24,6 +24,11 @@ type FollowupConfig = {
   descripcion: string;
 };
 
+type CompletedConfirmationTask = {
+  completado_en: string | null;
+  intento_numero: number;
+};
+
 export type ConfirmationFollowupBreakdown = Record<FollowupStage, number>;
 
 export type CheckConfirmationFollowupsResult = {
@@ -63,18 +68,24 @@ function parseDateOnly(value: string) {
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
-export function getConfirmationDaysElapsed(
-  orderDate: string,
+export function hasFullCalendarDayPassed(
+  completedAt: string,
   currentDate = getCurrentDate(),
 ) {
-  const orderTimestamp = parseDateOnly(orderDate);
+  const completionTimestamp = Date.parse(completedAt);
   const currentTimestamp = parseDateOnly(currentDate);
 
-  if (orderTimestamp === null || currentTimestamp === null) {
-    return null;
+  if (!Number.isFinite(completionTimestamp) || currentTimestamp === null) {
+    return false;
   }
 
-  return Math.floor((currentTimestamp - orderTimestamp) / DAY_IN_MILLISECONDS);
+  const completionDate = new Date(completionTimestamp).toISOString().slice(0, 10);
+  const completionDateTimestamp = parseDateOnly(completionDate);
+
+  return (
+    completionDateTimestamp !== null &&
+    currentTimestamp - completionDateTimestamp >= DAY_IN_MILLISECONDS
+  );
 }
 
 function getOrderNumber(order: Order) {
@@ -83,31 +94,31 @@ function getOrderNumber(order: Order) {
 
 export function getConfirmationFollowupConfig(
   order: Order,
-  daysElapsed: number,
+  completedCount: number,
 ): FollowupConfig | null {
-  if (daysElapsed < 1) {
+  const nextTouchNumber = completedCount + 1;
+
+  if (nextTouchNumber === 1) {
     return null;
   }
 
   const orderNumber = getOrderNumber(order);
-  const elapsedDaysLabel = `${daysElapsed} ${daysElapsed === 1 ? "día" : "días"}`;
 
-  if (daysElapsed >= 6) {
+  if (completedCount >= 6) {
     return {
       stage: "cancelar",
       attemptNumber: CANCELLATION_ATTEMPT_NUMBER,
       titulo: `Cancelar pedido ${orderNumber} por falta de confirmación`,
-      descripcion: `El pedido sigue en PENDIENTE CONFIRMACION después de ${elapsedDaysLabel}. Se agotaron los 6 toques de confirmación; cancelar el pedido por falta de confirmación.`,
+      descripcion:
+        "El pedido sigue en PENDIENTE CONFIRMACION después de completar los 6 toques de confirmación. Cancelar el pedido por falta de confirmación.",
     };
   }
 
-  const touchNumber = daysElapsed + 1;
-
   return {
-    stage: `toque${touchNumber}` as FollowupStage,
-    attemptNumber: touchNumber,
-    titulo: `Toque ${touchNumber}: llamar para confirmar pedido ${orderNumber}`,
-    descripcion: `Seguimiento diario ${touchNumber} de 6 para confirmar el pedido. Ha transcurrido ${elapsedDaysLabel} desde la fecha del pedido (${order.fecha}).`,
+    stage: `toque${nextTouchNumber}` as FollowupStage,
+    attemptNumber: nextTouchNumber,
+    titulo: `Toque ${nextTouchNumber}: llamar para confirmar pedido ${orderNumber}`,
+    descripcion: `Seguimiento diario ${nextTouchNumber} de 6 para confirmar el pedido. Se han completado ${completedCount} toques de confirmación.`,
   };
 }
 
@@ -121,8 +132,6 @@ async function loadActiveOrders() {
       .select("*")
       .in("pais", ["CO", "MX"])
       .eq("activo", true)
-      .not("fecha", "is", null)
-      .lte("fecha", getCurrentDate())
       .order("id", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
 
@@ -137,6 +146,44 @@ async function loadActiveOrders() {
       return orders;
     }
   }
+}
+
+async function loadCompletedConfirmationTasks(orderId: number) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("completado_en,intento_numero")
+    .eq("order_id", orderId)
+    .eq("tipo", "llamar_confirmacion")
+    .eq("estado", "completada")
+    .gte("intento_numero", 1)
+    .lte("intento_numero", 6);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as CompletedConfirmationTask[];
+}
+
+function getMostRecentCompletion(tasks: CompletedConfirmationTask[]) {
+  let mostRecentCompletion: string | null = null;
+  let mostRecentTimestamp = Number.NEGATIVE_INFINITY;
+
+  for (const task of tasks) {
+    if (!task.completado_en) {
+      continue;
+    }
+
+    const timestamp = Date.parse(task.completado_en);
+
+    if (Number.isFinite(timestamp) && timestamp > mostRecentTimestamp) {
+      mostRecentCompletion = task.completado_en;
+      mostRecentTimestamp = timestamp;
+    }
+  }
+
+  return mostRecentCompletion;
 }
 
 async function updateAttemptNumber(taskId: number, attemptNumber: number) {
@@ -161,21 +208,30 @@ export async function checkConfirmationFollowups(): Promise<CheckConfirmationFol
     try {
       const categoria = await lookupCategory(order);
 
-      if (categoria !== "nuevo" || !order.fecha) {
+      if (categoria !== "nuevo") {
         continue;
       }
 
-      const daysElapsed = getConfirmationDaysElapsed(order.fecha);
-      const followup =
-        daysElapsed === null
-          ? null
-          : getConfirmationFollowupConfig(order, daysElapsed);
+      ordersProcessed += 1;
+
+      const completedTasks = await loadCompletedConfirmationTasks(order.id);
+      const completedCount = completedTasks.length;
+      const followup = getConfirmationFollowupConfig(order, completedCount);
 
       if (!followup) {
         continue;
       }
 
-      ordersProcessed += 1;
+      if (completedCount < 6) {
+        const mostRecentCompletion = getMostRecentCompletion(completedTasks);
+
+        if (
+          !mostRecentCompletion ||
+          !hasFullCalendarDayPassed(mostRecentCompletion)
+        ) {
+          continue;
+        }
+      }
 
       const result = await ensureOpenTask({
         order,
