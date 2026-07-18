@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/dropkiller-sync",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/check-confirmation-followups",
+      "schedule": "0 10 * * *"
     }
   ]
 }

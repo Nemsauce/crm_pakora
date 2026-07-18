@@ -2,7 +2,70 @@
 
 import { revalidatePath } from "next/cache";
 
+import { runDropiSyncCO } from "@/app/api/cron/dropi-sync-co/route";
+import { runDropiSyncMX } from "@/app/api/cron/dropi-sync-mx/route";
 import { createClient } from "@/lib/supabase/server";
+
+const PEDIDOS_PATH = "/pedidos";
+
+export type TriggerDropiSyncResult =
+  | { ok: true; message: string }
+  | { ok: false; message: string };
+
+export async function triggerDropiSync(): Promise<TriggerDropiSyncResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return {
+      ok: false,
+      message: "Debes iniciar sesión para actualizar los pedidos.",
+    };
+  }
+
+  let coOrdersMatched: number | null = null;
+  let mxOrdersMatched: number | null = null;
+
+  try {
+    coOrdersMatched = (await runDropiSyncCO()).ordersMatched;
+  } catch (error) {
+    console.error(
+      "Manual Dropi CO sync failed",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+  }
+
+  try {
+    mxOrdersMatched = (await runDropiSyncMX()).ordersMatched;
+  } catch (error) {
+    console.error(
+      "Manual Dropi MX sync failed",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+  }
+
+  revalidatePath(PEDIDOS_PATH);
+
+  if (coOrdersMatched === null || mxOrdersMatched === null) {
+    const countryResults = [
+      `CO ${coOrdersMatched === null ? "falló" : `${coOrdersMatched} conciliados`}`,
+      `MX ${mxOrdersMatched === null ? "falló" : `${mxOrdersMatched} conciliados`}`,
+    ].join(", ");
+
+    return {
+      ok: false,
+      message: `Actualización parcial: ${countryResults}. Intenta nuevamente.`,
+    };
+  }
+
+  return {
+    ok: true,
+    message: `Actualizado: ${coOrdersMatched + mxOrdersMatched} pedidos conciliados (CO ${coOrdersMatched}, MX ${mxOrdersMatched}).`,
+  };
+}
 
 export type UpdateOrderPhoneResult = {
   error: string | null;
@@ -50,7 +113,7 @@ export async function updateOrderPhone(
       return { error: "Pedido no encontrado o sin acceso." };
     }
 
-    revalidatePath("/pedidos");
+    revalidatePath(PEDIDOS_PATH);
 
     return { error: null, telefono: data.telefono ?? telefono };
   } catch (error) {

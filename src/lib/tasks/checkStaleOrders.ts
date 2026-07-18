@@ -43,10 +43,6 @@ type RecentlyCompletedTask = {
   completado_en: string;
 };
 
-function getOrderNumber(order: Order) {
-  return order.numero_orden ?? String(order.id);
-}
-
 async function lookupCategory(
   supabase: AdminClient,
   order: Order,
@@ -89,15 +85,11 @@ async function lookupCategory(
 }
 
 function getStaleTaskConfig(
-  order: Order,
   categoria: DecisionCategory,
 ): StaleTaskConfig | null {
   switch (categoria) {
     case "nuevo":
-      return {
-        tipo: "llamar_confirmacion",
-        titulo: `Llamar para confirmar pedido ${getOrderNumber(order)}`,
-      };
+      return null;
     case "confirmado":
       return {
         tipo: "resolver_novedad",
@@ -252,7 +244,7 @@ export async function checkStaleOrders(): Promise<CheckStaleOrdersResult> {
   for (const order of orders) {
     try {
       const categoria = await lookupCategory(supabase, order);
-      const taskConfig = getStaleTaskConfig(order, categoria);
+      const taskConfig = getStaleTaskConfig(categoria);
 
       if (!taskConfig) {
         processed += 1;

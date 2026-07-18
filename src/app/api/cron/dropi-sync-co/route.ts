@@ -26,7 +26,7 @@ export const maxDuration = 300;
 type WalletMovementInsert =
   Database["public"]["Tables"]["wallet_movements"]["Insert"];
 
-type SyncDropiCOResult = SyncDropiOrdersCOResult & {
+export type SyncDropiCOResult = SyncDropiOrdersCOResult & {
   walletMovementsFetched: number;
   walletMovementsStored: number;
   staleOrdersChecked: number;
@@ -133,28 +133,31 @@ async function getStaleOrdersSummary(): Promise<
   }
 }
 
+export async function runDropiSyncCO(): Promise<SyncDropiCOResult> {
+  const dropiOrders = await withDropiSessionRetry("CO", fetchDropiOrdersCO);
+  const result = await syncDropiOrdersCO(dropiOrders);
+  const walletMovements = await withDropiSessionRetry(
+    "CO",
+    fetchDropiWalletCO,
+  );
+  const walletMovementsStored = await storeWalletMovements(walletMovements);
+  const staleOrdersSummary = await getStaleOrdersSummary();
+
+  return {
+    ...result,
+    walletMovementsFetched: walletMovements.length,
+    walletMovementsStored,
+    ...staleOrdersSummary,
+  };
+}
+
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const dropiOrders = await withDropiSessionRetry("CO", fetchDropiOrdersCO);
-    const result = await syncDropiOrdersCO(dropiOrders);
-    const walletMovements = await withDropiSessionRetry(
-      "CO",
-      fetchDropiWalletCO,
-    );
-    const walletMovementsStored =
-      await storeWalletMovements(walletMovements);
-    const staleOrdersSummary = await getStaleOrdersSummary();
-
-    return NextResponse.json({
-      ...result,
-      walletMovementsFetched: walletMovements.length,
-      walletMovementsStored,
-      ...staleOrdersSummary,
-    });
+    return NextResponse.json(await runDropiSyncCO());
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown Dropi CO sync error";

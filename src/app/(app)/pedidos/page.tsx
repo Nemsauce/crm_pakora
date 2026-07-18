@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button";
 import { OrderCardLink } from "@/components/orders/OrderCardLink";
 import { OrderDetailDrawer } from "@/components/orders/OrderDetailDrawer";
 import { OrderFilters } from "@/components/orders/OrderFilters";
+import { RefreshOrdersButton } from "@/components/orders/RefreshOrdersButton";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 
 const PAGE_SIZE = 24;
+
+export const maxDuration = 300;
 
 type SearchParams = {
   pais?: string;
@@ -220,13 +223,16 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
         }
       `}</style>
 
-      <div className="border-b border-border pb-4">
-        <p className="font-body text-xs uppercase text-text-secondary">
-          Pedidos
-        </p>
-        <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
-          Lista de pedidos
-        </h1>
+      <div className="flex flex-col gap-4 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="font-body text-xs uppercase text-text-secondary">
+            Pedidos
+          </p>
+          <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
+            Lista de pedidos
+          </h1>
+        </div>
+        <RefreshOrdersButton />
       </div>
 
       <div className="mt-5">
