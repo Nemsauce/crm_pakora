@@ -1,12 +1,14 @@
 "use client";
 
-import { UserRound, X } from "lucide-react";
+import { Check, Loader2, Pencil, Phone, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Dialog } from "radix-ui";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
+import { updateOrderPhone } from "@/app/(app)/pedidos/actions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { Tables } from "@/lib/supabase/database.types";
 
 import { RiskOrb } from "./RiskOrb";
@@ -161,6 +163,18 @@ export function OrderDetailDrawer() {
     router.push(closeHref, { scroll: false });
   }
 
+  function handlePhoneUpdated(telefono: string) {
+    setDetail((currentDetail) =>
+      currentDetail
+        ? {
+            ...currentDetail,
+            order: { ...currentDetail.order, telefono },
+          }
+        : currentDetail,
+    );
+    router.refresh();
+  }
+
   useEffect(() => {
     if (!selectedOrderId) {
       return;
@@ -285,7 +299,10 @@ export function OrderDetailDrawer() {
 
             {!isLoading && detail ? (
               <div className="space-y-5">
-                <OrderHeader order={detail.order} />
+                <OrderHeader
+                  order={detail.order}
+                  onPhoneUpdated={handlePhoneUpdated}
+                />
                 <CustomerRiskProfileSection order={detail.order} />
                 <StatusHistorySection statusHistory={detail.statusHistory} />
                 <TasksSection tasks={detail.tasks} />
@@ -382,7 +399,13 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
   );
 }
 
-function OrderHeader({ order }: { order: Order }) {
+function OrderHeader({
+  order,
+  onPhoneUpdated,
+}: {
+  order: Order;
+  onPhoneUpdated: (telefono: string) => void;
+}) {
   const badgeTone = estadoCrmTone[order.estado_crm];
 
   return (
@@ -419,6 +442,19 @@ function OrderHeader({ order }: { order: Order }) {
             {getLocation(order)}
           </dd>
         </div>
+        <div className="sm:col-span-2">
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">
+            Teléfono
+          </dt>
+          <dd className="mt-1">
+            <EditablePhoneField
+              key={order.id}
+              orderId={order.id}
+              telefono={order.telefono}
+              onPhoneUpdated={onPhoneUpdated}
+            />
+          </dd>
+        </div>
         <div>
           <dt className="font-body text-xs text-[var(--muted-foreground)]">Estado Dropi</dt>
           <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
@@ -433,6 +469,154 @@ function OrderHeader({ order }: { order: Order }) {
         </div>
       </dl>
     </section>
+  );
+}
+
+type PhoneFeedback = {
+  message: string;
+  type: "error" | "success";
+};
+
+function EditablePhoneField({
+  orderId,
+  telefono,
+  onPhoneUpdated,
+}: {
+  orderId: number;
+  telefono: string | null;
+  onPhoneUpdated: (telefono: string) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [phoneDraft, setPhoneDraft] = useState(telefono ?? "");
+  const [feedback, setFeedback] = useState<PhoneFeedback | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!feedback) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setFeedback(null), 3_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [feedback]);
+
+  function startEditing() {
+    setPhoneDraft(telefono ?? "");
+    setFeedback(null);
+    setIsEditing(true);
+  }
+
+  function cancelEditing() {
+    setPhoneDraft(telefono ?? "");
+    setFeedback(null);
+    setIsEditing(false);
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    startTransition(async () => {
+      try {
+        const result = await updateOrderPhone(orderId, phoneDraft);
+
+        if (result.error || !result.telefono) {
+          setFeedback({
+            message: result.error ?? "No se pudo actualizar el teléfono.",
+            type: "error",
+          });
+          return;
+        }
+
+        onPhoneUpdated(result.telefono);
+        setPhoneDraft(result.telefono);
+        setIsEditing(false);
+        setFeedback({ message: "Teléfono actualizado.", type: "success" });
+      } catch {
+        setFeedback({
+          message: "No se pudo actualizar el teléfono.",
+          type: "error",
+        });
+      }
+    });
+  }
+
+  return (
+    <div>
+      {isEditing ? (
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-2 sm:flex-row sm:items-center"
+        >
+          <Input
+            autoFocus
+            type="tel"
+            value={phoneDraft}
+            onChange={(event) => setPhoneDraft(event.target.value)}
+            disabled={isPending}
+            aria-label="Nuevo teléfono"
+            aria-invalid={feedback?.type === "error"}
+            className="max-w-xs font-mono tabular-nums"
+          />
+          <div className="flex items-center gap-2">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isPending || !phoneDraft.trim()}
+              className="rounded-full"
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Check className="h-4 w-4" aria-hidden="true" />
+              )}
+              Guardar
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              onClick={cancelEditing}
+              disabled={isPending}
+              className="rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+              aria-label="Cancelar edición del teléfono"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <div className="flex min-h-8 items-center gap-2">
+          <Phone
+            className="h-4 w-4 shrink-0 text-[var(--muted-foreground)]"
+            aria-hidden="true"
+          />
+          <span className="font-mono text-sm tabular-nums text-[var(--foreground)]">
+            {telefono?.trim() || "Sin teléfono"}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={startEditing}
+            className="rounded-full text-[var(--muted-foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+            aria-label="Editar teléfono"
+          >
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        </div>
+      )}
+
+      {feedback ? (
+        <p
+          role="status"
+          className={`mt-1 font-body text-xs ${
+            feedback.type === "success" ? "text-risk-low" : "text-risk-high"
+          }`}
+        >
+          {feedback.message}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
