@@ -59,6 +59,11 @@ export type TaskWithOrderContext = Task & {
   orders: RowOrder | null;
 };
 
+type VisibleTaskSelection = {
+  taskId: number;
+  orderId: number | null;
+};
+
 type OrderDetail = {
   order: Order;
   statusHistory: StatusHistory[];
@@ -595,7 +600,11 @@ export function TaskDetailRow({
   );
 }
 
-export function TaskDetailDrawer() {
+export function TaskDetailDrawer({
+  visibleTaskOrder,
+}: {
+  visibleTaskOrder: VisibleTaskSelection[];
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -707,6 +716,25 @@ export function TaskDetailDrawer() {
         ),
       };
     });
+
+    const completedTaskIndex = visibleTaskOrder.findIndex(
+      (task) => task.taskId === taskId,
+    );
+    const nextTask =
+      completedTaskIndex >= 0
+        ? visibleTaskOrder[completedTaskIndex + 1]
+        : undefined;
+    const params = new URLSearchParams(searchParams);
+
+    if (nextTask && nextTask.orderId !== null) {
+      params.set("detalle", String(nextTask.orderId));
+      params.set("tareaId", String(nextTask.taskId));
+    } else {
+      params.delete("detalle");
+      params.delete("tareaId");
+    }
+
+    router.push(buildDetailHref(pathname, params), { scroll: false });
   }
 
   return (
@@ -921,7 +949,6 @@ function CompleteTaskForm({
   taskId: number;
   onCompleted: (taskId: number, notes: string | null) => void;
 }) {
-  const router = useRouter();
   const [isCompleting, startCompleting] = useTransition();
   const [completionNote, setCompletionNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -939,7 +966,6 @@ function CompleteTaskForm({
       setCompletionNote("");
       setError(null);
       onCompleted(taskId, trimmedNote ? trimmedNote : null);
-      router.refresh();
     });
   }
 

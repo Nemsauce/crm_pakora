@@ -195,7 +195,12 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
         </div>
       )}
 
-      <TaskDetailDrawer />
+      <TaskDetailDrawer
+        visibleTaskOrder={tasks.map((task) => ({
+          taskId: task.id,
+          orderId: task.orders?.id ?? null,
+        }))}
+      />
     </section>
   );
 }

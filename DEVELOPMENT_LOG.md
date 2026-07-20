@@ -271,3 +271,9 @@ Pendiente cuando se retome 'notis':
 - Se extendió `scripts/n8n/patch-dropi-migracion-historical.mjs` para normalizar únicamente el nodo `Insertar orden historica`: agrega/actualiza `?on_conflict=id_orden_shopify` en la URL y fusiona `resolution=merge-duplicates` dentro del header `Prefer`, preservando otros directives como `return=representation`.
 - Esto mantiene seguro el caso de primera carga (inserta si no hay conflicto) y permite actualizar filas existentes cuando el mismo `id_orden_shopify` ya fue capturado.
 - Pendiente: revisar dry-run y luego correr `--confirm` contra los workflows históricos CO/MX si el cambio se aprueba.
+
+### [Fix tareas] avance automático según el orden visible — COMPLETADO
+- `/tareas` ahora entrega al drawer el orden exacto ya filtrado y ordenado que renderiza la lista, sin recalcularlo por fecha ni por historial de clics.
+- Después de completar exitosamente una tarea abierta, el handler localiza su posición por `taskId` y selecciona la siguiente mediante los mismos parámetros `detalle` + `tareaId` usados al hacer clic manualmente. Si era la última tarea visible, elimina ambos parámetros y deja la selección vacía.
+- La navegación conserva los filtros actuales y también cubre tareas consecutivas del mismo pedido, porque actualiza siempre `tareaId` aunque `detalle` no cambie.
+- Verificación: build de producción, chequeo TypeScript y lint completados sin errores. El lint conserva tres warnings preexistentes fuera de este cambio.
