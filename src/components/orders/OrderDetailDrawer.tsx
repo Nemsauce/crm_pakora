@@ -1,6 +1,14 @@
 "use client";
 
-import { Check, Loader2, Pencil, Phone, UserRound, X } from "lucide-react";
+import {
+  Check,
+  Loader2,
+  Pencil,
+  Phone,
+  RefreshCw,
+  UserRound,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Dialog } from "radix-ui";
@@ -94,6 +102,25 @@ const returnRateFormatter = new Intl.NumberFormat("es-CO", {
   minimumFractionDigits: 0,
 });
 
+const currencyFormatter = {
+  CO: new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }),
+  MX: new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    maximumFractionDigits: 0,
+  }),
+} satisfies Record<Order["pais"], Intl.NumberFormat>;
+
+const orderDateFormatter = new Intl.DateTimeFormat("es-CO", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
 function formatDateTime(value: string | null) {
   if (!value) {
     return "Sin fecha";
@@ -138,6 +165,25 @@ function formatReturnRate(returnedOrders: number, totalOrders: number) {
   return `${returnRateFormatter.format((returnedOrders / totalOrders) * 100)}%`;
 }
 
+function formatOrderTotal(order: Order) {
+  return order.total === null
+    ? "Sin total"
+    : currencyFormatter[order.pais].format(order.total);
+}
+
+function formatOrderDate(value: string | null) {
+  if (!value) {
+    return "Sin fecha";
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+
+  return Number.isNaN(date.getTime())
+    ? "Fecha inválida"
+    : orderDateFormatter.format(date);
+}
+
 export function OrderDetailDrawer() {
   const router = useRouter();
   const pathname = usePathname();
@@ -146,6 +192,7 @@ export function OrderDetailDrawer() {
   const [detail, setDetail] = useState<OrderDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const isOpen = Boolean(selectedOrderId);
 
   const closeHref = useMemo(() => {
@@ -160,7 +207,7 @@ export function OrderDetailDrawer() {
     router.push(closeHref, { scroll: false });
   }
 
-  function handlePhoneUpdated(telefono: string) {
+  function handlePhoneUpdated(telefono: string | null) {
     setDetail((currentDetail) =>
       currentDetail
         ? {
@@ -217,7 +264,7 @@ export function OrderDetailDrawer() {
     return () => {
       abortController.abort();
     };
-  }, [selectedOrderId]);
+  }, [retryCount, selectedOrderId]);
 
   return (
     <Dialog.Root
@@ -289,8 +336,20 @@ export function OrderDetailDrawer() {
             ) : null}
 
             {!isLoading && error ? (
-              <div className="rounded-2xl border border-border bg-bg-surface p-4 font-body text-sm text-[var(--muted-foreground)] shadow-lg">
-                {error}
+              <div className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+                <p className="font-body text-sm text-[var(--muted-foreground)]">
+                  {error}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRetryCount((current) => current + 1)}
+                  className="mt-3 rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+                >
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                  Reintentar
+                </Button>
               </div>
             ) : null}
 
@@ -401,70 +460,136 @@ function OrderHeader({
   onPhoneUpdated,
 }: {
   order: Order;
-  onPhoneUpdated: (telefono: string) => void;
+  onPhoneUpdated: (telefono: string | null) => void;
 }) {
   const badgeTone = estadoCrmTone[order.estado_crm];
 
   return (
     <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
-      <div className="flex items-start gap-3">
-        <div className="pt-1">
-          <RiskOrb nivelRiesgo={order.nivel_riesgo} />
+      <div>
+        <p className="font-body text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+          Contacto
+        </p>
+        <div className="mt-3 flex items-start gap-3">
+          <div className="pt-1">
+            <RiskOrb nivelRiesgo={order.nivel_riesgo} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-body text-xs text-[var(--muted-foreground)]">
+              Cliente
+            </p>
+            <h2 className="mt-1 truncate font-display text-xl font-semibold text-[var(--foreground)]">
+              {getCustomerName(order)}
+            </h2>
+          </div>
+          <span
+            className={`rounded-full px-3 py-1 font-body text-xs font-semibold ${badgeClassName[badgeTone]}`}
+          >
+            {estadoCrmLabel[order.estado_crm]}
+          </span>
         </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate font-display text-xl font-semibold text-[var(--foreground)]">
-            {getCustomerName(order)}
-          </h2>
-          <p className="mt-1 font-mono text-sm text-[var(--muted-foreground)]">
-            {getOrderIdentifier(order)}
-          </p>
-        </div>
-        <span
-          className={`rounded-full px-3 py-1 font-body text-xs font-semibold ${badgeClassName[badgeTone]}`}
-        >
-          {estadoCrmLabel[order.estado_crm]}
-        </span>
+
+        <dl className="mt-4">
+          <div>
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              Teléfono
+            </dt>
+            <dd className="mt-1">
+              <EditablePhoneField
+                key={order.id}
+                orderId={order.id}
+                telefono={order.telefono}
+                onPhoneUpdated={onPhoneUpdated}
+              />
+            </dd>
+          </div>
+        </dl>
       </div>
 
-      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div>
-          <dt className="font-body text-xs text-[var(--muted-foreground)]">Producto</dt>
-          <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
-            {order.nombre_producto ?? "Producto sin nombre"}
-          </dd>
-        </div>
-        <div>
-          <dt className="font-body text-xs text-[var(--muted-foreground)]">Ubicación</dt>
-          <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
-            {getLocation(order)}
-          </dd>
-        </div>
-        <div className="sm:col-span-2">
-          <dt className="font-body text-xs text-[var(--muted-foreground)]">
-            Teléfono
-          </dt>
-          <dd className="mt-1">
-            <EditablePhoneField
-              key={order.id}
-              orderId={order.id}
-              telefono={order.telefono}
-              onPhoneUpdated={onPhoneUpdated}
-            />
-          </dd>
-        </div>
-        <div>
-          <dt className="font-body text-xs text-[var(--muted-foreground)]">Estado Dropi</dt>
-          <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
-            {order.estado_dropi ?? "Sin estado"}
-          </dd>
-        </div>
-        <div>
-          <dt className="font-body text-xs text-[var(--muted-foreground)]">Guía</dt>
-          <dd className="mt-1 font-mono text-sm text-[var(--foreground)]">
-            {order.guia_envio ?? "Sin guía"}
-          </dd>
-        </div>
-      </dl>
+      <div className="mt-5 border-t border-border pt-4">
+        <p className="font-body text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+          Pedido
+        </p>
+        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              Producto
+            </dt>
+            <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
+              {order.nombre_producto ?? "Producto sin nombre"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              Total
+            </dt>
+            <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-[var(--foreground)]">
+              {formatOrderTotal(order)}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              Fecha
+            </dt>
+            <dd className="mt-1 font-mono text-sm tabular-nums text-[var(--foreground)]">
+              {formatOrderDate(order.fecha)}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              Número de orden / ID
+            </dt>
+            <dd className="mt-1 flex flex-wrap items-center gap-2">
+              <span className="font-mono text-sm tabular-nums text-[var(--foreground)]">
+                {getOrderIdentifier(order)}
+              </span>
+              <span className="rounded-full bg-bg-page px-2 py-0.5 font-body text-[10px] font-semibold text-[var(--muted-foreground)]">
+                {order.pais}
+              </span>
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      <div className="mt-5 border-t border-border pt-4">
+        <p className="font-body text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+          Logística
+        </p>
+        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              Ubicación
+            </dt>
+            <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
+              {getLocation(order)}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              País
+            </dt>
+            <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
+              {order.pais}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              Estado Dropi
+            </dt>
+            <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
+              {order.estado_dropi ?? "Sin estado"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              Guía
+            </dt>
+            <dd className="mt-1 font-mono text-sm text-[var(--foreground)]">
+              {order.guia_envio ?? "Sin guía"}
+            </dd>
+          </div>
+        </dl>
+      </div>
     </section>
   );
 }
@@ -474,6 +599,10 @@ type PhoneFeedback = {
   type: "error" | "success";
 };
 
+type PhoneUndoState = {
+  telefono: string | null;
+};
+
 function EditablePhoneField({
   orderId,
   telefono,
@@ -481,11 +610,12 @@ function EditablePhoneField({
 }: {
   orderId: number;
   telefono: string | null;
-  onPhoneUpdated: (telefono: string) => void;
+  onPhoneUpdated: (telefono: string | null) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [phoneDraft, setPhoneDraft] = useState(telefono ?? "");
   const [feedback, setFeedback] = useState<PhoneFeedback | null>(null);
+  const [undoState, setUndoState] = useState<PhoneUndoState | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -493,24 +623,33 @@ function EditablePhoneField({
       return;
     }
 
-    const timeoutId = window.setTimeout(() => setFeedback(null), 3_000);
+    const timeoutId = window.setTimeout(
+      () => {
+        setFeedback(null);
+        setUndoState(null);
+      },
+      feedback.type === "success" && undoState ? 5_000 : 3_000,
+    );
     return () => window.clearTimeout(timeoutId);
-  }, [feedback]);
+  }, [feedback, undoState]);
 
   function startEditing() {
     setPhoneDraft(telefono ?? "");
     setFeedback(null);
+    setUndoState(null);
     setIsEditing(true);
   }
 
   function cancelEditing() {
     setPhoneDraft(telefono ?? "");
     setFeedback(null);
+    setUndoState(null);
     setIsEditing(false);
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const previousPhone = telefono;
 
     startTransition(async () => {
       try {
@@ -527,10 +666,45 @@ function EditablePhoneField({
         onPhoneUpdated(result.telefono);
         setPhoneDraft(result.telefono);
         setIsEditing(false);
+        setUndoState({ telefono: previousPhone });
         setFeedback({ message: "Teléfono actualizado.", type: "success" });
       } catch {
         setFeedback({
           message: "No se pudo actualizar el teléfono.",
+          type: "error",
+        });
+      }
+    });
+  }
+
+  function handleUndo() {
+    if (!undoState) {
+      return;
+    }
+
+    const previousPhone = undoState.telefono;
+
+    startTransition(async () => {
+      try {
+        const result = await updateOrderPhone(
+          orderId,
+          previousPhone ?? "",
+          true,
+        );
+
+        if (result.error) {
+          setFeedback({ message: result.error, type: "error" });
+          return;
+        }
+
+        const restoredPhone = result.telefono ?? null;
+        onPhoneUpdated(restoredPhone);
+        setPhoneDraft(restoredPhone ?? "");
+        setUndoState(null);
+        setFeedback({ message: "Cambio deshecho.", type: "success" });
+      } catch {
+        setFeedback({
+          message: "No se pudo deshacer el cambio.",
           type: "error",
         });
       }
@@ -604,14 +778,26 @@ function EditablePhoneField({
       )}
 
       {feedback ? (
-        <p
-          role="status"
-          className={`mt-1 font-body text-xs ${
-            feedback.type === "success" ? "text-risk-low" : "text-risk-high"
-          }`}
-        >
-          {feedback.message}
-        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <p
+            role={feedback.type === "success" ? "status" : "alert"}
+            className={`font-body text-xs ${
+              feedback.type === "success" ? "text-risk-low" : "text-risk-high"
+            }`}
+          >
+            {feedback.message}
+          </p>
+          {feedback.type === "success" && undoState ? (
+            <button
+              type="button"
+              onClick={handleUndo}
+              disabled={isPending}
+              className="font-body text-xs font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline disabled:opacity-60"
+            >
+              {isPending ? "Deshaciendo..." : "Deshacer"}
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

@@ -144,9 +144,14 @@ export function OrderCard({
             <h2 className="truncate font-display text-base font-semibold text-[var(--foreground)]">
               {getCustomerName(order)}
             </h2>
-            <p className="mt-1 truncate font-mono text-xs text-[var(--muted-foreground)]">
-              {getOrderIdentifier(order)}
-            </p>
+            <div className="mt-1 flex min-w-0 items-center gap-2">
+              <p className="truncate font-mono text-xs text-[var(--muted-foreground)]">
+                {getOrderIdentifier(order)}
+              </p>
+              <span className="shrink-0 rounded-full bg-bg-page px-2 py-0.5 font-body text-[10px] font-semibold text-[var(--muted-foreground)]">
+                {order.pais}
+              </span>
+            </div>
           </div>
           <span
             className={`shrink-0 rounded-full px-3 py-1 font-body text-xs font-semibold ${badgeClassName[badgeTone]}`}

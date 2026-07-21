@@ -531,19 +531,23 @@ export function OrderFilters() {
           >
             Buscar
           </label>
-          <div className="flex h-14 items-center gap-2 rounded-2xl border border-border bg-bg-surface px-3 shadow-sm focus-within:ring-2 focus-within:ring-ring">
-            <Search
-              className="h-4 w-4 shrink-0 text-[var(--muted-foreground)]"
-              aria-hidden="true"
-            />
+          <div className="flex h-14 items-center gap-2 rounded-2xl border border-border bg-bg-surface px-2 shadow-sm focus-within:ring-2 focus-within:ring-ring">
             <Input
               id="order-search"
               type="text"
               placeholder="Cliente o número de orden"
               value={searchDraft}
               onChange={(event) => setSearchDraft(event.target.value)}
-              className="h-8 border-0 bg-transparent p-0 font-body text-sm text-[var(--foreground)] shadow-none focus-visible:ring-0"
+              className="h-8 min-w-0 flex-1 border-0 bg-transparent px-1 font-body text-sm text-[var(--foreground)] shadow-none focus-visible:ring-0"
             />
+            <Button
+              type="submit"
+              size="icon-sm"
+              className="shrink-0 rounded-xl bg-gradient-to-r from-accent-from to-accent-to text-bg-surface hover:opacity-90"
+              aria-label="Buscar pedidos"
+            >
+              <Search className="h-4 w-4" aria-hidden="true" />
+            </Button>
           </div>
         </form>
       </div>

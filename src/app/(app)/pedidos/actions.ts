@@ -69,12 +69,13 @@ export async function triggerDropiSync(): Promise<TriggerDropiSyncResult> {
 
 export type UpdateOrderPhoneResult = {
   error: string | null;
-  telefono?: string;
+  telefono?: string | null;
 };
 
 export async function updateOrderPhone(
   orderId: number,
   newPhone: string,
+  allowEmpty = false,
 ): Promise<UpdateOrderPhoneResult> {
   if (!Number.isInteger(orderId) || orderId <= 0) {
     return { error: "Pedido inválido." };
@@ -82,9 +83,11 @@ export async function updateOrderPhone(
 
   const telefono = newPhone.trim();
 
-  if (!telefono) {
+  if (!telefono && !allowEmpty) {
     return { error: "El teléfono no puede estar vacío." };
   }
+
+  const telefonoValue = telefono || null;
 
   try {
     const supabase = await createClient();
@@ -96,7 +99,7 @@ export async function updateOrderPhone(
 
     const { data, error } = await supabase
       .from("orders")
-      .update({ telefono })
+      .update({ telefono: telefonoValue })
       .eq("id", orderId)
       .select("telefono")
       .maybeSingle();
@@ -115,7 +118,7 @@ export async function updateOrderPhone(
 
     revalidatePath(PEDIDOS_PATH);
 
-    return { error: null, telefono: data.telefono ?? telefono };
+    return { error: null, telefono: data.telefono };
   } catch (error) {
     console.error("Unexpected error updating order phone", {
       orderId,
