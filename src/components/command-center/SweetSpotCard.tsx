@@ -3,10 +3,13 @@
 import {
   Bookmark,
   BookmarkCheck,
+  CalendarDays,
   ExternalLink,
   ImageIcon,
+  Loader2,
+  Search,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
@@ -71,6 +74,11 @@ const countFormatter = {
   MX: new Intl.NumberFormat("es-MX"),
 } satisfies Record<SweetSpotCountry, Intl.NumberFormat>;
 
+const capturedAtFormatter = new Intl.DateTimeFormat("es-CO", {
+  dateStyle: "medium",
+  timeZone: "America/Bogota",
+});
+
 export function SweetSpotCard({
   candidate,
   isSaved = false,
@@ -83,6 +91,7 @@ export function SweetSpotCard({
   const demandSignal = getDemandSignal(candidate.percentil_ritmo);
   const tendenciaRatio = toNumberOrNull(candidate.tendencia_ratio);
   const hasMomentumBadge = tendenciaRatio !== null && tendenciaRatio >= 1.2;
+  const capturedAtLabel = formatCapturedAt(candidate.captured_at);
   const summary = getCandidateSummary({
     pais,
     percentil: candidate.percentil_ritmo,
@@ -144,6 +153,20 @@ export function SweetSpotCard({
 
             <p className="mt-3 font-body text-sm leading-relaxed text-text-secondary">
               {summary}
+            </p>
+
+            <p className="mt-2 inline-flex items-center gap-1.5 font-body text-xs text-text-secondary">
+              <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+              {capturedAtLabel ? (
+                <>
+                  Datos del {" "}
+                  <time dateTime={candidate.captured_at ?? undefined}>
+                    {capturedAtLabel}
+                  </time>
+                </>
+              ) : (
+                "Datos sin fecha de captura"
+              )}
             </p>
 
             {comparisonLabel ? (
@@ -261,6 +284,69 @@ export function SweetSpotCard({
         </div>
       </div>
     </article>
+  );
+}
+
+export function ExpandableSweetSpotList({
+  candidates,
+  savedKeys,
+}: {
+  candidates: SweetSpotCandidate[];
+  savedKeys: string[];
+}) {
+  const [visibleCount, setVisibleCount] = useState(10);
+  const savedKeySet = useMemo(() => new Set(savedKeys), [savedKeys]);
+  const visibleCandidates = candidates.slice(0, visibleCount);
+  const hasMore = visibleCount < candidates.length;
+
+  return (
+    <div className="mt-5">
+      <div className="grid gap-3">
+        {visibleCandidates.map((candidate) => (
+          <SweetSpotCard
+            key={`${candidate.country_code}-${candidate.external_id}`}
+            candidate={candidate}
+            isSaved={savedKeySet.has(getCandidateSavedKey(candidate))}
+          />
+        ))}
+      </div>
+
+      {hasMore ? (
+        <div className="mt-4 flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setVisibleCount((current) =>
+                Math.min(current + 10, candidates.length),
+              )
+            }
+            className="rounded-full border-border bg-bg-surface text-text-primary hover:bg-bg-page hover:text-text-primary"
+          >
+            Ver más
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function ProductLookupSubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button
+      type="submit"
+      disabled={pending}
+      className="h-11 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 text-bg-surface hover:opacity-90 disabled:opacity-60"
+    >
+      {pending ? (
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+      ) : (
+        <Search className="h-4 w-4" aria-hidden="true" />
+      )}
+      {pending ? "Buscando..." : "Buscar"}
+    </Button>
   );
 }
 
@@ -421,6 +507,21 @@ function formatCount(
   }
 
   return countFormatter[pais].format(numberValue);
+}
+
+function formatCapturedAt(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : capturedAtFormatter.format(date);
+}
+
+function getCandidateSavedKey(candidate: SweetSpotCandidate) {
+  const externalId =
+    candidate.external_id === null ? "" : String(candidate.external_id).trim();
+  return `${candidate.country_code}:${externalId}`;
 }
 
 function getDemandSignal(value: number | string | null) {

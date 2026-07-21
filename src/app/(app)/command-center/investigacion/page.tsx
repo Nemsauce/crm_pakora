@@ -1,4 +1,3 @@
-import { Search } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -8,11 +7,12 @@ import {
   type SavedDropkillerProduct,
 } from "@/components/command-center/SavedProductCard";
 import {
+  ExpandableSweetSpotList,
+  ProductLookupSubmitButton,
   SweetSpotCard,
   type SweetSpotCandidate,
   type SweetSpotCountry,
 } from "@/components/command-center/SweetSpotCard";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   searchDropkillerProduct,
@@ -150,8 +150,7 @@ export default async function CommandCenterInvestigacionPage({
             key={country}
             country={country}
             candidates={candidates
-              .filter((candidate) => candidate.country_code === country)
-              .slice(0, 10)}
+              .filter((candidate) => candidate.country_code === country)}
             savedKeys={savedKeys}
           />
         ))}
@@ -295,13 +294,7 @@ function ProductLookupSection({
             <option value="MX">México</option>
           </select>
         </label>
-        <Button
-          type="submit"
-          className="h-11 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 text-bg-surface hover:opacity-90"
-        >
-          <Search className="h-4 w-4" aria-hidden="true" />
-          Buscar
-        </Button>
+        <ProductLookupSubmitButton />
       </form>
 
       {lookup.status === "not_found" ? (
@@ -394,20 +387,10 @@ function SweetSpotCountrySection({
       </div>
 
       {candidates.length > 0 ? (
-        <div className="mt-5 grid gap-3">
-          {candidates.map((candidate) => (
-            <SweetSpotCard
-              key={`${candidate.country_code}-${candidate.external_id}`}
-              candidate={candidate}
-              isSaved={savedKeys.has(
-                getSavedProductKey(
-                  candidate.country_code,
-                  candidate.external_id,
-                ),
-              )}
-            />
-          ))}
-        </div>
+        <ExpandableSweetSpotList
+          candidates={candidates}
+          savedKeys={[...savedKeys]}
+        />
       ) : (
         <div className="mt-5 rounded-2xl bg-bg-page p-4 font-body text-sm text-text-secondary">
           Sin datos
