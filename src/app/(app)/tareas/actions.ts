@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import {
   sendTelegramMessage,
   type TelegramCountry,
@@ -46,8 +44,6 @@ export async function completeTask(
   if (error) {
     return { error: "No se pudo completar la tarea." };
   }
-
-  revalidatePath("/tareas");
 
   return { error: null };
 }

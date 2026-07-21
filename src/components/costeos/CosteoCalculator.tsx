@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -244,7 +245,14 @@ function SubmitButton({ label }: { label: string }) {
       disabled={pending}
       className="h-10 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-bg-surface shadow-md shadow-[var(--color-accent)]/20 hover:opacity-90"
     >
-      {pending ? "Guardando..." : label}
+      {pending ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          {label === "Guardar cambios" ? "Guardando cambios..." : "Guardando..."}
+        </>
+      ) : (
+        label
+      )}
     </Button>
   );
 }

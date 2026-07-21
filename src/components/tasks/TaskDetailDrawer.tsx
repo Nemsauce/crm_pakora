@@ -127,6 +127,12 @@ const taskStateClassName: Record<TaskState, string> = {
 };
 
 const UNASSIGNED_VALUE = "sin_asignar";
+const TASK_COMPLETED_EVENT = "crm:task-completed";
+
+type TaskCompletedEventDetail = {
+  collapse: boolean;
+  taskId: number;
+};
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-CO", {
   day: "2-digit",
@@ -561,6 +567,42 @@ export function TaskDetailRow({
     selectedOrderId === String(orderId) &&
     (!selectedTaskId || selectedTaskId === String(task.id));
   const isSnoozedView = searchParams.get("estado_vista") === "pospuestas";
+  const [completionAnimation, setCompletionAnimation] = useState<
+    "idle" | "checked" | "leaving"
+  >("idle");
+  const completionAnimationTimeoutRef = useRef<number | null>(null);
+  const showCompletionCheck = completionAnimation !== "idle";
+  const isLeaving = completionAnimation === "leaving";
+
+  useEffect(() => {
+    function handleTaskCompleted(event: Event) {
+      const { detail } = event as CustomEvent<TaskCompletedEventDetail>;
+
+      if (detail.taskId !== task.id) {
+        return;
+      }
+
+      if (completionAnimationTimeoutRef.current !== null) {
+        window.clearTimeout(completionAnimationTimeoutRef.current);
+      }
+
+      setCompletionAnimation("checked");
+      completionAnimationTimeoutRef.current = window.setTimeout(() => {
+        setCompletionAnimation(detail.collapse ? "leaving" : "idle");
+        completionAnimationTimeoutRef.current = null;
+      }, detail.collapse ? 90 : 600);
+    }
+
+    window.addEventListener(TASK_COMPLETED_EVENT, handleTaskCompleted);
+
+    return () => {
+      window.removeEventListener(TASK_COMPLETED_EVENT, handleTaskCompleted);
+
+      if (completionAnimationTimeoutRef.current !== null) {
+        window.clearTimeout(completionAnimationTimeoutRef.current);
+      }
+    };
+  }, [task.id]);
 
   function toggleDetail() {
     if (orderId === null) {
@@ -603,26 +645,45 @@ export function TaskDetailRow({
 
   return (
     <article
-      role={orderId !== null ? "button" : undefined}
-      tabIndex={orderId !== null ? 0 : undefined}
-      aria-pressed={orderId !== null ? selected : undefined}
-      onClick={orderId !== null ? toggleDetail : undefined}
-      onKeyDown={orderId !== null ? handleKeyDown : undefined}
-      className={`rounded-2xl border bg-bg-surface p-4 text-[var(--foreground)] shadow-lg transition-[border-color,box-shadow] duration-200 ease-out ${
-        isCompleted ? "opacity-70" : ""
-      } ${orderId !== null ? "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring" : ""} ${
-        selected
-          ? "border-[var(--color-accent)] ring-2 ring-[var(--color-accent)] ring-offset-2 ring-offset-bg-page"
-          : "border-border"
+      role={orderId !== null && !isLeaving ? "button" : undefined}
+      tabIndex={orderId !== null && !isLeaving ? 0 : undefined}
+      aria-pressed={orderId !== null && !isLeaving ? selected : undefined}
+      onClick={orderId !== null && !isLeaving ? toggleDetail : undefined}
+      onKeyDown={orderId !== null && !isLeaving ? handleKeyDown : undefined}
+      className={`overflow-hidden rounded-2xl border bg-bg-surface text-[var(--foreground)] transition-[max-height,opacity,transform,padding,border-color,box-shadow] duration-300 ease-out motion-reduce:transition-none ${
+        isLeaving
+          ? "pointer-events-none max-h-0 scale-[0.98] border-transparent p-0 opacity-0"
+          : `max-h-[40rem] p-4 shadow-lg ${isCompleted ? "opacity-70" : ""} ${
+              orderId !== null
+                ? "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                : ""
+            } ${
+              selected
+                ? "border-[var(--color-accent)] ring-2 ring-[var(--color-accent)] ring-offset-2 ring-offset-bg-page"
+                : "border-border"
+            }`
       }`}
     >
+      {showCompletionCheck ? (
+        <span role="status" className="sr-only">
+          Tarea completada
+        </span>
+      ) : null}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 gap-3">
           <div
-            className={`flex size-12 shrink-0 items-center justify-center rounded-full ${taskTone.circleClassName}`}
+            className={`flex size-12 shrink-0 items-center justify-center rounded-full ${
+              showCompletionCheck
+                ? "bg-risk-low-bg text-risk-low"
+                : taskTone.circleClassName
+            }`}
             aria-hidden="true"
           >
-            <Icon className="h-5 w-5" />
+            {showCompletionCheck ? (
+              <Check className="h-5 w-5 motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-200" />
+            ) : (
+              <Icon className="h-5 w-5" />
+            )}
           </div>
 
           <div className="min-w-0">
@@ -738,6 +799,7 @@ export function TaskDetailDrawer({
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const completionNavigationTimeoutRef = useRef<number | null>(null);
   const isOpen = Boolean(selectedOrderId);
 
   const closeHref = useMemo(() => {
@@ -769,8 +831,22 @@ export function TaskDetailDrawer({
   }, [detail, selectedTask]);
 
   function closeDrawer() {
+    if (completionNavigationTimeoutRef.current !== null) {
+      window.clearTimeout(completionNavigationTimeoutRef.current);
+      completionNavigationTimeoutRef.current = null;
+    }
+
     router.push(closeHref, { scroll: false });
   }
+
+  useEffect(() => {
+    return () => {
+      if (completionNavigationTimeoutRef.current !== null) {
+        window.clearTimeout(completionNavigationTimeoutRef.current);
+        completionNavigationTimeoutRef.current = null;
+      }
+    };
+  }, [selectedOrderId, selectedTaskId]);
 
   useEffect(() => {
     if (!selectedOrderId) {
@@ -897,7 +973,29 @@ export function TaskDetailDrawer({
       };
     });
 
-    navigateAfterTaskLeavesView(taskId);
+    const collapse = searchParams.get("estado_vista") !== "todas";
+    window.dispatchEvent(
+      new CustomEvent<TaskCompletedEventDetail>(TASK_COMPLETED_EVENT, {
+        detail: { collapse, taskId },
+      }),
+    );
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    if (completionNavigationTimeoutRef.current !== null) {
+      window.clearTimeout(completionNavigationTimeoutRef.current);
+    }
+
+    completionNavigationTimeoutRef.current = window.setTimeout(
+      () => {
+        completionNavigationTimeoutRef.current = null;
+        navigateAfterTaskLeavesView(taskId);
+        router.refresh();
+      },
+      prefersReducedMotion ? 0 : 400,
+    );
   }
 
   function handleTaskSnoozed(taskId: number) {

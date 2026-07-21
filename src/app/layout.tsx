@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { JetBrains_Mono, Manrope, Space_Grotesk } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
 import { BackgroundBlobs } from "@/components/layout/BackgroundBlobs";
@@ -11,7 +11,7 @@ const display = Space_Grotesk({
   variable: "--font-display",
 });
 
-const body = Inter({
+const body = Manrope({
   subsets: ["latin"],
   variable: "--font-body",
 });

@@ -277,3 +277,12 @@ Pendiente cuando se retome 'notis':
 - Después de completar exitosamente una tarea abierta, el handler localiza su posición por `taskId` y selecciona la siguiente mediante los mismos parámetros `detalle` + `tareaId` usados al hacer clic manualmente. Si era la última tarea visible, elimina ambos parámetros y deja la selección vacía.
 - La navegación conserva los filtros actuales y también cubre tareas consecutivas del mismo pedido, porque actualiza siempre `tareaId` aunque `detalle` no cambie.
 - Verificación: build de producción, chequeo TypeScript y lint completados sin errores. El lint conserva tres warnings preexistentes fuera de este cambio.
+
+### [UX] Overhaul operativo A–H — COMPLETADO
+- Pedidos ganó búsqueda explícita, país visible, detalle agrupado, reintento de carga y deshacer temporal para ediciones de teléfono.
+- Tareas ganó feedback de reasignación/posposición, vista de pospuestas, detalle completo y una transición breve de check + colapso antes del avance automático al completar.
+- Finanzas incorporó total combinado normalizado a COP, frescura del snapshot, actualización manual de la vista y sparklines compactos con datos netos diarios reales.
+- Métricas e Investigación incorporaron filtros locales, expansión progresiva de candidatos, fecha de captura y bloqueo de doble envío.
+- Costeos permite duplicar/eliminar y protege borradores con cambios sin guardar; Notificaciones tiene historial paginado y control para volver a marcar como no leída.
+- La capa visual usa Manrope para cuerpo/UI, mantiene Space Grotesk y JetBrains Mono, incorpora un motivo estático de ruta y reserva un pulso de radar accesible únicamente para riesgo alto.
+- Cada sección se verificó con build de producción y lint antes de su commit; el lint conserva tres warnings preexistentes fuera del overhaul.

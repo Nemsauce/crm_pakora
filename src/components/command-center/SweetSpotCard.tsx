@@ -403,7 +403,9 @@ function SaveButton({
           : "bg-gradient-to-r from-accent-from to-accent-to text-bg-surface hover:opacity-90",
       ].join(" ")}
     >
-      {isSaved ? (
+      {pending ? (
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+      ) : isSaved ? (
         <BookmarkCheck aria-hidden="true" />
       ) : (
         <Bookmark aria-hidden="true" />

@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -95,7 +96,14 @@ function SaveImporteButton() {
       disabled={pending}
       className="h-10 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-bg-surface shadow-md shadow-[var(--color-accent)]/20 hover:opacity-90"
     >
-      {pending ? "Guardando..." : "Guardar importe gastado"}
+      {pending ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          Guardando...
+        </>
+      ) : (
+        "Guardar importe gastado"
+      )}
     </Button>
   );
 }

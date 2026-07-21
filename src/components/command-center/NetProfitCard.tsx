@@ -5,12 +5,7 @@ import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
-  CartesianGrid,
-  ReferenceLine,
   ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  type TooltipContentProps,
 } from "recharts";
 
 type Pais = "CO" | "MX";
@@ -64,12 +59,6 @@ function formatCurrency(pais: Pais, value: number) {
   return currencyFormatter[pais].format(value);
 }
 
-const chartDateFormatter = new Intl.DateTimeFormat("es-CO", {
-  day: "2-digit",
-  month: "short",
-  timeZone: "UTC",
-});
-
 const exchangeRateDateFormatter = new Intl.DateTimeFormat("es-CO", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -79,12 +68,6 @@ const exchangeRateDateFormatter = new Intl.DateTimeFormat("es-CO", {
 const exchangeRateFormatter = new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 2,
 });
-
-function formatChartDate(value: string) {
-  const date = new Date(`${value}T00:00:00Z`);
-
-  return Number.isNaN(date.getTime()) ? value : chartDateFormatter.format(date);
-}
 
 function ComparisonBadge({ value }: { value: number | null }) {
   if (value === null) {
@@ -113,30 +96,6 @@ function ComparisonBadge({ value }: { value: number | null }) {
   );
 }
 
-function DailyTrendTooltip({
-  active,
-  payload,
-  label,
-  pais,
-}: TooltipContentProps & { pais: Pais }) {
-  if (!active || payload.length === 0) {
-    return null;
-  }
-
-  const net = Number(payload[0]?.value ?? 0);
-
-  return (
-    <div className="rounded-2xl border border-border bg-bg-surface px-3 py-2 shadow-lg">
-      <p className="font-body text-xs text-text-secondary">
-        {formatChartDate(String(label ?? ""))}
-      </p>
-      <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-text-primary">
-        {formatCurrency(pais, net)}
-      </p>
-    </div>
-  );
-}
-
 export function CombinedNetProfitCard({
   coNet,
   mxNet,
@@ -152,12 +111,18 @@ export function CombinedNetProfitCard({
 
   useEffect(() => {
     if (!hasMxMovements) {
-      return;
+      const clearStateTimer = window.setTimeout(() => {
+        setExchangeRate(null);
+        setExchangeRateError(null);
+      }, 0);
+
+      return () => window.clearTimeout(clearStateTimer);
     }
 
     const abortController = new AbortController();
 
     async function loadExchangeRate() {
+      setExchangeRate(null);
       setExchangeRateError(null);
 
       try {
@@ -361,68 +326,57 @@ export function NetProfitCard({
         </div>
       )}
 
-      <div className="mt-5 border-t border-border pt-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="font-body text-sm font-semibold text-text-primary">
-            Tendencia diaria
+      <div className="mt-5 border-t border-border pt-3">
+        <p className="sr-only">Tendencia diaria del período seleccionado</p>
+        {trendData.length > 0 ? (
+          <div
+            className="h-20 w-full"
+            role="img"
+            aria-label={`Tendencia diaria de utilidad neta en ${countryLabel[pais]} para el período seleccionado`}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={trendData}
+                margin={{ top: 5, right: 2, left: 2, bottom: 5 }}
+                accessibilityLayer
+              >
+                <defs>
+                  <linearGradient
+                    id={gradientId}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="0%"
+                      stopColor="var(--color-accent)"
+                      stopOpacity={0.36}
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor="var(--color-accent)"
+                      stopOpacity={0.02}
+                    />
+                  </linearGradient>
+                </defs>
+                <Area
+                  type="linear"
+                  dataKey="neto"
+                  name="Neto diario"
+                  stroke="var(--color-accent)"
+                  strokeWidth={2}
+                  fill={`url(#${gradientId})`}
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="py-4 font-body text-xs text-text-secondary">
+            Sin datos diarios para este período.
           </p>
-          <p className="font-body text-xs text-text-secondary">Neto por día</p>
-        </div>
-        <div className="mt-3 h-44 w-full" aria-label={`Tendencia diaria ${countryLabel[pais]}`}>
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={trendData}
-              margin={{ top: 8, right: 4, left: 4, bottom: 0 }}
-              accessibilityLayer
-            >
-              <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="0%"
-                    stopColor="var(--color-accent)"
-                    stopOpacity={0.42}
-                  />
-                  <stop
-                    offset="100%"
-                    stopColor="var(--color-accent)"
-                    stopOpacity={0.04}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                vertical={false}
-                stroke="var(--color-border)"
-                strokeDasharray="3 3"
-              />
-              <XAxis
-                dataKey="dia"
-                axisLine={false}
-                tickLine={false}
-                minTickGap={28}
-                tickFormatter={formatChartDate}
-                tick={{
-                  fill: "var(--color-text-secondary)",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 11,
-                }}
-              />
-              <ReferenceLine y={0} stroke="var(--color-border)" />
-              <Tooltip
-                cursor={{ stroke: "var(--color-accent)", strokeOpacity: 0.35 }}
-                content={(props) => <DailyTrendTooltip {...props} pais={pais} />}
-              />
-              <Area
-                type="linear"
-                dataKey="neto"
-                name="Neto diario"
-                stroke="var(--color-accent)"
-                strokeWidth={2}
-                fill={`url(#${gradientId})`}
-                isAnimationActive={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        )}
       </div>
     </article>
   );

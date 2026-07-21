@@ -40,9 +40,12 @@ export function RiskOrb({ nivelRiesgo }: RiskOrbProps) {
   return (
     <span
       aria-label={`Riesgo ${risk === "sin_datos" ? "sin datos" : risk}`}
-      className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full ${riskClass.outer}`}
+      className={`relative inline-flex size-7 shrink-0 items-center justify-center rounded-full ${riskClass.outer}`}
     >
-      <span className={`size-2.5 rounded-full ${riskClass.inner}`} />
+      {risk === "alto" ? (
+        <span className="absolute size-2.5 rounded-full border border-risk-high motion-safe:animate-ping motion-safe:[animation-duration:2s] motion-reduce:hidden" />
+      ) : null}
+      <span className={`relative size-2.5 rounded-full ${riskClass.inner}`} />
     </span>
   );
 }
