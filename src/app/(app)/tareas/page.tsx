@@ -18,9 +18,14 @@ type SearchParams = {
   tareaId?: string;
 };
 
-type EstadoVista = "abiertas" | "completadas" | "todas";
+type EstadoVista = "abiertas" | "completadas" | "pospuestas" | "todas";
 
-const validVistas = new Set<string>(["abiertas", "completadas", "todas"]);
+const validVistas = new Set<string>([
+  "abiertas",
+  "completadas",
+  "pospuestas",
+  "todas",
+]);
 
 type TareasPageProps = {
   searchParams: Promise<SearchParams>;
@@ -53,6 +58,7 @@ function isOverdue(task: TaskWithOrderContext) {
 export default async function TareasPage({ searchParams }: TareasPageProps) {
   const params = await searchParams;
   const supabase = await createClient();
+  const nowIso = new Date().toISOString();
 
   const estadoVista: EstadoVista =
     params.estado_vista && validVistas.has(params.estado_vista)
@@ -62,10 +68,15 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
   let query = supabase
     .from("tasks")
     .select("*, orders!inner(id,nombre,apellido,numero_orden,pais)")
-    .or(
-      `snoozed_until.is.null,snoozed_until.lte.${new Date().toISOString()}`,
-    )
     .order("fecha_limite", { ascending: true, nullsFirst: false });
+
+  if (estadoVista === "pospuestas") {
+    query = query
+      .filter("snoozed_until", "gt", nowIso)
+      .in("estado", ["pendiente", "en_progreso"]);
+  } else {
+    query = query.or(`snoozed_until.is.null,snoozed_until.lte.${nowIso}`);
+  }
 
   if (estadoVista === "abiertas") {
     query = query.in("estado", ["pendiente", "en_progreso"]);
@@ -82,9 +93,9 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
   }
 
   if (params.vencidas === "true") {
-    query = query.lt("fecha_limite", new Date().toISOString());
+    query = query.lt("fecha_limite", nowIso);
   } else if (params.vencidas === "false") {
-    query = query.gte("fecha_limite", new Date().toISOString());
+    query = query.gte("fecha_limite", nowIso);
   }
 
   const searchTerm = params.q?.trim();

@@ -108,8 +108,6 @@ export async function snoozeTask(
     return { error: "No se pudo posponer la tarea." };
   }
 
-  revalidatePath("/tareas");
-
   return { error: null };
 }
 
@@ -208,8 +206,6 @@ export async function reassignTask(
   if (error) {
     return { error: "No se pudo reasignar la tarea." };
   }
-
-  revalidatePath("/tareas");
 
   if (userId && existingTask && userId !== existingTask.asignado_a) {
     const order = existingTask.orders;

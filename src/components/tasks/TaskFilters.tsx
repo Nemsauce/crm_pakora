@@ -34,6 +34,7 @@ const vencidasOptions = [
 const vistaOptions = [
   { value: "abiertas", label: "Abiertas" },
   { value: "completadas", label: "Completadas" },
+  { value: "pospuestas", label: "Pospuestas" },
   { value: "todas", label: "Todas" },
 ] as const;
 
@@ -46,7 +47,7 @@ function ViewToggle({
 }) {
   return (
     <div
-      className="inline-flex rounded-full border border-border bg-bg-surface p-1 shadow-lg"
+      className="inline-flex flex-wrap rounded-full border border-border bg-bg-surface p-1 shadow-lg"
       aria-label="Vista de tareas"
     >
       {vistaOptions.map((option) => {

@@ -23,6 +23,7 @@ import {
   type KeyboardEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -134,6 +135,17 @@ const dateTimeFormatter = new Intl.DateTimeFormat("es-CO", {
   hour: "2-digit",
   minute: "2-digit",
 });
+
+const snoozeTimeFormatter = new Intl.DateTimeFormat("es-CO", {
+  timeZone: "America/Bogota",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+type ActionFeedback = {
+  message: string;
+  type: "error" | "success";
+};
 
 function getCustomerName(order: Pick<Order, "nombre" | "apellido"> | null) {
   if (!order) {
@@ -280,69 +292,106 @@ function AssigneeSelect({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [selectedAssignee, setSelectedAssignee] = useState(asignadoA);
+  const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
 
-  const value = asignadoA ?? UNASSIGNED_VALUE;
+  const value = selectedAssignee ?? UNASSIGNED_VALUE;
   const currentLabel =
-    assigneeOptions.find((option) => option.id === asignadoA)?.email ??
+    assigneeOptions.find((option) => option.id === selectedAssignee)?.email ??
     "Sin asignar";
+
+  useEffect(() => {
+    if (!feedback || feedback.type === "error") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setFeedback(null);
+      router.refresh();
+    }, 3_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [feedback, router]);
 
   function handleChange(nextValue: string) {
     const userId = nextValue === UNASSIGNED_VALUE ? null : nextValue;
+    setFeedback(null);
 
     startTransition(async () => {
-      const result = await reassignTask(taskId, userId);
+      try {
+        const result = await reassignTask(taskId, userId);
 
-      if (!result.error) {
+        if (result.error) {
+          setFeedback({ message: result.error, type: "error" });
+          return;
+        }
+
+        setSelectedAssignee(userId);
         onReassigned?.(taskId, userId);
+        setFeedback({ message: "Reasignado", type: "success" });
+      } catch {
+        setFeedback({
+          message: "No se pudo reasignar la tarea.",
+          type: "error",
+        });
       }
-
-      router.refresh();
     });
   }
 
   return (
-    <Select.Root value={value} onValueChange={handleChange} disabled={isPending}>
-      <Select.Trigger
-        className="inline-flex h-9 min-w-0 items-center gap-2 rounded-full border border-border bg-bg-page px-3 font-body text-xs font-semibold text-[var(--foreground)] outline-none transition-colors hover:bg-bg-surface focus:ring-2 focus:ring-ring disabled:opacity-60"
-        aria-label="Asignado a"
-      >
-        <User
-          className="h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]"
-          aria-hidden="true"
-        />
-        <span className="max-w-40 truncate">
-          <Select.Value>{currentLabel}</Select.Value>
-        </span>
-        <Select.Icon>
-          <ChevronDown className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
-        </Select.Icon>
-      </Select.Trigger>
-      <Select.Portal>
-        <Select.Content
-          position="popper"
-          sideOffset={6}
-          className="z-50 overflow-hidden rounded-2xl border border-border bg-bg-surface text-[var(--foreground)] shadow-md"
+    <div className="flex min-w-0 flex-col gap-1">
+      <Select.Root value={value} onValueChange={handleChange} disabled={isPending}>
+        <Select.Trigger
+          className="inline-flex h-9 min-w-0 items-center gap-2 rounded-full border border-border bg-bg-page px-3 font-body text-xs font-semibold text-[var(--foreground)] outline-none transition-colors hover:bg-bg-surface focus:ring-2 focus:ring-ring disabled:opacity-60"
+          aria-label="Asignado a"
         >
-          <Select.Viewport className="p-1">
-            <Select.Item
-              value={UNASSIGNED_VALUE}
-              className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
-            >
-              <Select.ItemText>Sin asignar</Select.ItemText>
-            </Select.Item>
-            {assigneeOptions.map((option) => (
+          <User
+            className="h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]"
+            aria-hidden="true"
+          />
+          <span className="max-w-40 truncate">
+            <Select.Value>{currentLabel}</Select.Value>
+          </span>
+          <Select.Icon>
+            <ChevronDown className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
+          </Select.Icon>
+        </Select.Trigger>
+        <Select.Portal>
+          <Select.Content
+            position="popper"
+            sideOffset={6}
+            className="z-50 overflow-hidden rounded-2xl border border-border bg-bg-surface text-[var(--foreground)] shadow-md"
+          >
+            <Select.Viewport className="p-1">
               <Select.Item
-                key={option.id}
-                value={option.id}
+                value={UNASSIGNED_VALUE}
                 className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
               >
-                <Select.ItemText>{option.email}</Select.ItemText>
+                <Select.ItemText>Sin asignar</Select.ItemText>
               </Select.Item>
-            ))}
-          </Select.Viewport>
-        </Select.Content>
-      </Select.Portal>
-    </Select.Root>
+              {assigneeOptions.map((option) => (
+                <Select.Item
+                  key={option.id}
+                  value={option.id}
+                  className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
+                >
+                  <Select.ItemText>{option.email}</Select.ItemText>
+                </Select.Item>
+              ))}
+            </Select.Viewport>
+          </Select.Content>
+        </Select.Portal>
+      </Select.Root>
+      {feedback ? (
+        <span
+          role={feedback.type === "error" ? "alert" : "status"}
+          className={`font-body text-xs ${
+            feedback.type === "error" ? "text-risk-high" : "text-risk-low"
+          }`}
+        >
+          {feedback.message}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -383,22 +432,53 @@ function SnoozeTaskControl({
 }) {
   const router = useRouter();
   const [isSnoozing, startSnoozing] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [isWaitingToRefresh, setIsWaitingToRefresh] = useState(false);
+  const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
+  const refreshTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current !== null) {
+        window.clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
 
   function handleSnooze(option: SnoozeOption) {
+    const snoozeUntil = getSnoozeUntil(option);
+    setFeedback(null);
+
     startSnoozing(async () => {
-      const result = await snoozeTask(taskId, getSnoozeUntil(option));
+      try {
+        const result = await snoozeTask(taskId, snoozeUntil);
 
-      if (result.error) {
-        setError(result.error);
-        return;
+        if (result.error) {
+          setFeedback({ message: result.error, type: "error" });
+          return;
+        }
+
+        setIsWaitingToRefresh(true);
+        setFeedback({
+          message: `Pospuesta hasta las ${snoozeTimeFormatter.format(snoozeUntil)}`,
+          type: "success",
+        });
+        refreshTimeoutRef.current = window.setTimeout(() => {
+          onSnoozed?.(taskId);
+          router.refresh();
+          setIsWaitingToRefresh(false);
+          setFeedback(null);
+          refreshTimeoutRef.current = null;
+        }, 3_000);
+      } catch {
+        setFeedback({
+          message: "No se pudo posponer la tarea.",
+          type: "error",
+        });
       }
-
-      setError(null);
-      onSnoozed?.(taskId);
-      router.refresh();
     });
   }
+
+  const isBusy = isSnoozing || isWaitingToRefresh;
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -408,7 +488,7 @@ function SnoozeTaskControl({
             type="button"
             variant="outline"
             size="sm"
-            disabled={isSnoozing}
+            disabled={isBusy}
             className="rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)] disabled:opacity-60"
           >
             {isSnoozing ? (
@@ -445,8 +525,15 @@ function SnoozeTaskControl({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      {error ? (
-        <span className="font-body text-xs text-risk-high">{error}</span>
+      {feedback ? (
+        <span
+          role={feedback.type === "error" ? "alert" : "status"}
+          className={`font-body text-xs ${
+            feedback.type === "error" ? "text-risk-high" : "text-risk-low"
+          }`}
+        >
+          {feedback.message}
+        </span>
       ) : null}
     </div>
   );
@@ -473,6 +560,7 @@ export function TaskDetailRow({
     orderId !== null &&
     selectedOrderId === String(orderId) &&
     (!selectedTaskId || selectedTaskId === String(task.id));
+  const isSnoozedView = searchParams.get("estado_vista") === "pospuestas";
 
   function toggleDetail() {
     if (orderId === null) {
@@ -500,6 +588,17 @@ export function TaskDetailRow({
       event.preventDefault();
       toggleDetail();
     }
+  }
+
+  function handleTaskSnoozed() {
+    if (!selected || isSnoozedView) {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams);
+    params.delete("detalle");
+    params.delete("tareaId");
+    router.push(buildDetailHref(pathname, params), { scroll: false });
   }
 
   return (
@@ -546,6 +645,7 @@ export function TaskDetailRow({
                 onKeyDown={stopKeyPropagation}
               >
                 <AssigneeSelect
+                  key={`row-assignee-${task.id}-${task.asignado_a ?? "none"}`}
                   taskId={task.id}
                   asignadoA={task.asignado_a}
                   assigneeOptions={assigneeOptions}
@@ -606,7 +706,10 @@ export function TaskDetailRow({
               onClick={(event) => event.stopPropagation()}
               onKeyDown={stopKeyPropagation}
             >
-              <SnoozeTaskControl taskId={task.id} />
+              <SnoozeTaskControl
+                taskId={task.id}
+                onSnoozed={handleTaskSnoozed}
+              />
             </div>
           ) : null}
         </div>
@@ -798,7 +901,9 @@ export function TaskDetailDrawer({
   }
 
   function handleTaskSnoozed(taskId: number) {
-    navigateAfterTaskLeavesView(taskId);
+    if (searchParams.get("estado_vista") !== "pospuestas") {
+      navigateAfterTaskLeavesView(taskId);
+    }
   }
 
   function handleTaskReassigned(taskId: number, userId: string | null) {
@@ -945,6 +1050,10 @@ function SelectedTaskSection({
   const Icon = taskTone.icon;
   const deadline = getDeadline(task.fecha_limite, task.estado);
   const isCompleted = task.estado === "completada";
+  const isActionable =
+    task.estado === "pendiente" || task.estado === "en_progreso";
+  const description = task.descripcion?.trim();
+  const completionNotes = task.notas_completado?.trim();
   const whatsappNumber = getWhatsappNumber(order);
   const whatsappMessage = buildTaskWhatsAppMessage(task, order);
   const whatsappUrl = whatsappNumber
@@ -1026,6 +1135,31 @@ function SelectedTaskSection({
         </div>
       </div>
 
+      {description || completionNotes ? (
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+          {description ? (
+            <div className="rounded-2xl border border-border bg-bg-page p-3">
+              <dt className="font-body text-xs text-[var(--muted-foreground)]">
+                Descripción
+              </dt>
+              <dd className="mt-1 whitespace-pre-wrap font-body text-sm text-[var(--foreground)]">
+                {description}
+              </dd>
+            </div>
+          ) : null}
+          {completionNotes ? (
+            <div className="rounded-2xl border border-border bg-bg-page p-3">
+              <dt className="font-body text-xs text-[var(--muted-foreground)]">
+                Nota de cierre
+              </dt>
+              <dd className="mt-1 whitespace-pre-wrap font-body text-sm text-[var(--foreground)]">
+                {completionNotes}
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
+
       <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-border bg-bg-page p-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <p className="font-body text-xs text-[var(--muted-foreground)]">
@@ -1034,6 +1168,7 @@ function SelectedTaskSection({
           <div className="mt-2">
             {assigneeOptions ? (
               <AssigneeSelect
+                key={`drawer-assignee-${task.id}`}
                 taskId={task.id}
                 asignadoA={task.asignado_a}
                 assigneeOptions={assigneeOptions}
@@ -1067,6 +1202,7 @@ function SelectedTaskSection({
           </Button>
           {task.estado === "pendiente" || task.estado === "en_progreso" ? (
             <SnoozeTaskControl
+              key={`drawer-snooze-${task.id}`}
               taskId={task.id}
               onSnoozed={onSnoozed}
             />
@@ -1074,7 +1210,7 @@ function SelectedTaskSection({
         </div>
       </div>
 
-      {!isCompleted ? (
+      {isActionable ? (
         <CompleteTaskForm taskId={task.id} onCompleted={onCompleted} />
       ) : null}
     </section>

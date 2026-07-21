@@ -3,12 +3,13 @@ import { AlertTriangle, ListChecks } from "lucide-react";
 type TaskSummaryBarProps = {
   total: number;
   vencidas: number | null;
-  view: "abiertas" | "completadas" | "todas";
+  view: "abiertas" | "completadas" | "pospuestas" | "todas";
 };
 
 const totalLabelByView: Record<TaskSummaryBarProps["view"], [string, string]> = {
   abiertas: ["tarea pendiente", "tareas pendientes"],
   completadas: ["tarea completada", "tareas completadas"],
+  pospuestas: ["tarea pospuesta", "tareas pospuestas"],
   todas: ["tarea en total", "tareas en total"],
 };
 

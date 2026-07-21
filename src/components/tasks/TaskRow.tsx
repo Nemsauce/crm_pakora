@@ -10,7 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Select } from "radix-ui";
 
 import { reassignTask } from "@/app/(app)/tareas/actions";
@@ -86,6 +86,11 @@ const taskStateClassName: Record<TaskState, string> = {
 
 const UNASSIGNED_VALUE = "sin_asignar";
 
+type AssigneeFeedback = {
+  message: string;
+  type: "error" | "success";
+};
+
 const dateTimeFormatter = new Intl.DateTimeFormat("es-CO", {
   day: "2-digit",
   month: "short",
@@ -160,64 +165,105 @@ function AssigneeSelect({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [selectedAssignee, setSelectedAssignee] = useState(asignadoA);
+  const [feedback, setFeedback] = useState<AssigneeFeedback | null>(null);
 
-  const value = asignadoA ?? UNASSIGNED_VALUE;
+  const value = selectedAssignee ?? UNASSIGNED_VALUE;
   const currentLabel =
-    assigneeOptions.find((option) => option.id === asignadoA)?.email ??
+    assigneeOptions.find((option) => option.id === selectedAssignee)?.email ??
     "Sin asignar";
+
+  useEffect(() => {
+    if (!feedback || feedback.type === "error") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setFeedback(null);
+      router.refresh();
+    }, 3_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [feedback, router]);
 
   function handleChange(nextValue: string) {
     const userId = nextValue === UNASSIGNED_VALUE ? null : nextValue;
+    setFeedback(null);
 
     startTransition(async () => {
-      await reassignTask(taskId, userId);
-      router.refresh();
+      try {
+        const result = await reassignTask(taskId, userId);
+
+        if (result.error) {
+          setFeedback({ message: result.error, type: "error" });
+          return;
+        }
+
+        setSelectedAssignee(userId);
+        setFeedback({ message: "Reasignado", type: "success" });
+      } catch {
+        setFeedback({
+          message: "No se pudo reasignar la tarea.",
+          type: "error",
+        });
+      }
     });
   }
 
   return (
-    <Select.Root value={value} onValueChange={handleChange} disabled={isPending}>
-      <Select.Trigger
-        className="inline-flex h-9 min-w-0 items-center gap-2 rounded-full border border-border bg-bg-page px-3 font-body text-xs font-semibold text-[var(--foreground)] outline-none transition-colors hover:bg-bg-surface focus:ring-2 focus:ring-ring disabled:opacity-60"
-        aria-label="Asignado a"
-      >
-        <User
-          className="h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]"
-          aria-hidden="true"
-        />
-        <span className="max-w-40 truncate">
-          <Select.Value>{currentLabel}</Select.Value>
-        </span>
-        <Select.Icon>
-          <ChevronDown className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
-        </Select.Icon>
-      </Select.Trigger>
-      <Select.Portal>
-        <Select.Content
-          position="popper"
-          sideOffset={6}
-          className="z-50 overflow-hidden rounded-2xl border border-border bg-bg-surface text-[var(--foreground)] shadow-md"
+    <div className="flex min-w-0 flex-col gap-1">
+      <Select.Root value={value} onValueChange={handleChange} disabled={isPending}>
+        <Select.Trigger
+          className="inline-flex h-9 min-w-0 items-center gap-2 rounded-full border border-border bg-bg-page px-3 font-body text-xs font-semibold text-[var(--foreground)] outline-none transition-colors hover:bg-bg-surface focus:ring-2 focus:ring-ring disabled:opacity-60"
+          aria-label="Asignado a"
         >
-          <Select.Viewport className="p-1">
-            <Select.Item
-              value={UNASSIGNED_VALUE}
-              className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
-            >
-              <Select.ItemText>Sin asignar</Select.ItemText>
-            </Select.Item>
-            {assigneeOptions.map((option) => (
+          <User
+            className="h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]"
+            aria-hidden="true"
+          />
+          <span className="max-w-40 truncate">
+            <Select.Value>{currentLabel}</Select.Value>
+          </span>
+          <Select.Icon>
+            <ChevronDown className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
+          </Select.Icon>
+        </Select.Trigger>
+        <Select.Portal>
+          <Select.Content
+            position="popper"
+            sideOffset={6}
+            className="z-50 overflow-hidden rounded-2xl border border-border bg-bg-surface text-[var(--foreground)] shadow-md"
+          >
+            <Select.Viewport className="p-1">
               <Select.Item
-                key={option.id}
-                value={option.id}
+                value={UNASSIGNED_VALUE}
                 className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
               >
-                <Select.ItemText>{option.email}</Select.ItemText>
+                <Select.ItemText>Sin asignar</Select.ItemText>
               </Select.Item>
-            ))}
-          </Select.Viewport>
-        </Select.Content>
-      </Select.Portal>
-    </Select.Root>
+              {assigneeOptions.map((option) => (
+                <Select.Item
+                  key={option.id}
+                  value={option.id}
+                  className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
+                >
+                  <Select.ItemText>{option.email}</Select.ItemText>
+                </Select.Item>
+              ))}
+            </Select.Viewport>
+          </Select.Content>
+        </Select.Portal>
+      </Select.Root>
+      {feedback ? (
+        <span
+          role={feedback.type === "error" ? "alert" : "status"}
+          className={`font-body text-xs ${
+            feedback.type === "error" ? "text-risk-high" : "text-risk-low"
+          }`}
+        >
+          {feedback.message}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
