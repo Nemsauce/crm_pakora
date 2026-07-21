@@ -47,7 +47,7 @@ const countryOptions = [
 const statusOptions = [
   { value: "todos", label: "Todos" },
   { value: "nuevo", label: "Nuevo" },
-  { value: "en_ruta", label: "En ruta" },
+  { value: "en_ruta", label: "En tránsito" },
   { value: "entregado", label: "Entregado" },
   { value: "cancelado", label: "Cancelado" },
   { value: "devolucion", label: "Devolución" },

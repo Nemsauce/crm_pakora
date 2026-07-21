@@ -17,7 +17,7 @@ type EstadoCrm = GlobalSearchResult["estado_crm"];
 
 const estadoLabel: Record<EstadoCrm, string> = {
   nuevo: "Nuevo",
-  en_ruta: "En ruta",
+  en_ruta: "En tránsito",
   entregado: "Entregado",
   cancelado: "Cancelado",
   devolucion: "Devolución",

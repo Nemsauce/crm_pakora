@@ -31,7 +31,7 @@ type RiskLevel = "alto" | "medio" | "bajo" | "sin_datos";
 
 const estadoCrmLabel: Record<Order["estado_crm"], string> = {
   nuevo: "Nuevo",
-  en_ruta: "En ruta",
+  en_ruta: "En tránsito",
   entregado: "Entregado",
   cancelado: "Cancelado",
   devolucion: "Devolución",

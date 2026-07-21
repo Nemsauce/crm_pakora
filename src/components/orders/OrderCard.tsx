@@ -10,7 +10,7 @@ type BadgeTone = "accent" | "muted" | "success" | "danger";
 
 const estadoLabel: Record<Order["estado_crm"], string> = {
   nuevo: "Nuevo",
-  en_ruta: "En ruta",
+  en_ruta: "En tránsito",
   entregado: "Entregado",
   cancelado: "Cancelado",
   devolucion: "Devolución",
