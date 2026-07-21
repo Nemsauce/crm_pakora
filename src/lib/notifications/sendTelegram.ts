@@ -1,6 +1,16 @@
+import type { Database } from "@/lib/supabase/database.types";
+
+export type TelegramCountry = Database["public"]["Enums"]["pais_enum"];
+
+const countryFlag = {
+  CO: "🇨🇴",
+  MX: "🇲🇽",
+} satisfies Record<TelegramCountry, string>;
+
 export async function sendTelegramMessage(
   chatId: string,
   text: string,
+  pais: TelegramCountry,
 ): Promise<void> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -17,7 +27,7 @@ export async function sendTelegramMessage(
       },
       body: JSON.stringify({
         chat_id: chatId,
-        text,
+        text: `${countryFlag[pais]} ${text}`,
       }),
     },
   );

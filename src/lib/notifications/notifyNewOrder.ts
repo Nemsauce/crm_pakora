@@ -105,6 +105,7 @@ async function sendTelegramNotifications(
       await sendTelegramMessage(
         profile.telegram_chat_id,
         `${titulo}\n${mensaje}`,
+        order.pais,
       );
     } catch (error) {
       console.error("Failed to send Telegram new order notification", error);

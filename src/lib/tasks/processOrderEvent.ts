@@ -429,6 +429,7 @@ async function notifyNovedad(order: Order, taskId: number | null) {
       await sendTelegramMessage(
         profile.telegram_chat_id,
         `${titulo}\n${mensaje}`,
+        order.pais,
       );
     } catch (error) {
       console.error("Failed to send Telegram novedad notification", error);
@@ -457,6 +458,7 @@ async function notifyDeliveredOrder(order: Order) {
       await sendTelegramMessage(
         profile.telegram_chat_id,
         `${titulo}\n${mensaje}`,
+        order.pais,
       );
     } catch (error) {
       console.error("Failed to send Telegram delivery notification", error);
@@ -486,6 +488,7 @@ async function notifyReturnedOrder(order: Order) {
       await sendTelegramMessage(
         profile.telegram_chat_id,
         `${titulo}\n${mensaje}`,
+        order.pais,
       );
     } catch (error) {
       console.error("Failed to send Telegram return notification", error);
@@ -514,6 +517,7 @@ async function notifyEnReparto(order: Order, taskId: number | null) {
       await sendTelegramMessage(
         profile.telegram_chat_id,
         `${titulo}\n${mensaje}`,
+        order.pais,
       );
     } catch (error) {
       console.error("Failed to send Telegram en_reparto notification", error);

@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { sendTelegramMessage } from "@/lib/notifications/sendTelegram";
+import {
+  sendTelegramMessage,
+  type TelegramCountry,
+} from "@/lib/notifications/sendTelegram";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -116,12 +119,14 @@ async function notifyAssignee({
   titulo,
   orderId,
   numeroOrden,
+  pais,
 }: {
   userId: string;
   taskId: number;
   titulo: string;
   orderId: number | null;
   numeroOrden: string | null;
+  pais: TelegramCountry | null;
 }) {
   try {
     const supabase = createAdminClient();
@@ -157,9 +162,14 @@ async function notifyAssignee({
       } | null;
 
       if (profile?.telegram_chat_id) {
+        if (!pais) {
+          throw new Error("Order country is unavailable for Telegram notification");
+        }
+
         await sendTelegramMessage(
           profile.telegram_chat_id,
           `${notificacionTitulo}\n${notificacionMensaje}`,
+          pais,
         );
       }
     } catch (telegramError) {
@@ -181,7 +191,9 @@ export async function reassignTask(
   const supabase = await createClient();
   const { data: existingTask } = await supabase
     .from("tasks")
-    .select("asignado_a, titulo, order_id, orders(numero_orden, nombre, apellido)")
+    .select(
+      "asignado_a, titulo, order_id, orders(numero_orden, nombre, apellido, pais)",
+    )
     .eq("id", taskId)
     .maybeSingle();
 
@@ -208,6 +220,7 @@ export async function reassignTask(
       titulo: existingTask.titulo,
       orderId: existingTask.order_id,
       numeroOrden: order?.numero_orden ?? null,
+      pais: order?.pais ?? null,
     });
   }
 
