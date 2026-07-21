@@ -23,7 +23,8 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "CRM Pakora",
-  description: "Command Center en construcción",
+  description:
+    "Torre de control COD de Pakora para gestionar pedidos, tareas, finanzas, métricas e investigación de productos en Colombia y México.",
 };
 
 export default function RootLayout({
