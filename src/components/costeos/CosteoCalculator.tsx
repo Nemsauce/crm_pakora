@@ -637,7 +637,7 @@ export function CosteoCalculator({
             <NumericField
               id="fullfilment"
               name="fullfilment"
-              label="Fullfilment"
+              label="Fulfillment"
               value={getDisplayedMoneyInput(fullfilment)}
               onChange={(value) => setFullfilment(getStoredMoneyInput(value))}
               submitValue={getMoneySubmitValue(fullfilment)}
@@ -774,7 +774,7 @@ export function CosteoCalculator({
                 )}
               />
               <BreakdownRow
-                label="Fullfilment"
+                label="Fulfillment"
                 value={formatPercent(values.fullfilment / values.precioVenta)}
               />
               <BreakdownRow
