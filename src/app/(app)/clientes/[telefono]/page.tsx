@@ -214,7 +214,7 @@ export default async function ClientePage({ params }: ClientePageProps) {
       tone: "text-risk-high bg-risk-high-bg",
     },
     {
-      label: "Devueltos",
+      label: "Devoluciones",
       value: categoryCounts.devueltos,
       icon: RotateCcw,
       tone: "text-risk-high bg-risk-high-bg",

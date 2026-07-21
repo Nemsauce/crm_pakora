@@ -358,7 +358,7 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
           </div>
           <div className="rounded-2xl border border-border bg-bg-page p-3">
             <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              Devueltos
+              Devoluciones
             </dt>
             <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-risk-high">
               {returnedOrders}
