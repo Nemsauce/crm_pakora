@@ -15,6 +15,7 @@ type CosteoInsert = {
   costos_administrativos: number;
   fullfilment: number;
   cpa_ads: number;
+  cpa_manual: boolean;
   cpa_porcentaje_objetivo: number;
   tasa_cancelacion: number;
   precio_venta: number;
@@ -23,18 +24,46 @@ type CosteoInsert = {
 
 type CosteoUpdate = Omit<CosteoInsert, "pais">;
 
+type CosteoDuplicateInsert = Omit<CosteoInsert, "precio_comparacion"> & {
+  importe_gastado: number | null;
+  precio_comparacion: number | null;
+};
+
+type CosteoSource = CosteoDuplicateInsert & {
+  id: number;
+};
+
 type CosteoCountry = {
   pais: Pais;
 };
 
+type MutationError = { message: string } | null;
+
+type CosteoInsertBuilder = PromiseLike<{ error: MutationError }> & {
+  select(columns: "id, pais"): {
+    single(): Promise<{
+      data: { id: number; pais: Pais } | null;
+      error: MutationError;
+    }>;
+  };
+};
+
 type CosteosTableClient = {
   from(table: "costeos"): {
-    insert(values: CosteoInsert): Promise<{ error: { message: string } | null }>;
+    insert(values: CosteoInsert | CosteoDuplicateInsert): CosteoInsertBuilder;
     select(columns: "pais"): {
-      eq(column: "id", value: string): {
+      eq(column: "id", value: string | number): {
         maybeSingle(): Promise<{
           data: CosteoCountry | null;
-          error: { message: string } | null;
+          error: MutationError;
+        }>;
+      };
+    };
+    select(columns: "*"): {
+      eq(column: "id", value: string | number): {
+        maybeSingle(): Promise<{
+          data: CosteoSource | null;
+          error: MutationError;
         }>;
       };
     };
@@ -46,8 +75,14 @@ type CosteosTableClient = {
         eq(
           nextColumn: string,
           nextValue: string,
-        ): Promise<{ error: { message: string } | null }>;
+        ): Promise<{ error: MutationError }>;
       };
+    };
+    delete(): {
+      eq(
+        column: "id",
+        value: string | number,
+      ): Promise<{ error: MutationError }>;
     };
   };
 };
@@ -82,6 +117,10 @@ function readOptionalNumber(formData: FormData, name: string) {
   }
 
   return value;
+}
+
+function readBoolean(formData: FormData, name: string) {
+  return readString(formData, name) === "true";
 }
 
 function readPais(formData: FormData): Pais {
@@ -123,6 +162,7 @@ function readCosteoPayload(formData: FormData): CosteoUpdate {
     costos_administrativos: readNumber(formData, "costos_administrativos"),
     fullfilment: readNumber(formData, "fullfilment"),
     cpa_ads: readNumber(formData, "cpa_ads"),
+    cpa_manual: readBoolean(formData, "cpa_manual"),
     cpa_porcentaje_objetivo: readNumber(formData, "cpa_porcentaje_objetivo"),
     tasa_cancelacion: readNumber(formData, "tasa_cancelacion") / 100,
     precio_venta: readNumber(formData, "precio_venta"),
@@ -144,7 +184,7 @@ export async function createCosteo(formData: FormData) {
     throw new Error(`No se pudo guardar el costeo: ${error.message}`);
   }
 
-  redirect(`${getCosteosPath(pais)}?guardado=1`);
+  return { redirectTo: `${getCosteosPath(pais)}?guardado=1` };
 }
 
 export async function updateCosteo(costeoId: string, formData: FormData) {
@@ -161,9 +201,9 @@ export async function updateCosteo(costeoId: string, formData: FormData) {
     throw new Error(`No se pudo actualizar el costeo: ${error.message}`);
   }
 
-  redirect(
-    `${getCosteosPath(pais)}?costeo=${encodeURIComponent(costeoId)}&guardado=1`,
-  );
+  return {
+    redirectTo: `${getCosteosPath(pais)}?costeo=${encodeURIComponent(costeoId)}&guardado=1`,
+  };
 }
 
 export async function updateCosteoImporteGastado(
@@ -197,4 +237,77 @@ export async function updateCosteoImporteGastado(
   redirect(
     `${getCosteosPath(costeo.pais)}?costeo=${encodeURIComponent(costeoId)}&importe=1`,
   );
+}
+
+export async function duplicateCosteo(costeoId: string) {
+  const supabase = (await createClient()) as unknown as CosteosTableClient;
+  const { data: source, error: sourceError } = await supabase
+    .from("costeos")
+    .select("*")
+    .eq("id", costeoId)
+    .maybeSingle();
+
+  if (sourceError || !source) {
+    throw new Error(
+      `No se pudo cargar el costeo a duplicar: ${sourceError?.message ?? "Costeo no encontrado."}`,
+    );
+  }
+
+  const duplicate: CosteoDuplicateInsert = {
+    pais: source.pais,
+    nombre_producto: source.nombre_producto,
+    precio_proveedor: source.precio_proveedor,
+    flete_base: source.flete_base,
+    tasa_efectividad: source.tasa_efectividad,
+    costos_administrativos: source.costos_administrativos,
+    fullfilment: source.fullfilment,
+    cpa_ads: source.cpa_ads,
+    cpa_manual: source.cpa_manual,
+    cpa_porcentaje_objetivo: source.cpa_porcentaje_objetivo,
+    tasa_cancelacion: source.tasa_cancelacion,
+    precio_venta: source.precio_venta,
+    precio_comparacion: source.precio_comparacion,
+    importe_gastado: source.importe_gastado,
+  };
+  const { data: created, error: insertError } = await supabase
+    .from("costeos")
+    .insert(duplicate)
+    .select("id, pais")
+    .single();
+
+  if (insertError || !created) {
+    throw new Error(
+      `No se pudo duplicar el costeo: ${insertError?.message ?? "No se recibió el nuevo costeo."}`,
+    );
+  }
+
+  redirect(
+    `${getCosteosPath(created.pais)}?costeo=${encodeURIComponent(String(created.id))}`,
+  );
+}
+
+export async function deleteCosteo(costeoId: string) {
+  const supabase = (await createClient()) as unknown as CosteosTableClient;
+  const { data: costeo, error: costeoError } = await supabase
+    .from("costeos")
+    .select("pais")
+    .eq("id", costeoId)
+    .maybeSingle();
+
+  if (costeoError || !costeo) {
+    throw new Error(
+      `No se pudo cargar el costeo a eliminar: ${costeoError?.message ?? "Costeo no encontrado."}`,
+    );
+  }
+
+  const { error: deleteError } = await supabase
+    .from("costeos")
+    .delete()
+    .eq("id", costeoId);
+
+  if (deleteError) {
+    throw new Error(`No se pudo eliminar el costeo: ${deleteError.message}`);
+  }
+
+  redirect(getCosteosPath(costeo.pais));
 }

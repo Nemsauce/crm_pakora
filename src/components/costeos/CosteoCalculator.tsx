@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ export type CosteoCalculatorInitialValues = {
   costos_administrativos: number;
   fullfilment: number;
   cpa_ads: number;
+  cpa_manual?: boolean;
   cpa_porcentaje_objetivo: number;
   tasa_cancelacion: number;
   precio_venta: number;
@@ -83,6 +85,8 @@ const percentFormatter = new Intl.NumberFormat("es", {
   style: "percent",
   maximumFractionDigits: 1,
 });
+
+const COSTEO_DIRTY_EVENT = "crm:costeo-dirty-change";
 
 function parseInputNumber(value: string) {
   const parsed = Number(value.replace(",", "."));
@@ -252,6 +256,7 @@ export function CosteoCalculator({
   costeoId,
   initialValues,
 }: CosteoCalculatorProps) {
+  const router = useRouter();
   const isEditing = Boolean(costeoId);
   const [showCopValues, setShowCopValues] = useState(false);
   const [fxRate, setFxRate] = useState<FxRate | null>(null);
@@ -293,12 +298,128 @@ export function CosteoCalculator({
   const [cpaAds, setCpaAds] = useState(
     formatInputNumber(initialValues?.cpa_ads ?? 0),
   );
-  const [cpaManual, setCpaManual] = useState(false);
+  const [cpaManual, setCpaManual] = useState(
+    initialValues?.cpa_manual ?? false,
+  );
   const [tasaCancelacion, setTasaCancelacion] = useState(
     formatInputNumber((initialValues?.tasa_cancelacion ?? 0) * 100),
   );
-  const formAction =
+  const persistCosteo =
     costeoId === undefined ? createCosteo : updateCosteo.bind(null, costeoId);
+  const initialFormSnapshot = useMemo(
+    () =>
+      JSON.stringify({
+        nombreProducto: initialValues?.nombre_producto ?? "",
+        precioProveedor: formatInputNumber(
+          initialValues?.precio_proveedor ?? 0,
+        ),
+        fleteBase: formatInputNumber(initialValues?.flete_base ?? 0),
+        tasaEfectividad: formatInputNumber(
+          (initialValues?.tasa_efectividad ?? 0.75) * 100,
+        ),
+        costosAdministrativos: formatInputNumber(
+          initialValues?.costos_administrativos ?? 0,
+        ),
+        fullfilment: formatInputNumber(initialValues?.fullfilment ?? 0),
+        precioVenta: formatInputNumber(initialValues?.precio_venta ?? 0),
+        porcentajeDescuento: formatInputNumber(
+          getInitialDiscountPercentage(initialValues),
+        ),
+        cpaPorcentajeObjetivo: formatInputNumber(
+          initialValues?.cpa_porcentaje_objetivo ?? 20,
+        ),
+        cpaAds: formatInputNumber(initialValues?.cpa_ads ?? 0),
+        cpaManual: initialValues?.cpa_manual ?? false,
+        tasaCancelacion: formatInputNumber(
+          (initialValues?.tasa_cancelacion ?? 0) * 100,
+        ),
+      }),
+    [initialValues],
+  );
+  const currentFormSnapshot = useMemo(
+    () =>
+      JSON.stringify({
+        nombreProducto,
+        precioProveedor,
+        fleteBase,
+        tasaEfectividad,
+        costosAdministrativos,
+        fullfilment,
+        precioVenta,
+        porcentajeDescuento,
+        cpaPorcentajeObjetivo,
+        cpaAds,
+        cpaManual,
+        tasaCancelacion,
+      }),
+    [
+      nombreProducto,
+      precioProveedor,
+      fleteBase,
+      tasaEfectividad,
+      costosAdministrativos,
+      fullfilment,
+      precioVenta,
+      porcentajeDescuento,
+      cpaPorcentajeObjetivo,
+      cpaAds,
+      cpaManual,
+      tasaCancelacion,
+    ],
+  );
+  const [baselineSnapshot, setBaselineSnapshot] = useState(
+    initialFormSnapshot,
+  );
+  const isSubmittingRef = useRef(false);
+  const hasUnsavedChanges = currentFormSnapshot !== baselineSnapshot;
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent(COSTEO_DIRTY_EVENT, {
+        detail: { dirty: hasUnsavedChanges },
+      }),
+    );
+
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent(COSTEO_DIRTY_EVENT, { detail: { dirty: false } }),
+      );
+    };
+  }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      return;
+    }
+
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (isSubmittingRef.current) {
+        return;
+      }
+
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  async function handleSave(formData: FormData) {
+    isSubmittingRef.current = true;
+
+    try {
+      const result = await persistCosteo(formData);
+      setBaselineSnapshot(currentFormSnapshot);
+      window.dispatchEvent(
+        new CustomEvent(COSTEO_DIRTY_EVENT, { detail: { dirty: false } }),
+      );
+      router.push(result.redirectTo);
+      router.refresh();
+    } finally {
+      isSubmittingRef.current = false;
+    }
+  }
 
   function getDisplayedMoneyInput(value: string) {
     if (!value.trim() || displayMultiplier === 1) {
@@ -484,10 +605,11 @@ export function CosteoCalculator({
   return (
     <div className="mt-5 space-y-5">
       <form
-        action={formAction}
+        action={handleSave}
         className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]"
       >
         <input type="hidden" name="pais" value={pais} />
+        <input type="hidden" name="cpa_manual" value={String(cpaManual)} />
         <div className="rounded-2xl border border-border bg-bg-surface p-6 shadow-lg">
           <div className="flex flex-col gap-2 border-b border-border pb-4">
             <p className="font-display text-lg font-semibold text-text-primary">
