@@ -1,3 +1,9 @@
+"use client";
+
+import { Search } from "lucide-react";
+import { useState } from "react";
+
+import { Input } from "@/components/ui/input";
 import type { Database } from "@/lib/supabase/database.types";
 
 export type ProductSummaryRow =
@@ -175,7 +181,16 @@ function ProductCountrySection({
   pais: Pais;
   rows: ProductSummaryRow[];
 }) {
-  const sortedRows = [...rows].sort((a, b) => b.total - a.total);
+  const [search, setSearch] = useState("");
+  const normalizedSearch = search.trim().toLocaleLowerCase("es");
+  const sortedRows = rows
+    .filter((row) =>
+      row.nombre_producto
+        .toLocaleLowerCase("es")
+        .includes(normalizedSearch),
+    )
+    .sort((a, b) => b.total - a.total);
+  const searchId = `product-search-${pais.toLowerCase()}`;
 
   return (
     <section className="min-w-0">
@@ -193,6 +208,27 @@ function ProductCountrySection({
         </p>
       </div>
 
+      <label
+        htmlFor={searchId}
+        className="mt-4 block font-body text-xs text-text-secondary"
+      >
+        Buscar producto
+      </label>
+      <div className="mt-1.5 flex h-11 items-center gap-2 rounded-2xl border border-border bg-bg-surface px-3 shadow-sm focus-within:ring-2 focus-within:ring-ring">
+        <Search
+          className="h-4 w-4 shrink-0 text-text-secondary"
+          aria-hidden="true"
+        />
+        <Input
+          id={searchId}
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Buscar por nombre"
+          className="h-8 border-0 bg-transparent p-0 font-body text-sm text-text-primary shadow-none focus-visible:ring-0"
+        />
+      </div>
+
       {sortedRows.length > 0 ? (
         <div className="mt-5 grid gap-3">
           {sortedRows.map((row) => (
@@ -205,7 +241,7 @@ function ProductCountrySection({
         </div>
       ) : (
         <div className="mt-5 rounded-2xl bg-bg-page p-4 font-body text-sm text-text-secondary">
-          Sin datos
+          {rows.length > 0 ? "Sin resultados" : "Sin datos"}
         </div>
       )}
     </section>
