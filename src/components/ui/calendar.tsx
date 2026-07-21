@@ -7,6 +7,7 @@ import {
   type DayButton,
   type Locale,
 } from "react-day-picker"
+import { es as spanishDayPickerLocale } from "react-day-picker/locale"
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -19,6 +20,7 @@ function Calendar({
   captionLayout = "label",
   buttonVariant = "ghost",
   locale,
+  labels,
   formatters,
   components,
   ...props
@@ -37,7 +39,15 @@ function Calendar({
         className
       )}
       captionLayout={captionLayout}
-      locale={locale}
+      locale={{
+        ...spanishDayPickerLocale,
+        ...locale,
+        labels: {
+          ...spanishDayPickerLocale.labels,
+          ...locale?.labels,
+        },
+      }}
+      labels={labels}
       formatters={{
         formatMonthDropdown: (date) =>
           date.toLocaleString(locale?.code, { month: "short" }),
