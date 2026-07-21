@@ -39,6 +39,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { createClient } from "@/lib/supabase/client";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 import { buildTaskWhatsAppMessage } from "@/lib/whatsapp/buildTaskMessage";
 import { formatPhoneForWhatsApp } from "@/lib/whatsapp/formatPhoneForWhatsApp";
@@ -270,10 +271,12 @@ function AssigneeSelect({
   taskId,
   asignadoA,
   assigneeOptions,
+  onReassigned,
 }: {
   taskId: number;
   asignadoA: string | null;
   assigneeOptions: AssigneeOption[];
+  onReassigned?: (taskId: number, userId: string | null) => void;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -287,7 +290,12 @@ function AssigneeSelect({
     const userId = nextValue === UNASSIGNED_VALUE ? null : nextValue;
 
     startTransition(async () => {
-      await reassignTask(taskId, userId);
+      const result = await reassignTask(taskId, userId);
+
+      if (!result.error) {
+        onReassigned?.(taskId, userId);
+      }
+
       router.refresh();
     });
   }
@@ -366,7 +374,13 @@ function getSnoozeUntil(option: SnoozeOption) {
   return getTomorrowAtNineInBogota();
 }
 
-function SnoozeTaskControl({ taskId }: { taskId: number }) {
+function SnoozeTaskControl({
+  taskId,
+  onSnoozed,
+}: {
+  taskId: number;
+  onSnoozed?: (taskId: number) => void;
+}) {
   const router = useRouter();
   const [isSnoozing, startSnoozing] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -381,6 +395,7 @@ function SnoozeTaskControl({ taskId }: { taskId: number }) {
       }
 
       setError(null);
+      onSnoozed?.(taskId);
       router.refresh();
     });
   }
@@ -608,9 +623,16 @@ export function TaskDetailDrawer({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const supabase = useMemo(() => createClient(), []);
   const selectedOrderId = searchParams.get("detalle");
   const selectedTaskId = searchParams.get("tareaId");
   const [detail, setDetail] = useState<OrderDetail | null>(null);
+  const [assigneeOptions, setAssigneeOptions] = useState<
+    AssigneeOption[] | null
+  >(null);
+  const [assigneeOptionsError, setAssigneeOptionsError] = useState<
+    string | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const isOpen = Boolean(selectedOrderId);
@@ -694,6 +716,61 @@ export function TaskDetailDrawer({
     };
   }, [selectedOrderId]);
 
+  useEffect(() => {
+    if (!selectedOrderId) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadAssigneeOptions() {
+      setAssigneeOptions(null);
+      setAssigneeOptionsError(null);
+
+      const { data, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, email")
+        .eq("activo", true)
+        .order("email", { ascending: true });
+
+      if (!isActive) {
+        return;
+      }
+
+      if (profilesError) {
+        setAssigneeOptionsError("No se pudieron cargar los responsables.");
+        return;
+      }
+
+      setAssigneeOptions(data ?? []);
+    }
+
+    void loadAssigneeOptions();
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedOrderId, supabase]);
+
+  function navigateAfterTaskLeavesView(taskId: number) {
+    const taskIndex = visibleTaskOrder.findIndex(
+      (task) => task.taskId === taskId,
+    );
+    const nextTask =
+      taskIndex >= 0 ? visibleTaskOrder[taskIndex + 1] : undefined;
+    const params = new URLSearchParams(searchParams);
+
+    if (nextTask && nextTask.orderId !== null) {
+      params.set("detalle", String(nextTask.orderId));
+      params.set("tareaId", String(nextTask.taskId));
+    } else {
+      params.delete("detalle");
+      params.delete("tareaId");
+    }
+
+    router.push(buildDetailHref(pathname, params), { scroll: false });
+  }
+
   function handleTaskCompleted(taskId: number, notes: string | null) {
     const completedAt = new Date().toISOString();
 
@@ -717,24 +794,26 @@ export function TaskDetailDrawer({
       };
     });
 
-    const completedTaskIndex = visibleTaskOrder.findIndex(
-      (task) => task.taskId === taskId,
-    );
-    const nextTask =
-      completedTaskIndex >= 0
-        ? visibleTaskOrder[completedTaskIndex + 1]
-        : undefined;
-    const params = new URLSearchParams(searchParams);
+    navigateAfterTaskLeavesView(taskId);
+  }
 
-    if (nextTask && nextTask.orderId !== null) {
-      params.set("detalle", String(nextTask.orderId));
-      params.set("tareaId", String(nextTask.taskId));
-    } else {
-      params.delete("detalle");
-      params.delete("tareaId");
-    }
+  function handleTaskSnoozed(taskId: number) {
+    navigateAfterTaskLeavesView(taskId);
+  }
 
-    router.push(buildDetailHref(pathname, params), { scroll: false });
+  function handleTaskReassigned(taskId: number, userId: string | null) {
+    setDetail((currentDetail) => {
+      if (!currentDetail) {
+        return currentDetail;
+      }
+
+      return {
+        ...currentDetail,
+        tasks: currentDetail.tasks.map((task) =>
+          task.id === taskId ? { ...task, asignado_a: userId } : task,
+        ),
+      };
+    });
   }
 
   return (
@@ -817,7 +896,11 @@ export function TaskDetailDrawer({
                 <SelectedTaskSection
                   task={selectedTask}
                   order={detail.order}
+                  assigneeOptions={assigneeOptions}
+                  assigneeOptionsError={assigneeOptionsError}
                   onCompleted={handleTaskCompleted}
+                  onReassigned={handleTaskReassigned}
+                  onSnoozed={handleTaskSnoozed}
                 />
                 <OtherTasksSection tasks={otherTasks} />
                 <OrderDetailsSection
@@ -844,11 +927,19 @@ export function TaskDetailDrawer({
 function SelectedTaskSection({
   task,
   order,
+  assigneeOptions,
+  assigneeOptionsError,
   onCompleted,
+  onReassigned,
+  onSnoozed,
 }: {
   task: Task;
   order: Order;
+  assigneeOptions: AssigneeOption[] | null;
+  assigneeOptionsError: string | null;
   onCompleted: (taskId: number, notes: string | null) => void;
+  onReassigned: (taskId: number, userId: string | null) => void;
+  onSnoozed: (taskId: number) => void;
 }) {
   const taskTone = taskTypeTone[task.tipo];
   const Icon = taskTone.icon;
@@ -931,6 +1022,54 @@ function SelectedTaskSection({
                 WhatsApp
               </a>
             </Button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-border bg-bg-page p-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-body text-xs text-[var(--muted-foreground)]">
+            Responsable
+          </p>
+          <div className="mt-2">
+            {assigneeOptions ? (
+              <AssigneeSelect
+                taskId={task.id}
+                asignadoA={task.asignado_a}
+                assigneeOptions={assigneeOptions}
+                onReassigned={onReassigned}
+              />
+            ) : assigneeOptionsError ? (
+              <p className="font-body text-xs text-risk-high">
+                {assigneeOptionsError}
+              </p>
+            ) : (
+              <span className="inline-flex h-9 items-center gap-2 font-body text-xs text-[var(--muted-foreground)]">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Cargando responsables
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            asChild
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+          >
+            <Link href={`/pedidos?detalle=${order.id}`}>
+              <Eye className="h-4 w-4" aria-hidden="true" />
+              Ver pedido
+            </Link>
+          </Button>
+          {task.estado === "pendiente" || task.estado === "en_progreso" ? (
+            <SnoozeTaskControl
+              taskId={task.id}
+              onSnoozed={onSnoozed}
+            />
           ) : null}
         </div>
       </div>
