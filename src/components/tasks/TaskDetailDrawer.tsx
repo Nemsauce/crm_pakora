@@ -151,8 +151,8 @@ function getOrderIdentifier(order: Pick<Order, "id" | "numero_orden"> | null) {
   return order.numero_orden ?? `ID ${order.id}`;
 }
 
-function formatTaskType(value: string) {
-  return value.replaceAll("_", " ");
+export function getTaskTypeLabel(value: TaskType) {
+  return taskTypeTone[value].label;
 }
 
 function formatDateTime(value: string | null) {
@@ -1030,7 +1030,7 @@ function TaskSummaryItem({ task }: { task: Task }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-body text-xs uppercase text-[var(--muted-foreground)]">
-            {formatTaskType(task.tipo)}
+            {getTaskTypeLabel(task.tipo)}
           </p>
           <p className="mt-1 font-body text-sm font-medium text-[var(--foreground)]">
             {task.titulo}

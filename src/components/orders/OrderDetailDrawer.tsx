@@ -7,6 +7,7 @@ import { Dialog } from "radix-ui";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { updateOrderPhone } from "@/app/(app)/pedidos/actions";
+import { getTaskTypeLabel } from "@/components/tasks/TaskDetailDrawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -119,10 +120,6 @@ function getOrderIdentifier(order: Order) {
 function getLocation(order: Order) {
   const location = [order.ciudad, order.departamento].filter(Boolean).join(", ");
   return location || "Ubicación pendiente";
-}
-
-function formatTaskType(value: string) {
-  return value.replaceAll("_", " ");
 }
 
 function normalizeRisk(nivelRiesgo: string | null): RiskLevel {
@@ -685,7 +682,7 @@ function TasksSection({ tasks }: { tasks: Task[] }) {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-body text-xs uppercase text-[var(--muted-foreground)]">
-                    {formatTaskType(task.tipo)}
+                    {getTaskTypeLabel(task.tipo)}
                   </p>
                   <p className="mt-1 font-body text-sm font-medium text-[var(--foreground)]">
                     {task.titulo}
