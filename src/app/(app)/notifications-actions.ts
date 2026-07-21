@@ -34,6 +34,34 @@ export async function markNotificationRead(
   return { error: null };
 }
 
+export async function markNotificationUnread(
+  notificationId: number,
+): Promise<NotificationActionResult> {
+  if (!Number.isInteger(notificationId) || notificationId <= 0) {
+    return { error: "Notificación inválida." };
+  }
+
+  const supabase = await createClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+
+  if (userError || !userId) {
+    return { error: "No se pudo identificar el usuario activo." };
+  }
+
+  const { error } = await supabase
+    .from("notifications")
+    .update({ leida: false })
+    .eq("id", notificationId)
+    .eq("user_id", userId);
+
+  if (error) {
+    return { error: "No se pudo marcar la notificación como no leída." };
+  }
+
+  return { error: null };
+}
+
 export async function markAllNotificationsRead(): Promise<NotificationActionResult> {
   const supabase = await createClient();
   const { data: userData, error: userError } = await supabase.auth.getUser();

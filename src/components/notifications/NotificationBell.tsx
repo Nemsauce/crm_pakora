@@ -1,17 +1,20 @@
 "use client";
 
-import { Bell, CheckCheck, Loader2 } from "lucide-react";
+import { Bell, CheckCheck, Loader2, Mail } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   markAllNotificationsRead,
   markNotificationRead,
+  markNotificationUnread,
 } from "@/app/(app)/notifications-actions";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -128,6 +131,27 @@ export function NotificationBell() {
 
       if (existing && !existing.leida) {
         setUnreadCount((current) => Math.max(0, current - 1));
+      }
+    },
+    [setNotificationList],
+  );
+
+  const markLocalNotificationUnread = useCallback(
+    (notificationId: number) => {
+      const existing = notificationsRef.current.find(
+        (notification) => notification.id === notificationId,
+      );
+
+      setNotificationList((current) =>
+        current.map((notification) =>
+          notification.id === notificationId
+            ? { ...notification, leida: false }
+            : notification,
+        ),
+      );
+
+      if (existing?.leida) {
+        setUnreadCount((current) => current + 1);
       }
     },
     [setNotificationList],
@@ -341,15 +365,19 @@ export function NotificationBell() {
     setPendingNotificationId(notification.id);
     setError(null);
 
-    const result = await markNotificationRead(notification.id);
+    try {
+      const result = await markNotificationRead(notification.id);
 
-    if (result.error) {
-      setError(result.error);
-    } else {
-      markLocalNotificationRead(notification.id);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        markLocalNotificationRead(notification.id);
+      }
+    } catch {
+      setError("No se pudo marcar la notificación como leída.");
+    } finally {
+      setPendingNotificationId(null);
     }
-
-    setPendingNotificationId(null);
   }
 
   async function handleNotificationClick(notification: Notification) {
@@ -365,6 +393,29 @@ export function NotificationBell() {
     setIsOpen(false);
   }
 
+  async function handleMarkUnread(notification: Notification) {
+    if (!notification.leida || pendingNotificationId === notification.id) {
+      return;
+    }
+
+    setPendingNotificationId(notification.id);
+    setError(null);
+
+    try {
+      const result = await markNotificationUnread(notification.id);
+
+      if (result.error) {
+        setError(result.error);
+      } else {
+        markLocalNotificationUnread(notification.id);
+      }
+    } catch {
+      setError("No se pudo marcar la notificación como no leída.");
+    } finally {
+      setPendingNotificationId(null);
+    }
+  }
+
   async function handleMarkAllRead() {
     if (unreadCount === 0 || isMarkingAll) {
       return;
@@ -373,15 +424,19 @@ export function NotificationBell() {
     setIsMarkingAll(true);
     setError(null);
 
-    const result = await markAllNotificationsRead();
+    try {
+      const result = await markAllNotificationsRead();
 
-    if (result.error) {
-      setError(result.error);
-    } else {
-      markLocalAllRead();
+      if (result.error) {
+        setError(result.error);
+      } else {
+        markLocalAllRead();
+      }
+    } catch {
+      setError("No se pudieron marcar las notificaciones como leídas.");
+    } finally {
+      setIsMarkingAll(false);
     }
-
-    setIsMarkingAll(false);
   }
 
   return (
@@ -409,36 +464,44 @@ export function NotificationBell() {
         sideOffset={8}
         className="w-96 rounded-2xl border border-border bg-bg-surface p-1 text-[var(--foreground)] shadow-md"
       >
-        <DropdownMenuLabel className="flex items-center justify-between gap-3 px-3 py-3 font-body font-normal">
-          <div>
-            <p className="font-display text-sm font-semibold text-[var(--foreground)]">
+        <div className="flex items-center justify-between gap-3 px-3 py-3">
+          <DropdownMenuLabel className="p-0 font-body font-normal">
+            <span className="block font-display text-sm font-semibold text-[var(--foreground)]">
               Notificaciones
-            </p>
-            <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
-              {unreadCount > 0
-                ? `${unreadCount} sin leer`
-                : "Todo al día"}
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
+            </span>
+            <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
+              {unreadCount > 0 ? `${unreadCount} sin leer` : "Todo al día"}
+            </span>
+          </DropdownMenuLabel>
+          <DropdownMenuItem
+            asChild
             disabled={unreadCount === 0 || isMarkingAll}
-            onClick={(event) => {
-              event.preventDefault();
-              void handleMarkAllRead();
-            }}
-            className="rounded-full px-3 text-xs text-[var(--muted-foreground)] hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)] disabled:opacity-40"
+            onSelect={(event) => event.preventDefault()}
+            className="rounded-full p-0 focus:bg-[var(--color-accent)]/10"
           >
-            {isMarkingAll ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-            ) : (
-              <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
-            )}
-            Marcar todas
-          </Button>
-        </DropdownMenuLabel>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={unreadCount === 0 || isMarkingAll}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleMarkAllRead();
+              }}
+              className="rounded-full px-3 text-xs text-[var(--muted-foreground)] hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)] disabled:opacity-40"
+            >
+              {isMarkingAll ? (
+                <Loader2
+                  className="h-3.5 w-3.5 animate-spin"
+                  aria-hidden="true"
+                />
+              ) : (
+                <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+              Marcar todas
+            </Button>
+          </DropdownMenuItem>
+        </div>
 
         <DropdownMenuSeparator className="bg-border" />
 
@@ -458,49 +521,90 @@ export function NotificationBell() {
                 const isPending = pendingNotificationId === notification.id;
 
                 return (
-                  <button
+                  <div
                     key={notification.id}
-                    type="button"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      void handleNotificationClick(notification);
-                    }}
-                    className="flex w-full gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[var(--color-accent)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex items-start rounded-xl transition-colors hover:bg-[var(--color-accent)]/10"
                   >
-                    <span
-                      className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                        notification.leida
-                          ? "bg-[var(--muted-foreground)]/30"
-                          : "bg-risk-high"
-                      }`}
-                      aria-hidden="true"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span
-                        className={`block truncate font-body text-sm ${
-                          notification.leida
-                            ? "font-medium text-[var(--foreground)]"
-                            : "font-semibold text-[var(--foreground)]"
-                        }`}
+                    <DropdownMenuItem
+                      asChild
+                      onSelect={(event) => event.preventDefault()}
+                      className="min-w-0 flex-1 p-0 focus:bg-[var(--color-accent)]/10"
+                    >
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          void handleNotificationClick(notification);
+                        }}
+                        className="flex w-full min-w-0 gap-3 rounded-xl px-3 py-3 text-left focus-visible:outline-none"
                       >
-                        {notification.titulo}
-                      </span>
-                      {notification.mensaje ? (
-                        <span className="mt-1 line-clamp-2 block text-xs leading-5 text-[var(--muted-foreground)]">
-                          {notification.mensaje}
+                        <span
+                          className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                            notification.leida
+                              ? "bg-[var(--muted-foreground)]/30"
+                              : "bg-risk-high"
+                          }`}
+                          aria-hidden="true"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className={`block truncate font-body text-sm ${
+                              notification.leida
+                                ? "font-medium text-[var(--foreground)]"
+                                : "font-semibold text-[var(--foreground)]"
+                            }`}
+                          >
+                            {notification.titulo}
+                          </span>
+                          {notification.mensaje ? (
+                            <span className="mt-1 line-clamp-2 block text-xs leading-5 text-[var(--muted-foreground)]">
+                              {notification.mensaje}
+                            </span>
+                          ) : null}
+                          <span className="mt-1 block font-mono text-[11px] tabular-nums text-[var(--muted-foreground)]">
+                            {formatRelativeTime(notification.created_at)}
+                          </span>
                         </span>
-                      ) : null}
-                      <span className="mt-1 block font-mono text-[11px] tabular-nums text-[var(--muted-foreground)]">
-                        {formatRelativeTime(notification.created_at)}
-                      </span>
-                    </span>
-                    {isPending ? (
-                      <Loader2
-                        className="mt-1 h-4 w-4 shrink-0 animate-spin text-[var(--muted-foreground)]"
-                        aria-hidden="true"
-                      />
+                        {isPending && !notification.leida ? (
+                          <Loader2
+                            className="mt-1 h-4 w-4 shrink-0 animate-spin text-[var(--muted-foreground)]"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                      </button>
+                    </DropdownMenuItem>
+                    {notification.leida ? (
+                      <DropdownMenuItem
+                        asChild
+                        disabled={isPending}
+                        onSelect={(event) => event.preventDefault()}
+                        className="mr-2 mt-2.5 self-start rounded-full p-0 focus:bg-[var(--color-accent)]/15"
+                      >
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            void handleMarkUnread(notification);
+                          }}
+                          className="rounded-full p-2 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--color-accent)]/15 hover:text-[var(--color-accent)] focus-visible:outline-none disabled:opacity-50"
+                          aria-label={`Marcar “${notification.titulo}” como no leída`}
+                          title="Marcar como no leída"
+                        >
+                          {isPending ? (
+                            <Loader2
+                              className="h-4 w-4 animate-spin"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Mail className="h-4 w-4" aria-hidden="true" />
+                          )}
+                          <span className="sr-only">Marcar como no leída</span>
+                        </button>
+                      </DropdownMenuItem>
                     ) : null}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -515,6 +619,20 @@ export function NotificationBell() {
             </p>
           </>
         ) : null}
+
+        <DropdownMenuSeparator className="bg-border" />
+        <DropdownMenuItem
+          asChild
+          className="p-0 focus:bg-[var(--color-accent)]/10"
+        >
+          <Link
+            href="/notificaciones"
+            onClick={() => setIsOpen(false)}
+            className="flex min-h-10 items-center justify-center rounded-xl px-3 py-2 font-body text-sm font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/10 focus-visible:outline-none"
+          >
+            Ver todas las notificaciones
+          </Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
