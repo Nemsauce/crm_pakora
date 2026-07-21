@@ -9,6 +9,7 @@ export type DineroEnLaCalleRow = {
 
 type DineroEnLaCalleTableProps = {
   rows: DineroEnLaCalleRow[];
+  updatedAt: string;
 };
 
 const countries = ["CO", "MX"] as const;
@@ -36,6 +37,12 @@ const orderCountFormatter = {
   CO: new Intl.NumberFormat("es-CO"),
   MX: new Intl.NumberFormat("es-MX"),
 } satisfies Record<Pais, Intl.NumberFormat>;
+
+const updatedAtFormatter = new Intl.DateTimeFormat("es-CO", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "America/Bogota",
+});
 
 function toNumber(value: number | string | null) {
   if (typeof value === "number") {
@@ -154,12 +161,26 @@ function CountryStreetMoneyCard({
 
 export function DineroEnLaCalleTable({
   rows,
+  updatedAt,
 }: DineroEnLaCalleTableProps) {
+  const parsedUpdatedAt = new Date(updatedAt);
+  const updatedAtLabel = Number.isNaN(parsedUpdatedAt.getTime())
+    ? "Fecha no disponible"
+    : updatedAtFormatter.format(parsedUpdatedAt);
+
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
-      {countries.map((pais) => (
-        <CountryStreetMoneyCard key={pais} pais={pais} rows={rows} />
-      ))}
+    <div>
+      <p className="mb-3 font-body text-xs text-text-secondary">
+        Última actualización de la vista: {" "}
+        <time dateTime={updatedAt} className="font-mono tabular-nums">
+          {updatedAtLabel}
+        </time>
+      </p>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {countries.map((pais) => (
+          <CountryStreetMoneyCard key={pais} pais={pais} rows={rows} />
+        ))}
+      </div>
     </div>
   );
 }

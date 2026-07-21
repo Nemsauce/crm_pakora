@@ -9,9 +9,11 @@ import {
   type WalletSummaryRow,
 } from "@/components/command-center/MovementBreakdownTable";
 import {
+  CombinedNetProfitCard,
   NetProfitCard,
   type NetProfitTrendPoint,
 } from "@/components/command-center/NetProfitCard";
+import { RefreshFinanzasButton } from "@/components/command-center/RefreshFinanzasButton";
 import { createClient } from "@/lib/supabase/server";
 
 type SearchParams = {
@@ -305,6 +307,11 @@ export default async function CommandCenterFinanzasPage({
   const dailySummaryRows = dailySummaryResult.data ?? [];
   const previousDailySummaryRows = previousDailySummaryResult.data ?? [];
   const dineroEnLaCalleRows = dineroEnLaCalleResult.data ?? [];
+  const snapshotUpdatedAt = new Date().toISOString();
+  const totalsByCountry = {
+    CO: getCountryTotals(getRowsByCountry(summaryRows, "CO")),
+    MX: getCountryTotals(getRowsByCountry(summaryRows, "MX")),
+  } satisfies Record<Pais, ReturnType<typeof getCountryTotals>>;
 
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
@@ -325,11 +332,14 @@ export default async function CommandCenterFinanzasPage({
           </p>
         </div>
 
-        <DateRangeSelector
-          currentRange={currentRange}
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-        />
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end xl:flex-col xl:items-end">
+          <RefreshFinanzasButton />
+          <DateRangeSelector
+            currentRange={currentRange}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+          />
+        </div>
       </div>
 
       <section className="mt-6" aria-labelledby="operational-profit-heading">
@@ -345,11 +355,25 @@ export default async function CommandCenterFinanzasPage({
           </h2>
         </div>
 
+        <div className="mt-4">
+          <CombinedNetProfitCard
+            coNet={
+              totalsByCountry.CO.entradasOperativas -
+              totalsByCountry.CO.salidasOperativas
+            }
+            mxNet={
+              totalsByCountry.MX.entradasOperativas -
+              totalsByCountry.MX.salidasOperativas
+            }
+            hasCoMovements={totalsByCountry.CO.hasOperationalMovements}
+            hasMxMovements={totalsByCountry.MX.hasOperationalMovements}
+            refreshKey={snapshotUpdatedAt}
+          />
+        </div>
+
         <div className="mt-4 grid gap-4 xl:grid-cols-2">
           {countries.map((pais) => {
-            const totals = getCountryTotals(
-              getRowsByCountry(summaryRows, pais),
-            );
+            const totals = totalsByCountry[pais];
             const currentDailyNet = getCountryDailyNet(dailySummaryRows, pais);
             const previousDailyNet = getCountryDailyNet(
               previousDailySummaryRows,
@@ -397,7 +421,10 @@ export default async function CommandCenterFinanzasPage({
         </div>
 
         <div className="mt-4">
-          <DineroEnLaCalleTable rows={dineroEnLaCalleRows} />
+          <DineroEnLaCalleTable
+            rows={dineroEnLaCalleRows}
+            updatedAt={snapshotUpdatedAt}
+          />
         </div>
       </section>
 

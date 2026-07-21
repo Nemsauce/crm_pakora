@@ -1,6 +1,7 @@
 "use client";
 
-import { TrendingUp } from "lucide-react";
+import { CircleDollarSign, Loader2, TrendingUp } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -26,6 +27,19 @@ type NetProfitCardProps = {
   hasMovements: boolean;
   trendData: NetProfitTrendPoint[];
   comparisonPercentage: number | null;
+};
+
+type CombinedNetProfitCardProps = {
+  coNet: number;
+  mxNet: number;
+  hasCoMovements: boolean;
+  hasMxMovements: boolean;
+  refreshKey: string;
+};
+
+type ExchangeRate = {
+  rate: number;
+  timestamp: string;
 };
 
 const countryLabel: Record<Pais, string> = {
@@ -54,6 +68,16 @@ const chartDateFormatter = new Intl.DateTimeFormat("es-CO", {
   day: "2-digit",
   month: "short",
   timeZone: "UTC",
+});
+
+const exchangeRateDateFormatter = new Intl.DateTimeFormat("es-CO", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "America/Bogota",
+});
+
+const exchangeRateFormatter = new Intl.NumberFormat("es-CO", {
+  maximumFractionDigits: 2,
 });
 
 function formatChartDate(value: string) {
@@ -110,6 +134,154 @@ function DailyTrendTooltip({
         {formatCurrency(pais, net)}
       </p>
     </div>
+  );
+}
+
+export function CombinedNetProfitCard({
+  coNet,
+  mxNet,
+  hasCoMovements,
+  hasMxMovements,
+  refreshKey,
+}: CombinedNetProfitCardProps) {
+  const [exchangeRate, setExchangeRate] = useState<ExchangeRate | null>(null);
+  const [exchangeRateError, setExchangeRateError] = useState<string | null>(
+    null,
+  );
+  const hasMovements = hasCoMovements || hasMxMovements;
+
+  useEffect(() => {
+    if (!hasMxMovements) {
+      return;
+    }
+
+    const abortController = new AbortController();
+
+    async function loadExchangeRate() {
+      setExchangeRateError(null);
+
+      try {
+        const response = await fetch("/api/fx/mxn-cop", {
+          signal: abortController.signal,
+        });
+        const payload = (await response.json()) as Partial<ExchangeRate> & {
+          error?: string;
+        };
+
+        if (
+          !response.ok ||
+          !Number.isFinite(payload.rate) ||
+          payload.rate === undefined ||
+          payload.rate <= 0
+        ) {
+          throw new Error(
+            payload.error ?? "No se pudo obtener la tasa de cambio.",
+          );
+        }
+
+        setExchangeRate({
+          rate: payload.rate,
+          timestamp:
+            typeof payload.timestamp === "string"
+              ? payload.timestamp
+              : new Date().toISOString(),
+        });
+        setExchangeRateError(null);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        setExchangeRateError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo obtener la tasa de cambio.",
+        );
+      }
+    }
+
+    void loadExchangeRate();
+    return () => abortController.abort();
+  }, [hasMxMovements, refreshKey]);
+
+  const canCalculate = !hasMxMovements || exchangeRate !== null;
+  const combinedNet =
+    coNet + (hasMxMovements && exchangeRate ? mxNet * exchangeRate.rate : 0);
+  const combinedTone = combinedNet < 0 ? "text-negative" : "text-positive";
+  const exchangeRateDate = exchangeRate
+    ? new Date(exchangeRate.timestamp)
+    : null;
+
+  return (
+    <article className="rounded-2xl border border-border bg-bg-surface p-5 text-text-primary shadow-xl">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="font-body text-xs uppercase text-text-secondary">
+            Total combinado · expresado en COP
+          </p>
+          <h3 className="mt-2 font-display text-lg font-semibold text-text-primary">
+            Utilidad operativa neta
+          </h3>
+          {!hasMovements ? (
+            <p className="mt-4 font-mono text-3xl font-semibold tabular-nums text-text-secondary">
+              {formatCurrency("CO", 0)}
+            </p>
+          ) : canCalculate ? (
+            <p
+              className={`mt-4 font-mono text-3xl font-semibold tabular-nums ${combinedTone}`}
+            >
+              {formatCurrency("CO", combinedNet)}
+            </p>
+          ) : exchangeRateError ? (
+            <p role="alert" className="mt-4 font-body text-sm text-negative">
+              No se pudo calcular el total combinado: {exchangeRateError}
+            </p>
+          ) : (
+            <p
+              role="status"
+              className="mt-4 inline-flex items-center gap-2 font-body text-sm text-text-secondary"
+            >
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Calculando total combinado...
+            </p>
+          )}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[28rem]">
+          <div className="rounded-2xl bg-bg-page p-3">
+            <p className="font-body text-xs text-text-secondary">Colombia</p>
+            <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-text-primary">
+              {formatCurrency("CO", coNet)}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-bg-page p-3">
+            <p className="font-body text-xs text-text-secondary">México</p>
+            <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-text-primary">
+              {formatCurrency("MX", mxNet)}
+            </p>
+          </div>
+        </div>
+
+        <div
+          className="hidden size-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-badge-nuevo-bg)] text-[var(--color-badge-nuevo)] ring-1 ring-[var(--color-badge-nuevo-bg)] xl:flex"
+          aria-hidden="true"
+        >
+          <CircleDollarSign className="h-5 w-5" />
+        </div>
+      </div>
+
+      {hasMxMovements && exchangeRate ? (
+        <p className="mt-4 border-t border-border pt-3 font-body text-xs text-text-secondary">
+          Conversión aplicada: 1 MXN = {" "}
+          <span className="font-mono tabular-nums">
+            {exchangeRateFormatter.format(exchangeRate.rate)} COP
+          </span>
+          {exchangeRateDate && !Number.isNaN(exchangeRateDate.getTime())
+            ? ` · tasa actualizada ${exchangeRateDateFormatter.format(exchangeRateDate)}`
+            : null}
+        </p>
+      ) : null}
+    </article>
   );
 }
 
