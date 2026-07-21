@@ -30,7 +30,7 @@ const navItems = [
     icon: Calculator,
   },
   {
-    label: "Command Center",
+    label: "Torre de control",
     href: "/command-center",
     icon: LayoutDashboard,
   },

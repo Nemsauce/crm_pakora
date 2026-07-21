@@ -181,7 +181,7 @@ function InvestigationShell({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="font-body text-xs uppercase text-text-secondary">
-              Command Center
+              Torre de control
             </p>
             <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
               Investigación

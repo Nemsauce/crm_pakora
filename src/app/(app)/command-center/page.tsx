@@ -27,10 +27,10 @@ export default function CommandCenterPage() {
     <section className="min-h-screen px-6 py-6 sm:px-8">
       <div className="border-b border-border pb-5">
         <p className="font-body text-xs uppercase text-text-secondary">
-          Command Center
+          Torre de control
         </p>
         <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
-          Torre de control
+          Vista general
         </h1>
         <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
           Elige una vista para revisar la operación financiera, las métricas
@@ -51,7 +51,7 @@ export default function CommandCenterPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="font-body text-xs uppercase text-text-secondary">
-                    Command Center
+                    Torre de control
                   </p>
                   <h2 className="mt-3 font-display text-xl font-semibold text-text-primary">
                     {section.title}

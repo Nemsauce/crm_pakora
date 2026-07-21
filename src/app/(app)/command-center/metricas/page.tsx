@@ -18,7 +18,7 @@ export default async function CommandCenterMetricasPage() {
     <section className="min-h-screen px-6 py-6 sm:px-8">
       <div className="border-b border-border pb-5">
         <p className="font-body text-xs uppercase text-text-secondary">
-          Command Center
+          Torre de control
         </p>
         <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
           Métricas
