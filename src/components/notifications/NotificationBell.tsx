@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, CheckCheck, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -73,8 +74,22 @@ function trimUnreadCount(count: number) {
   return count > 99 ? "99+" : String(count);
 }
 
+function getNotificationDestination(notification: Notification) {
+  if (notification.task_id !== null && notification.order_id !== null) {
+    return `/tareas?detalle=${notification.order_id}&tareaId=${notification.task_id}`;
+  }
+
+  if (notification.order_id !== null) {
+    return `/pedidos?detalle=${notification.order_id}`;
+  }
+
+  return null;
+}
+
 export function NotificationBell() {
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const notificationsRef = useRef<Notification[]>([]);
   const baseDocumentTitleRef = useRef<string | null>(null);
@@ -337,6 +352,19 @@ export function NotificationBell() {
     setPendingNotificationId(null);
   }
 
+  async function handleNotificationClick(notification: Notification) {
+    await handleMarkRead(notification);
+
+    const destination = getNotificationDestination(notification);
+
+    if (!destination) {
+      return;
+    }
+
+    router.push(destination);
+    setIsOpen(false);
+  }
+
   async function handleMarkAllRead() {
     if (unreadCount === 0 || isMarkingAll) {
       return;
@@ -357,7 +385,7 @@ export function NotificationBell() {
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
@@ -435,7 +463,7 @@ export function NotificationBell() {
                     type="button"
                     onClick={(event) => {
                       event.preventDefault();
-                      void handleMarkRead(notification);
+                      void handleNotificationClick(notification);
                     }}
                     className="flex w-full gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[var(--color-accent)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
