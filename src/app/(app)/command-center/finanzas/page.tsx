@@ -1,6 +1,10 @@
 import { CapitalMovementsCard } from "@/components/command-center/CapitalMovementsCard";
 import { DateRangeSelector } from "@/components/command-center/DateRangeSelector";
 import {
+  DineroEnLaCalleTable,
+  type DineroEnLaCalleRow,
+} from "@/components/command-center/DineroEnLaCalleTable";
+import {
   MovementBreakdownTable,
   type WalletSummaryRow,
 } from "@/components/command-center/MovementBreakdownTable";
@@ -36,6 +40,13 @@ type WalletDailySummaryRpcClient = {
     args: { p_date_from: string; p_date_to: string },
   ) => PromiseLike<{
     data: WalletDailySummaryRow[] | null;
+    error: { message: string } | null;
+  }>;
+};
+
+type DineroEnLaCalleRpcClient = {
+  rpc: (functionName: "dinero_en_la_calle") => PromiseLike<{
+    data: DineroEnLaCalleRow[] | null;
     error: { message: string } | null;
   }>;
 };
@@ -232,6 +243,14 @@ function getWalletDailySummary(
   );
 }
 
+function getDineroEnLaCalle(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+) {
+  return (supabase as unknown as DineroEnLaCalleRpcClient).rpc(
+    "dinero_en_la_calle",
+  );
+}
+
 export default async function CommandCenterFinanzasPage({
   searchParams,
 }: CommandCenterFinanzasPageProps) {
@@ -239,19 +258,24 @@ export default async function CommandCenterFinanzasPage({
   const { currentRange, dateFrom, dateTo } = getSelectedDateRange(params);
   const previousDateRange = getPreviousDateRange(dateFrom, dateTo);
   const supabase = await createClient();
-  const [walletSummaryResult, dailySummaryResult, previousDailySummaryResult] =
-    await Promise.all([
-      supabase.rpc("wallet_summary", {
-        p_date_from: dateFrom,
-        p_date_to: dateTo,
-      }),
-      getWalletDailySummary(supabase, dateFrom, dateTo),
-      getWalletDailySummary(
-        supabase,
-        previousDateRange.dateFrom,
-        previousDateRange.dateTo,
-      ),
-    ]);
+  const [
+    walletSummaryResult,
+    dailySummaryResult,
+    previousDailySummaryResult,
+    dineroEnLaCalleResult,
+  ] = await Promise.all([
+    supabase.rpc("wallet_summary", {
+      p_date_from: dateFrom,
+      p_date_to: dateTo,
+    }),
+    getWalletDailySummary(supabase, dateFrom, dateTo),
+    getWalletDailySummary(
+      supabase,
+      previousDateRange.dateFrom,
+      previousDateRange.dateTo,
+    ),
+    getDineroEnLaCalle(supabase),
+  ]);
 
   if (walletSummaryResult.error) {
     throw new Error(
@@ -271,9 +295,16 @@ export default async function CommandCenterFinanzasPage({
     );
   }
 
+  if (dineroEnLaCalleResult.error) {
+    throw new Error(
+      `No se pudo cargar el dinero en la calle: ${dineroEnLaCalleResult.error.message}`,
+    );
+  }
+
   const summaryRows = walletSummaryResult.data ?? [];
   const dailySummaryRows = dailySummaryResult.data ?? [];
   const previousDailySummaryRows = previousDailySummaryResult.data ?? [];
+  const dineroEnLaCalleRows = dineroEnLaCalleResult.data ?? [];
 
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
@@ -345,6 +376,28 @@ export default async function CommandCenterFinanzasPage({
               />
             );
           })}
+        </div>
+      </section>
+
+      <section className="mt-8" aria-labelledby="street-money-heading">
+        <div>
+          <p className="font-body text-xs uppercase text-text-secondary">
+            Foto actual, sin filtro de fechas
+          </p>
+          <h2
+            id="street-money-heading"
+            className="mt-2 font-display text-xl font-semibold text-text-primary"
+          >
+            Dinero en la calle
+          </h2>
+          <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
+            Ganancia esperada de los pedidos confirmados que siguen en tránsito.
+            Este snapshot no cambia con el rango de fechas seleccionado.
+          </p>
+        </div>
+
+        <div className="mt-4">
+          <DineroEnLaCalleTable rows={dineroEnLaCalleRows} />
         </div>
       </section>
 
