@@ -10,9 +10,26 @@ export type CosteoListItem = {
   created_at: string | null;
 };
 
+type Pais = "CO" | "MX";
+
 type CosteoListProps = {
   costeos: CosteoListItem[];
   selectedId: string | null;
+  pais?: Pais;
+};
+
+const countryCopy: Record<
+  Pais,
+  { productsLabel: string; emptyState: string }
+> = {
+  CO: {
+    productsLabel: "Productos CO",
+    emptyState: "Aún no hay costeos guardados para Colombia.",
+  },
+  MX: {
+    productsLabel: "Productos MX",
+    emptyState: "Aún no hay costeos guardados para México.",
+  },
 };
 
 const moneyFormatter = new Intl.NumberFormat("es-CO", {
@@ -36,9 +53,11 @@ function formatDate(value: string | null) {
   return Number.isNaN(date.getTime()) ? "Sin fecha" : dateFormatter.format(date);
 }
 
-export function CosteoList({ costeos, selectedId }: CosteoListProps) {
+export function CosteoList({ costeos, selectedId, pais }: CosteoListProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const resolvedPais = pais ?? (pathname.startsWith("/costeos/mx") ? "MX" : "CO");
+  const copy = countryCopy[resolvedPais];
 
   function buildHref(costeoId: string | null) {
     const params = new URLSearchParams(searchParams);
@@ -63,7 +82,7 @@ export function CosteoList({ costeos, selectedId }: CosteoListProps) {
             Costeos guardados
           </p>
           <h2 className="mt-1 font-display text-lg font-semibold text-text-primary">
-            Productos CO
+            {copy.productsLabel}
           </h2>
         </div>
         <Link
@@ -111,7 +130,7 @@ export function CosteoList({ costeos, selectedId }: CosteoListProps) {
         </div>
       ) : (
         <div className="mt-4 rounded-2xl border border-border bg-bg-page p-4 font-body text-sm text-text-secondary">
-          Aún no hay costeos guardados para Colombia.
+          {copy.emptyState}
         </div>
       )}
     </section>

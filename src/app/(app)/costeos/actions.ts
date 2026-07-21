@@ -23,9 +23,21 @@ type CosteoInsert = {
 
 type CosteoUpdate = Omit<CosteoInsert, "pais">;
 
+type CosteoCountry = {
+  pais: Pais;
+};
+
 type CosteosTableClient = {
   from(table: "costeos"): {
     insert(values: CosteoInsert): Promise<{ error: { message: string } | null }>;
+    select(columns: "pais"): {
+      eq(column: "id", value: string): {
+        maybeSingle(): Promise<{
+          data: CosteoCountry | null;
+          error: { message: string } | null;
+        }>;
+      };
+    };
     update(values: Partial<CosteoInsert & { importe_gastado: number }>): {
       eq(
         column: string,
@@ -160,15 +172,29 @@ export async function updateCosteoImporteGastado(
 ) {
   const importeGastado = readNumber(formData, "importe_gastado");
   const supabase = (await createClient()) as unknown as CosteosTableClient;
+  const { data: costeo, error: costeoError } = await supabase
+    .from("costeos")
+    .select("pais")
+    .eq("id", costeoId)
+    .maybeSingle();
+
+  if (costeoError || !costeo) {
+    throw new Error(
+      `No se pudo cargar el costeo: ${costeoError?.message ?? "Costeo no encontrado."}`,
+    );
+  }
+
   const { error } = await supabase
     .from("costeos")
     .update({ importe_gastado: importeGastado })
     .eq("id", costeoId)
-    .eq("pais", "CO");
+    .eq("pais", costeo.pais);
 
   if (error) {
     throw new Error(`No se pudo guardar el importe gastado: ${error.message}`);
   }
 
-  redirect(`/costeos/co?costeo=${encodeURIComponent(costeoId)}&importe=1`);
+  redirect(
+    `${getCosteosPath(costeo.pais)}?costeo=${encodeURIComponent(costeoId)}&importe=1`,
+  );
 }
