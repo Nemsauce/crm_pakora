@@ -35,6 +35,7 @@ export type DropiOrderMX = {
   client_total_orders_returneds?: number | string | null;
   orderdetails?: Array<{ supplier_price?: number | string | null }> | null;
   shipping_amount?: number | string | null;
+  dropshipper_amount_to_win?: number | string | null;
   shipping_guide?: string | null;
   [key: string]: unknown;
 };

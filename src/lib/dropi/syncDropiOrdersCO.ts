@@ -5,6 +5,7 @@ import type {
   DropiOrderCO,
 } from "@/lib/dropi/fetchDropiOrdersCO";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Database } from "@/lib/supabase/database.types";
 import {
   processOrderHistory,
   type OrderHistoryEntry,
@@ -31,6 +32,11 @@ type SupabaseActiveOrder = {
   tarea_generada_para_estado: string | null;
   status_history: LatestStatusHistory[] | LatestStatusHistory | null;
 };
+
+type OrderUpdateWithExpectedProfit =
+  Database["public"]["Tables"]["orders"]["Update"] & {
+    monto_a_ganar: number | null;
+  };
 
 export type SyncDropiOrdersCOResult = {
   ordersFromDropi: number;
@@ -169,6 +175,18 @@ function getDropiAmount(value: number | string | null | undefined) {
   return Number.parseFloat(String(value || 0));
 }
 
+function getNullableDropiAmount(
+  value: number | string | null | undefined,
+) {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return null;
+  }
+
+  const amount = Number(value);
+
+  return Number.isFinite(amount) ? amount : null;
+}
+
 function getOrderLabel(order: SupabaseActiveOrder) {
   return order.numero_orden ?? String(order.id);
 }
@@ -241,17 +259,23 @@ async function updateDenormalizedFields(
   );
   const orderDetail = (dropiOrder.orderdetails || [])[0] || {};
   const supabase = createAdminClient();
+  const orderUpdate: OrderUpdateWithExpectedProfit = {
+    nivel_riesgo: getRiskLevel(dropiOrder),
+    costo_producto: getDropiAmount(orderDetail.supplier_price),
+    costo_envio: getDropiAmount(dropiOrder.shipping_amount),
+    monto_a_ganar: getNullableDropiAmount(
+      dropiOrder.dropshipper_amount_to_win,
+    ),
+    guia_envio: dropiOrder.shipping_guide ?? null,
+    transportadora,
+    fecha_entrega_real: estadoNuevo === "ENTREGADO" ? registradoEn : null,
+    activo: !isClosedCategory(categoria),
+  };
   const { error } = await supabase
     .from("orders")
-    .update({
-      nivel_riesgo: getRiskLevel(dropiOrder),
-      costo_producto: getDropiAmount(orderDetail.supplier_price),
-      costo_envio: getDropiAmount(dropiOrder.shipping_amount),
-      guia_envio: dropiOrder.shipping_guide ?? null,
-      transportadora,
-      fecha_entrega_real: estadoNuevo === "ENTREGADO" ? registradoEn : null,
-      activo: !isClosedCategory(categoria),
-    })
+    .update(
+      orderUpdate as Database["public"]["Tables"]["orders"]["Update"],
+    )
     .eq("id", supabaseOrder.id);
 
   if (error) {
@@ -310,14 +334,6 @@ export async function syncDropiOrdersCO(
         supabaseOrder.estado_dropi === estadoNuevo && yaProcesado
       );
 
-      if (!debeActualizarEstado && missingHistory.length === 0) {
-        continue;
-      }
-
-      if (missingHistory.length > 0) {
-        ordersWithMissingHistory += 1;
-      }
-
       try {
         await updateDenormalizedFields(
           supabaseOrder,
@@ -333,6 +349,14 @@ export async function syncDropiOrdersCO(
           "denormalized_fields",
           error,
         );
+      }
+
+      if (!debeActualizarEstado && missingHistory.length === 0) {
+        continue;
+      }
+
+      if (missingHistory.length > 0) {
+        ordersWithMissingHistory += 1;
       }
 
       if (missingHistory.length > 0) {
