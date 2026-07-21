@@ -14,6 +14,15 @@ export type TaskWhatsAppOrder = {
   pais: "CO" | "MX";
 };
 
+type TaskWhatsAppTask = {
+  tipo: string;
+  titulo?: string | null;
+  descripcion?: string | null;
+};
+
+const EN_REPARTO_TASK_TITLE =
+  "Confirmar que el cliente esté pendiente de recibir";
+
 const currencyFormatter = {
   CO: new Intl.NumberFormat("es-CO", {
     style: "currency",
@@ -70,7 +79,7 @@ function getFullAddress(order: TaskWhatsAppOrder) {
 }
 
 export function buildTaskWhatsAppMessage(
-  tarea: { tipo: string },
+  tarea: TaskWhatsAppTask,
   order: TaskWhatsAppOrder,
 ): string | null {
   if (order.pais === "MX" && tarea.tipo === "llamar_confirmacion") {
@@ -99,6 +108,14 @@ export function buildTaskWhatsAppMessage(
 
   if (tarea.tipo === "notificar_proximo_llegar") {
     return `${greeting}\n\n¡Buenas noticias! Tu pedido ya esta en reparto y llegará pronto 📦🚚\n\nLa entrega puede realizarse durante el día de hoy o mañana. Por favor, mantente pendiente de tu teléfono por si el repartidor necesita contactarte.\n\nQuedamos atentos a cualquier cosa. 💛`;
+  }
+
+  if (
+    tarea.tipo === "presionar_entrega" &&
+    tarea.titulo === EN_REPARTO_TASK_TITLE &&
+    !tarea.descripcion?.trim()
+  ) {
+    return `${greeting}\n\n¡Buenas noticias! Tu pedido ya fue asignado a un mensajero y llegará pronto 📦🚚\n\nLa entrega puede realizarse durante el día de hoy o mañana. Por favor, mantente pendiente de tu teléfono por si el repartidor necesita contactarte.\n\nQuedamos atentos a cualquier cosa. 💛`;
   }
 
   return null;
