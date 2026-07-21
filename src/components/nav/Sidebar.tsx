@@ -37,7 +37,11 @@ const navItems = [
 ] as const;
 
 function isCurrentPath(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return (
+    pathname === href ||
+    pathname.startsWith(`${href}/`) ||
+    (href === "/pedidos" && pathname.startsWith("/clientes/"))
+  );
 }
 
 function PakoraLogoMark() {

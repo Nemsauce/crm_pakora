@@ -1,9 +1,18 @@
-import { ArrowLeft, PackageCheck, PackageX, RotateCcw, ShoppingBag } from "lucide-react";
+import {
+  ArrowLeft,
+  MessageCircle,
+  PackageCheck,
+  PackageX,
+  RotateCcw,
+  ShoppingBag,
+} from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import type { Database, Tables } from "@/lib/supabase/database.types";
+import { formatPhoneForWhatsApp } from "@/lib/whatsapp/formatPhoneForWhatsApp";
 
 type Order = Tables<"orders">;
 type Categoria = Database["public"]["Enums"]["categoria_estado_enum"];
@@ -41,6 +50,11 @@ const riskClassName: Record<string, string> = {
   medio: "bg-risk-medium-bg text-risk-medium",
   bajo: "bg-risk-low-bg text-risk-low",
   sin_datos: "bg-bg-page text-[var(--muted-foreground)]",
+};
+
+const paisLabel: Record<Order["pais"], string> = {
+  CO: "Colombia",
+  MX: "México",
 };
 
 const dateFormatter = new Intl.DateTimeFormat("es-CO", {
@@ -174,6 +188,12 @@ export default async function ClientePage({ params }: ClientePageProps) {
 
   const latestOrder = orders[0];
   const risk = normalizeRisk(latestOrder.nivel_riesgo);
+  const whatsappNumber = latestOrder.telefono?.trim()
+    ? formatPhoneForWhatsApp(latestOrder.telefono, latestOrder.pais)
+    : "";
+  const whatsappUrl = whatsappNumber
+    ? `https://api.whatsapp.com/send/?phone=${whatsappNumber}`
+    : null;
   const metrics = [
     {
       label: "Total pedidos",
@@ -219,16 +239,47 @@ export default async function ClientePage({ params }: ClientePageProps) {
             <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
               {getCustomerName(latestOrder)}
             </h1>
-            <p className="mt-2 font-mono text-sm tabular-nums text-text-secondary">
-              {telefono}
-            </p>
           </div>
-          <span
-            className={`w-fit rounded-full px-3 py-1 font-body text-xs font-semibold ${riskClassName[risk]}`}
-          >
-            {riskLabel[risk]}
-          </span>
+          <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+            <span
+              className={`w-fit rounded-full px-3 py-1 font-body text-xs font-semibold ${riskClassName[risk]}`}
+            >
+              {riskLabel[risk]}
+            </span>
+            {whatsappUrl ? (
+              <Button
+                asChild
+                className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90"
+              >
+                <a href={whatsappUrl} target="_blank" rel="noreferrer">
+                  <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                  WhatsApp
+                </a>
+              </Button>
+            ) : null}
+          </div>
         </div>
+
+        <dl className="mt-5 grid gap-4 rounded-2xl border border-border bg-bg-surface p-4 shadow-lg sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <dt className="font-body text-xs text-text-secondary">Teléfono</dt>
+            <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-text-primary">
+              {telefono}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-body text-xs text-text-secondary">País</dt>
+            <dd className="mt-1 font-body text-sm font-semibold text-text-primary">
+              {paisLabel[latestOrder.pais]}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="font-body text-xs text-text-secondary">Dirección</dt>
+            <dd className="mt-1 font-body text-sm font-semibold text-text-primary">
+              {latestOrder.direccion?.trim() || "Sin dirección registrada"}
+            </dd>
+          </div>
+        </dl>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
