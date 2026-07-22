@@ -41,6 +41,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getDisplayName } from "@/lib/profiles/getDisplayName";
 import { createClient } from "@/lib/supabase/client";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 import { buildTaskWhatsAppMessage } from "@/lib/whatsapp/buildTaskMessage";
@@ -50,7 +51,7 @@ type Order = Tables<"orders">;
 type StatusHistory = Tables<"status_history">;
 type Task = Tables<"tasks">;
 type Comentario = Tables<"comentarios">;
-type AssigneeOption = Pick<Tables<"profiles">, "id" | "email">;
+type AssigneeOption = Pick<Tables<"profiles">, "id" | "email" | "nombre">;
 type RowOrder = Pick<
   Order,
   "id" | "nombre" | "apellido" | "numero_orden" | "pais"
@@ -212,7 +213,7 @@ function getDeadline(value: string | null, estado: TaskState) {
   };
 }
 
-function getCompletionLabel(task: Task) {
+function getCompletionLabel(task: Task, assigneeOptions: AssigneeOption[]) {
   if (!task.completado_en) {
     return "Completada";
   }
@@ -223,7 +224,10 @@ function getCompletionLabel(task: Task) {
     : dateTimeFormatter.format(date);
 
   return task.completado_por
-    ? `Completada ${dateLabel} · ${task.completado_por}`
+    ? `Completada ${dateLabel} · ${getDisplayName(
+        assigneeOptions,
+        task.completado_por,
+      )}`
     : `Completada ${dateLabel}`;
 }
 
@@ -303,9 +307,12 @@ function AssigneeSelect({
   const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
 
   const value = selectedAssignee ?? UNASSIGNED_VALUE;
-  const currentLabel =
-    assigneeOptions.find((option) => option.id === selectedAssignee)?.email ??
-    "Sin asignar";
+  const currentAssignee = assigneeOptions.find(
+    (option) => option.id === selectedAssignee,
+  );
+  const currentLabel = currentAssignee
+    ? getDisplayName(assigneeOptions, currentAssignee.email)
+    : "Sin asignar";
 
   useEffect(() => {
     if (!feedback || feedback.type === "error") {
@@ -381,7 +388,9 @@ function AssigneeSelect({
                   value={option.id}
                   className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
                 >
-                  <Select.ItemText>{option.email}</Select.ItemText>
+                  <Select.ItemText>
+                    {getDisplayName(assigneeOptions, option.email)}
+                  </Select.ItemText>
                 </Select.Item>
               ))}
             </Select.Viewport>
@@ -731,7 +740,7 @@ export function TaskDetailRow({
         <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center lg:justify-end">
           {isCompleted ? (
             <div className="rounded-full bg-risk-low-bg px-3 py-1 font-mono text-xs font-semibold tabular-nums text-risk-low">
-              {getCompletionLabel(task)}
+              {getCompletionLabel(task, assigneeOptions)}
             </div>
           ) : (
             <div
@@ -947,7 +956,7 @@ export function TaskDetailDrawer({
 
       const { data, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, email")
+        .select("id, email, nombre")
         .eq("activo", true)
         .order("email", { ascending: true });
 
@@ -1144,7 +1153,10 @@ export function TaskDetailDrawer({
                   onReassigned={handleTaskReassigned}
                   onSnoozed={handleTaskSnoozed}
                 />
-                <OtherTasksSection tasks={otherTasks} />
+                <OtherTasksSection
+                  tasks={otherTasks}
+                  assigneeOptions={assigneeOptions ?? []}
+                />
                 <OrderDetailsSection
                   key={`order-details-${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
                   order={detail.order}
@@ -1245,7 +1257,7 @@ function SelectedTaskSection({
               }`}
             >
               {isCompleted
-                ? getCompletionLabel(task)
+                ? getCompletionLabel(task, assigneeOptions ?? [])
                 : `${deadline.isOverdue ? "Vencida " : "Vence "}${deadline.label}`}
             </div>
           </div>
@@ -1412,7 +1424,13 @@ function CompleteTaskForm({
   );
 }
 
-function OtherTasksSection({ tasks }: { tasks: Task[] }) {
+function OtherTasksSection({
+  tasks,
+  assigneeOptions,
+}: {
+  tasks: Task[];
+  assigneeOptions: AssigneeOption[];
+}) {
   return (
     <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
       <h3 className="font-display text-base font-semibold text-[var(--foreground)]">
@@ -1422,7 +1440,11 @@ function OtherTasksSection({ tasks }: { tasks: Task[] }) {
       {tasks.length > 0 ? (
         <ul className="mt-4 space-y-3">
           {tasks.map((task) => (
-            <TaskSummaryItem key={task.id} task={task} />
+            <TaskSummaryItem
+              key={task.id}
+              task={task}
+              assigneeOptions={assigneeOptions}
+            />
           ))}
         </ul>
       ) : (
@@ -1434,7 +1456,13 @@ function OtherTasksSection({ tasks }: { tasks: Task[] }) {
   );
 }
 
-function TaskSummaryItem({ task }: { task: Task }) {
+function TaskSummaryItem({
+  task,
+  assigneeOptions,
+}: {
+  task: Task;
+  assigneeOptions: AssigneeOption[];
+}) {
   const deadline = getDeadline(task.fecha_limite, task.estado);
 
   return (
@@ -1460,7 +1488,7 @@ function TaskSummaryItem({ task }: { task: Task }) {
           className={deadline.isOverdue ? "text-risk-high" : undefined}
         >
           {task.estado === "completada"
-            ? getCompletionLabel(task)
+            ? getCompletionLabel(task, assigneeOptions)
             : `${deadline.isOverdue ? "Vencida " : "Vence "}${deadline.label}`}
         </span>
       </div>

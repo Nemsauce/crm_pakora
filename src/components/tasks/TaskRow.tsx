@@ -14,11 +14,12 @@ import { useEffect, useState, useTransition } from "react";
 import { Select } from "radix-ui";
 
 import { reassignTask } from "@/app/(app)/tareas/actions";
+import { getDisplayName } from "@/lib/profiles/getDisplayName";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 
 type Task = Tables<"tasks">;
 type Order = Pick<Tables<"orders">, "id" | "nombre" | "apellido" | "numero_orden">;
-type AssigneeOption = Pick<Tables<"profiles">, "id" | "email">;
+type AssigneeOption = Pick<Tables<"profiles">, "id" | "email" | "nombre">;
 type TaskType = Database["public"]["Enums"]["tipo_tarea_enum"];
 type TaskState = Database["public"]["Enums"]["estado_tarea_enum"];
 
@@ -139,7 +140,7 @@ function getDeadline(value: string | null) {
   };
 }
 
-function getCompletionLabel(task: Task) {
+function getCompletionLabel(task: Task, assigneeOptions: AssigneeOption[]) {
   if (!task.completado_en) {
     return "Completada";
   }
@@ -150,7 +151,10 @@ function getCompletionLabel(task: Task) {
     : dateTimeFormatter.format(date);
 
   return task.completado_por
-    ? `Completada ${dateLabel} · ${task.completado_por}`
+    ? `Completada ${dateLabel} · ${getDisplayName(
+        assigneeOptions,
+        task.completado_por,
+      )}`
     : `Completada ${dateLabel}`;
 }
 
@@ -169,9 +173,12 @@ function AssigneeSelect({
   const [feedback, setFeedback] = useState<AssigneeFeedback | null>(null);
 
   const value = selectedAssignee ?? UNASSIGNED_VALUE;
-  const currentLabel =
-    assigneeOptions.find((option) => option.id === selectedAssignee)?.email ??
-    "Sin asignar";
+  const currentAssignee = assigneeOptions.find(
+    (option) => option.id === selectedAssignee,
+  );
+  const currentLabel = currentAssignee
+    ? getDisplayName(assigneeOptions, currentAssignee.email)
+    : "Sin asignar";
 
   useEffect(() => {
     if (!feedback || feedback.type === "error") {
@@ -246,7 +253,9 @@ function AssigneeSelect({
                   value={option.id}
                   className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
                 >
-                  <Select.ItemText>{option.email}</Select.ItemText>
+                  <Select.ItemText>
+                    {getDisplayName(assigneeOptions, option.email)}
+                  </Select.ItemText>
                 </Select.Item>
               ))}
             </Select.Viewport>
@@ -375,7 +384,7 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
         <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center lg:justify-end">
           {isCompleted ? (
             <div className="rounded-full bg-risk-low-bg px-3 py-1 font-mono text-xs font-semibold tabular-nums text-risk-low">
-              {getCompletionLabel(task)}
+              {getCompletionLabel(task, assigneeOptions)}
             </div>
           ) : (
             <div

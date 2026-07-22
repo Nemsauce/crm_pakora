@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { getDisplayName } from "@/lib/profiles/getDisplayName";
 import { createClient } from "@/lib/supabase/client";
 
 type TopBarProps = {
@@ -30,7 +31,10 @@ export type TopBarProfile = {
 };
 
 function getPrimaryLabel(profile: TopBarProfile) {
-  return profile.nombre?.trim() || profile.email || "Usuario activo";
+  const rawIdentity =
+    profile.email ?? profile.nombre?.trim() ?? "Usuario activo";
+
+  return getDisplayName([profile], rawIdentity);
 }
 
 function getInitials(profile: TopBarProfile) {
@@ -76,7 +80,6 @@ export function TopBar({ profile }: TopBarProps) {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const primaryLabel = getPrimaryLabel(profile);
   const titulo = profile.titulo?.trim();
-  const showEmailLine = Boolean(profile.nombre?.trim() && profile.email);
   const telegramLinked = profile.telegram_chat_id !== null;
 
   async function handleLogout() {
@@ -122,11 +125,6 @@ export function TopBar({ profile }: TopBarProps) {
                 {titulo ? (
                   <p className="mt-0.5 truncate text-xs text-[var(--muted-foreground)]">
                     {titulo}
-                  </p>
-                ) : null}
-                {showEmailLine ? (
-                  <p className="mt-1 truncate font-mono text-[11px] text-[var(--muted-foreground)]">
-                    {profile.email}
                   </p>
                 ) : null}
               </div>

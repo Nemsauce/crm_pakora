@@ -1,4 +1,6 @@
 import type { Database } from "@/lib/supabase/database.types";
+import { getDisplayName } from "@/lib/profiles/getDisplayName";
+import { createClient } from "@/lib/supabase/server";
 
 type TaskType = Database["public"]["Enums"]["tipo_tarea_enum"];
 
@@ -140,7 +142,7 @@ function getUserSummaries(
     );
 }
 
-export function ProductivityTable({
+export async function ProductivityTable({
   completionRows,
   handlingRows,
 }: ProductivityTableProps) {
@@ -151,6 +153,18 @@ export function ProductivityTable({
       <div className="rounded-2xl border border-border bg-bg-surface p-8 text-center font-body text-sm text-text-secondary shadow-lg">
         Sin tareas completadas en este rango.
       </div>
+    );
+  }
+
+  const supabase = await createClient();
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id, email, nombre")
+    .eq("activo", true);
+
+  if (profilesError) {
+    console.error(
+      `No se pudieron cargar los nombres de perfiles: ${profilesError.message}`,
     );
   }
 
@@ -172,7 +186,7 @@ export function ProductivityTable({
                   Usuario
                 </p>
                 <h3 className="mt-2 break-words font-display text-lg font-semibold text-text-primary [overflow-wrap:anywhere]">
-                  {summary.usuario}
+                  {getDisplayName(profiles ?? [], summary.usuario)}
                 </h3>
               </div>
 

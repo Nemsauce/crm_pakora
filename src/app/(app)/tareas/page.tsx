@@ -116,7 +116,7 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
 
   const { data: profilesData, error: profilesError } = await supabase
     .from("profiles")
-    .select("id, email")
+    .select("id, email, nombre")
     .eq("activo", true)
     .order("email", { ascending: true });
 
