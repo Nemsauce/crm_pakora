@@ -1,4 +1,4 @@
-import { BarChart3, DollarSign, Search } from "lucide-react";
+import { BarChart3, DollarSign, Search, Users } from "lucide-react";
 import Link from "next/link";
 
 const sections = [
@@ -20,6 +20,12 @@ const sections = [
     href: "/command-center/investigacion",
     icon: Search,
   },
+  {
+    title: "Productividad",
+    description: "Rendimiento del equipo por tarea.",
+    href: "/command-center/productividad",
+    icon: Users,
+  },
 ] as const;
 
 export default function CommandCenterPage() {
@@ -34,11 +40,12 @@ export default function CommandCenterPage() {
         </h1>
         <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
           Elige una vista para revisar la operación financiera, las métricas
-          comerciales o nuevas oportunidades de producto.
+          comerciales, la productividad del equipo o nuevas oportunidades de
+          producto.
         </p>
       </div>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-3">
+      <div className="mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
         {sections.map((section) => {
           const Icon = section.icon;
 
