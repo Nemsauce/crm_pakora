@@ -208,25 +208,27 @@ export function TaskFilters() {
           />
 
           <form onSubmit={submitSearch} className="grid gap-1.5">
-            <label
-              htmlFor="task-search"
-              className="font-body text-xs text-[var(--muted-foreground)]"
-            >
-              Buscar
-            </label>
-            <div className="flex h-14 items-center gap-2 rounded-2xl border border-border bg-bg-surface px-3 shadow-sm focus-within:ring-2 focus-within:ring-ring">
+            <div className="flex h-14 min-w-44 items-center gap-3 rounded-2xl border border-border bg-bg-surface px-3 shadow-sm outline-none transition-colors focus-within:ring-2 focus-within:ring-ring hover:bg-bg-page">
               <Search
                 className="h-4 w-4 shrink-0 text-[var(--muted-foreground)]"
                 aria-hidden="true"
               />
-              <Input
-                id="task-search"
-                type="text"
-                placeholder="Cliente o número de orden"
-                value={searchDraft}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                className="h-8 border-0 bg-transparent p-0 font-body text-sm text-[var(--foreground)] shadow-none focus-visible:ring-0"
-              />
+              <span className="grid min-w-0 flex-1 text-left leading-tight">
+                <label
+                  htmlFor="task-search"
+                  className="font-body text-xs text-[var(--muted-foreground)]"
+                >
+                  Buscar
+                </label>
+                <Input
+                  id="task-search"
+                  type="text"
+                  placeholder="Cliente o número de orden"
+                  value={searchDraft}
+                  onChange={(event) => setSearchDraft(event.target.value)}
+                  className="h-8 min-w-0 border-0 bg-transparent p-0 font-body text-sm text-[var(--foreground)] shadow-none focus-visible:ring-0"
+                />
+              </span>
             </div>
           </form>
         </div>
