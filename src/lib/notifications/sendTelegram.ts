@@ -10,7 +10,7 @@ const countryFlag = {
 export async function sendTelegramMessage(
   chatId: string,
   text: string,
-  pais: TelegramCountry,
+  pais?: TelegramCountry,
 ): Promise<void> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -27,7 +27,7 @@ export async function sendTelegramMessage(
       },
       body: JSON.stringify({
         chat_id: chatId,
-        text: `${countryFlag[pais]} ${text}`,
+        text: pais ? `${countryFlag[pais]} ${text}` : text,
       }),
     },
   );

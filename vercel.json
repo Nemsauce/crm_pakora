@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/check-confirmation-followups",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/reporte-semanal",
+      "schedule": "0 13 * * 6"
     }
   ]
 }
