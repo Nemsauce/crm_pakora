@@ -6,9 +6,30 @@ import {
 } from "@/lib/notifications/sendTelegram";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { isValidResultado } from "@/lib/tasks/resultadoOptions";
 
 export type CompleteTaskResult = {
   error: string | null;
+};
+
+type TasksCompletionClient = {
+  from(table: "tasks"): {
+    update(values: {
+      estado: "completada";
+      completado_en: string;
+      completado_por: string;
+      notas_completado: string | null;
+      resultado: string;
+      updated_at: string;
+    }): {
+      eq(column: "id", value: number): {
+        in(
+          column: "estado",
+          values: ["pendiente", "en_progreso"],
+        ): PromiseLike<{ error: { message: string } | null }>;
+      };
+    };
+  };
 };
 
 type TaskHandlingEventsClient = {
@@ -61,6 +82,7 @@ export async function logTaskHandlingOpen(taskId: number): Promise<void> {
 
 export async function completeTask(
   taskId: number,
+  resultado?: string,
   notes?: string,
 ): Promise<CompleteTaskResult> {
   if (!Number.isInteger(taskId) || taskId <= 0) {
@@ -75,15 +97,37 @@ export async function completeTask(
     return { error: "No se pudo identificar el usuario activo." };
   }
 
+  const trimmedResultado = resultado?.trim();
+
+  if (!trimmedResultado) {
+    return { error: "Selecciona un resultado para completar la tarea." };
+  }
+
+  const { data: task, error: taskError } = await supabase
+    .from("tasks")
+    .select("tipo")
+    .eq("id", taskId)
+    .maybeSingle();
+
+  if (taskError || !task) {
+    return { error: "No se pudo validar la tarea a completar." };
+  }
+
+  if (!isValidResultado(task.tipo, trimmedResultado)) {
+    return { error: "El resultado seleccionado no es válido para esta tarea." };
+  }
+
   const trimmedNotes = notes?.trim();
   const completedAt = new Date().toISOString();
-  const { error } = await supabase
+  const completionClient = supabase as unknown as TasksCompletionClient;
+  const { error } = await completionClient
     .from("tasks")
     .update({
       estado: "completada",
       completado_en: completedAt,
       completado_por: userEmail,
       notas_completado: trimmedNotes ? trimmedNotes : null,
+      resultado: trimmedResultado,
       updated_at: completedAt,
     })
     .eq("id", taskId)

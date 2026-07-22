@@ -44,6 +44,7 @@ import {
 import { getDisplayName } from "@/lib/profiles/getDisplayName";
 import { createClient } from "@/lib/supabase/client";
 import type { Database, Tables } from "@/lib/supabase/database.types";
+import { resultadoOptions } from "@/lib/tasks/resultadoOptions";
 import { buildTaskWhatsAppMessage } from "@/lib/whatsapp/buildTaskMessage";
 import { formatPhoneForWhatsApp } from "@/lib/whatsapp/formatPhoneForWhatsApp";
 
@@ -1360,7 +1361,12 @@ function SelectedTaskSection({
       </div>
 
       {isActionable ? (
-        <CompleteTaskForm taskId={task.id} onCompleted={onCompleted} />
+        <CompleteTaskForm
+          key={`completion-form-${task.id}`}
+          taskId={task.id}
+          taskType={task.tipo}
+          onCompleted={onCompleted}
+        />
       ) : null}
     </section>
   );
@@ -1368,18 +1374,27 @@ function SelectedTaskSection({
 
 function CompleteTaskForm({
   taskId,
+  taskType,
   onCompleted,
 }: {
   taskId: number;
+  taskType: TaskType;
   onCompleted: (taskId: number, notes: string | null) => void;
 }) {
   const [isCompleting, startCompleting] = useTransition();
+  const [resultado, setResultado] = useState<string>();
   const [completionNote, setCompletionNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const options = resultadoOptions[taskType];
 
   function handleComplete() {
+    if (!resultado) {
+      setError("Selecciona un resultado para completar la tarea.");
+      return;
+    }
+
     startCompleting(async () => {
-      const result = await completeTask(taskId, completionNote);
+      const result = await completeTask(taskId, resultado, completionNote);
 
       if (result.error) {
         setError(result.error);
@@ -1387,6 +1402,7 @@ function CompleteTaskForm({
       }
 
       const trimmedNote = completionNote.trim();
+      setResultado(undefined);
       setCompletionNote("");
       setError(null);
       onCompleted(taskId, trimmedNote ? trimmedNote : null);
@@ -1395,6 +1411,54 @@ function CompleteTaskForm({
 
   return (
     <div className="mt-4 space-y-3 rounded-2xl border border-border bg-bg-page p-3">
+      <div>
+        <label
+          id={`drawer-completion-result-${taskId}`}
+          className="font-body text-xs text-[var(--muted-foreground)]"
+        >
+          Resultado
+        </label>
+        <Select.Root
+          value={resultado}
+          onValueChange={(value) => {
+            setResultado(value);
+            setError(null);
+          }}
+          disabled={isCompleting}
+        >
+          <Select.Trigger
+            aria-labelledby={`drawer-completion-result-${taskId}`}
+            className="mt-1.5 inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-border bg-bg-surface px-2.5 font-body text-sm text-[var(--foreground)] outline-none transition-colors hover:bg-bg-page focus:ring-2 focus:ring-ring disabled:opacity-60"
+          >
+            <Select.Value placeholder="Selecciona un resultado" />
+            <Select.Icon>
+              <ChevronDown
+                className="h-4 w-4 shrink-0 text-[var(--muted-foreground)]"
+                aria-hidden="true"
+              />
+            </Select.Icon>
+          </Select.Trigger>
+          <Select.Portal>
+            <Select.Content
+              position="popper"
+              sideOffset={6}
+              className="z-50 overflow-hidden rounded-2xl border border-border bg-bg-surface text-[var(--foreground)] shadow-md"
+            >
+              <Select.Viewport className="p-1">
+                {options.map((option) => (
+                  <Select.Item
+                    key={option}
+                    value={option}
+                    className="relative flex min-h-8 cursor-default select-none items-center rounded-lg px-2 py-1.5 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
+                  >
+                    <Select.ItemText>{option}</Select.ItemText>
+                  </Select.Item>
+                ))}
+              </Select.Viewport>
+            </Select.Content>
+          </Select.Portal>
+        </Select.Root>
+      </div>
       <label
         htmlFor={`drawer-completion-note-${taskId}`}
         className="font-body text-xs text-[var(--muted-foreground)]"
@@ -1413,7 +1477,7 @@ function CompleteTaskForm({
       {error ? <p className="font-body text-sm text-risk-high">{error}</p> : null}
       <Button
         type="button"
-        disabled={isCompleting}
+        disabled={isCompleting || !resultado}
         onClick={handleComplete}
         className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90 disabled:opacity-60"
       >
