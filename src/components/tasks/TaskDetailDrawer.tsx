@@ -30,6 +30,7 @@ import {
 
 import {
   completeTask,
+  logTaskHandlingOpen,
   reassignTask,
   snoozeTask,
 } from "@/app/(app)/tareas/actions";
@@ -800,6 +801,7 @@ export function TaskDetailDrawer({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const completionNavigationTimeoutRef = useRef<number | null>(null);
+  const lastLoggedTaskIdRef = useRef<number | null>(null);
   const isOpen = Boolean(selectedOrderId);
 
   const closeHref = useMemo(() => {
@@ -830,6 +832,16 @@ export function TaskDetailDrawer({
     return detail.tasks.filter((task) => task.id !== selectedTask.id);
   }, [detail, selectedTask]);
 
+  const loggableTaskId =
+    isOpen &&
+    detail &&
+    selectedTask &&
+    String(detail.order.id) === selectedOrderId &&
+    String(selectedTask.order_id) === selectedOrderId &&
+    (!selectedTaskId || String(selectedTask.id) === selectedTaskId)
+      ? selectedTask.id
+      : null;
+
   function closeDrawer() {
     if (completionNavigationTimeoutRef.current !== null) {
       window.clearTimeout(completionNavigationTimeoutRef.current);
@@ -847,6 +859,33 @@ export function TaskDetailDrawer({
       }
     };
   }, [selectedOrderId, selectedTaskId]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      lastLoggedTaskIdRef.current = null;
+      return;
+    }
+
+    if (
+      loggableTaskId === null ||
+      lastLoggedTaskIdRef.current === loggableTaskId
+    ) {
+      return;
+    }
+
+    const taskId = loggableTaskId;
+    lastLoggedTaskIdRef.current = taskId;
+
+    async function logOpen() {
+      try {
+        await logTaskHandlingOpen(taskId);
+      } catch (loggingError) {
+        console.error("Failed to log task drawer opening", loggingError);
+      }
+    }
+
+    void logOpen();
+  }, [isOpen, loggableTaskId]);
 
   useEffect(() => {
     if (!selectedOrderId) {

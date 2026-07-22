@@ -11,6 +11,54 @@ export type CompleteTaskResult = {
   error: string | null;
 };
 
+type TaskHandlingEventsClient = {
+  from(table: "task_handling_events"): {
+    insert(values: {
+      task_id: number;
+      usuario: string;
+    }): PromiseLike<{ error: { message: string } | null }>;
+  };
+};
+
+export async function logTaskHandlingOpen(taskId: number): Promise<void> {
+  if (!Number.isInteger(taskId) || taskId <= 0) {
+    return;
+  }
+
+  try {
+    const supabase = await createClient();
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    const userEmail = userData.user?.email;
+
+    if (userError || !userEmail) {
+      console.error("Failed to identify user for task handling event", {
+        taskId,
+        message:
+          userError?.message ?? "The authenticated user has no email address.",
+      });
+      return;
+    }
+
+    const eventsClient = supabase as unknown as TaskHandlingEventsClient;
+    const { error } = await eventsClient.from("task_handling_events").insert({
+      task_id: taskId,
+      usuario: userEmail,
+    });
+
+    if (error) {
+      console.error("Failed to log task handling open", {
+        taskId,
+        message: error.message,
+      });
+    }
+  } catch (error) {
+    console.error("Unexpected error logging task handling open", {
+      taskId,
+      error,
+    });
+  }
+}
+
 export async function completeTask(
   taskId: number,
   notes?: string,
