@@ -5,6 +5,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   ListTodo,
+  MessageCircle,
   Settings,
 } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +25,11 @@ const navItems = [
     label: "Tareas",
     href: "/tareas",
     icon: ListTodo,
+  },
+  {
+    label: "Asistente",
+    href: "/asistente",
+    icon: MessageCircle,
   },
   {
     label: "Costeos",
