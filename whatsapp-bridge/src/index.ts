@@ -34,10 +34,33 @@ const HISTORY_BACKFILL_MAX_ATTEMPTS = 3;
 const HISTORY_BACKFILL_RETRY_DELAY_MS = 1_000;
 const CURRENT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = path.resolve(CURRENT_DIR, "..");
-const AUTH_SESSION_DIR = path.join(PROJECT_DIR, "auth_session");
+const UNCONFIGURED_LOG_PREFIX = "[whatsapp-bridge:unconfigured]";
+const ACCOUNT_LABEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 
 dotenv.config({ path: path.join(PROJECT_DIR, ".env") });
 
+const accountLabel = process.env.WHATSAPP_ACCOUNT_LABEL?.trim();
+
+if (!accountLabel) {
+  console.error(
+    `${UNCONFIGURED_LOG_PREFIX} WHATSAPP_ACCOUNT_LABEL is required. Set a unique label such as CO or MX.`,
+  );
+  process.exit(1);
+}
+
+if (!ACCOUNT_LABEL_PATTERN.test(accountLabel)) {
+  console.error(
+    `${UNCONFIGURED_LOG_PREFIX} WHATSAPP_ACCOUNT_LABEL must use 1-64 letters, numbers, underscores, or hyphens and cannot start with a separator.`,
+  );
+  process.exit(1);
+}
+
+const LOG_PREFIX = `[whatsapp-bridge:${accountLabel}]`;
+const AUTH_SESSION_DIR = path.join(
+  PROJECT_DIR,
+  "auth_session",
+  accountLabel,
+);
 const bridgeSecret = process.env.WHATSAPP_BRIDGE_SECRET?.trim();
 const incomingWebhookUrl = (
   process.env.CRM_WEBHOOK_URL ?? DEFAULT_INCOMING_WEBHOOK_URL
@@ -47,7 +70,7 @@ let historyWebhookUrl = "";
 
 if (!bridgeSecret) {
   console.error(
-    "[whatsapp-bridge] WHATSAPP_BRIDGE_SECRET is required. Copy .env.example to .env and set it before starting.",
+    `${LOG_PREFIX} WHATSAPP_BRIDGE_SECRET is required. Copy .env.example to .env and set it before starting.`,
   );
   process.exit(1);
 }
@@ -82,7 +105,7 @@ try {
     : new URL(HISTORY_WEBHOOK_PATH, parsedIncomingWebhookUrl).toString();
 } catch {
   console.error(
-    "[whatsapp-bridge] CRM_WEBHOOK_URL, CRM_OUTGOING_WEBHOOK_URL and CRM_HISTORY_WEBHOOK_URL must be absolute HTTP(S) URLs.",
+    `${LOG_PREFIX} CRM_WEBHOOK_URL, CRM_OUTGOING_WEBHOOK_URL and CRM_HISTORY_WEBHOOK_URL must be absolute HTTP(S) URLs.`,
   );
   process.exit(1);
 }
@@ -124,13 +147,13 @@ function rememberForwardedMessageId(messageId: string) {
 
 function log(message: string) {
   console.log(
-    `[whatsapp-bridge] ${new Date().toISOString()} ${message}`,
+    `${LOG_PREFIX} ${new Date().toISOString()} ${message}`,
   );
 }
 
 function logError(context: string, error: unknown) {
   const detail = error instanceof Error ? error.message : String(error);
-  console.error(`[whatsapp-bridge] ${context}: ${detail}`);
+  console.error(`${LOG_PREFIX} ${context}: ${detail}`);
 }
 
 function redactPhone(phone: string) {
@@ -905,7 +928,7 @@ async function connectToWhatsApp() {
 
       if (statusCode === DisconnectReason.loggedOut) {
         log(
-          "La sesión fue cerrada deliberadamente en WhatsApp. No se reconectará; borra auth_session/ y vuelve a escanear el QR para vincularla de nuevo.",
+          `La sesión fue cerrada deliberadamente en WhatsApp. No se reconectará; borra auth_session/${accountLabel}/ y vuelve a escanear el QR para vincularla de nuevo.`,
         );
         return;
       }
