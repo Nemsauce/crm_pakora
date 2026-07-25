@@ -6,7 +6,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/supabase/database.types";
 import {
   draftReplyWithAI,
+  type WhatsAppOrderContext,
   type WhatsAppStatusHistoryContext,
+  type WhatsAppTaskContext,
 } from "@/lib/whatsapp/draftReplyWithAI";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -27,11 +29,24 @@ type WhatsAppIncomingMessageInsert = {
 type WhatsAppOrder = Pick<
   Database["public"]["Tables"]["orders"]["Row"],
   | "id"
+  | "numero_orden"
   | "nombre"
-  | "nombre_producto"
-  | "estado_dropi"
+  | "apellido"
   | "telefono"
+  | "direccion"
+  | "ciudad"
+  | "departamento"
+  | "barrio_referencia"
+  | "nombre_producto"
+  | "cantidad"
+  | "precio"
+  | "total"
+  | "fecha"
+  | "estado_dropi"
+  | "guia_envio"
   | "transportadora"
+  | "fecha_entrega_real"
+  | "nivel_riesgo"
 >;
 
 const PHONE_SUFFIX_LENGTH = 10;
@@ -103,7 +118,9 @@ async function findMatchingOrder(
   for (let from = 0; ; from += PHONE_MATCH_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("orders")
-      .select("id,nombre,nombre_producto,estado_dropi,telefono,transportadora")
+      .select(
+        "id,numero_orden,nombre,apellido,telefono,direccion,ciudad,departamento,barrio_referencia,nombre_producto,cantidad,precio,total,fecha,estado_dropi,guia_envio,transportadora,fecha_entrega_real,nivel_riesgo",
+      )
       .ilike("telefono", phoneSearchPattern)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
@@ -131,6 +148,12 @@ async function findMatchingOrder(
 function getWhatsAppMessagesClient() {
   // whatsapp_mensajes_entrantes was migrated after the generated
   // database.types.ts file. Keep this cast local until those types are refreshed.
+  return createAdminClient() as unknown as SupabaseClient;
+}
+
+function getWhatsAppTasksClient() {
+  // tasks.resultado was added after the generated database types.
+  // Keep this cast local until those types are refreshed.
   return createAdminClient() as unknown as SupabaseClient;
 }
 
@@ -251,9 +274,10 @@ export async function POST(request: NextRequest) {
 
   let categoriaEstado: string | null = "sin_clasificar";
   let statusHistory: WhatsAppStatusHistoryContext[] = [];
+  let tasks: WhatsAppTaskContext[] = [];
 
   try {
-    const [categoria, historyResult] = await Promise.all([
+    const [categoria, historyResult, tasksResult] = await Promise.all([
       getStatusCategory(order.estado_dropi, order.transportadora),
       supabase
         .from("status_history")
@@ -261,9 +285,15 @@ export async function POST(request: NextRequest) {
           "estado,transportadora,categoria,novedad,notas,registrado_en,created_at",
         )
         .eq("order_id", order.id)
-        .order("registrado_en", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(2),
+        .order("registrado_en", { ascending: true })
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true }),
+      getWhatsAppTasksClient()
+        .from("tasks")
+        .select("tipo,estado,resultado,notas_completado")
+        .eq("order_id", order.id)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true }),
     ]);
 
     if (historyResult.error) {
@@ -272,8 +302,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (tasksResult.error) {
+      throw new Error(
+        `Failed to fetch order tasks: ${tasksResult.error.message}`,
+      );
+    }
+
     categoriaEstado = categoria;
     statusHistory = historyResult.data ?? [];
+    tasks = (tasksResult.data ?? []) as WhatsAppTaskContext[];
   } catch (error) {
     console.error("Failed to fetch WhatsApp reply context", error);
   }
@@ -283,11 +320,29 @@ export async function POST(request: NextRequest) {
   try {
     suggestion = await draftReplyWithAI({
       mensajeCliente: mensaje,
-      nombreCliente: order.nombre,
-      nombreProducto: order.nombre_producto,
-      estadoDropi: order.estado_dropi,
-      categoriaEstado,
+      orderContext: {
+        numero_orden: order.numero_orden,
+        nombre: order.nombre,
+        apellido: order.apellido,
+        telefono: order.telefono,
+        direccion: order.direccion,
+        ciudad: order.ciudad,
+        departamento: order.departamento,
+        barrio_referencia: order.barrio_referencia,
+        nombre_producto: order.nombre_producto,
+        cantidad: order.cantidad,
+        precio: order.precio,
+        total: order.total,
+        fecha: order.fecha,
+        estado_dropi: order.estado_dropi,
+        categoria: categoriaEstado,
+        guia_envio: order.guia_envio,
+        transportadora: order.transportadora,
+        fecha_entrega_real: order.fecha_entrega_real,
+        nivel_riesgo: order.nivel_riesgo,
+      } satisfies WhatsAppOrderContext,
       statusHistory,
+      tasks,
     });
   } catch (error) {
     console.error("Failed to draft WhatsApp reply", error);
