@@ -20,8 +20,14 @@ type TaskWhatsAppTask = {
   descripcion?: string | null;
 };
 
+export type LatestIncomingWhatsAppMessage = {
+  sugerencia_ia: string | null;
+  recibido_en: string | null;
+};
+
 const EN_REPARTO_TASK_TITLE =
   "Confirmar que el cliente esté pendiente de recibir";
+const AI_SUGGESTION_RECENCY_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 const currencyFormatter = {
   CO: new Intl.NumberFormat("es-CO", {
@@ -78,10 +84,42 @@ function getFullAddress(order: TaskWhatsAppOrder) {
     .join(", ");
 }
 
+function getRecentAiSuggestion(
+  message: LatestIncomingWhatsAppMessage | null | undefined,
+) {
+  const suggestion = clean(message?.sugerencia_ia ?? null);
+
+  if (!suggestion || !message?.recibido_en) {
+    return null;
+  }
+
+  const receivedAt = new Date(message.recibido_en).getTime();
+  const age = Date.now() - receivedAt;
+
+  if (
+    Number.isNaN(receivedAt) ||
+    age < 0 ||
+    age > AI_SUGGESTION_RECENCY_WINDOW_MS
+  ) {
+    return null;
+  }
+
+  return suggestion;
+}
+
 export function buildTaskWhatsAppMessage(
   tarea: TaskWhatsAppTask,
   order: TaskWhatsAppOrder,
+  latestIncomingWhatsAppMessage?: LatestIncomingWhatsAppMessage | null,
 ): string | null {
+  const recentAiSuggestion = getRecentAiSuggestion(
+    latestIncomingWhatsAppMessage,
+  );
+
+  if (recentAiSuggestion) {
+    return recentAiSuggestion;
+  }
+
   if (order.pais === "MX" && tarea.tipo === "llamar_confirmacion") {
     return null;
   }

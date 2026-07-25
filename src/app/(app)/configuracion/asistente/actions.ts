@@ -1,0 +1,49 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { createClient } from "@/lib/supabase/server";
+
+const ASSISTANT_SETTINGS_PATH = "/configuracion/asistente";
+
+function readRules(formData: FormData) {
+  const value = formData.get("reglas");
+
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export async function saveAssistantRules(formData: FormData) {
+  const reglas = readRules(formData);
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  const updatedBy = user?.email?.trim();
+
+  if (authError || !updatedBy) {
+    throw new Error("Debes iniciar sesión para guardar las reglas.");
+  }
+
+  // asistente_whatsapp_config was added after the generated database types.
+  // Keep this cast local until those types are refreshed.
+  const assistantConfigClient = supabase as unknown as SupabaseClient;
+  const { data, error } = await assistantConfigClient
+    .from("asistente_whatsapp_config")
+    .update({ reglas, updated_por: updatedBy })
+    .eq("id", 1)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    throw new Error(
+      `No se pudieron guardar las reglas: ${error?.message ?? "Configuración no encontrada."}`,
+    );
+  }
+
+  revalidatePath(ASSISTANT_SETTINGS_PATH);
+  redirect(`${ASSISTANT_SETTINGS_PATH}?guardado=1`);
+}

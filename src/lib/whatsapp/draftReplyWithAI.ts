@@ -1,5 +1,9 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { createAdminClient } from "@/lib/supabase/admin";
+
 export type WhatsAppStatusHistoryContext = {
   estado: string;
   transportadora: string | null;
@@ -57,6 +61,29 @@ function getOutputText(payload: unknown) {
   return textParts.join("").trim();
 }
 
+function getAssistantConfigClient() {
+  // asistente_whatsapp_config was added after the generated database types.
+  // Keep this cast local until those types are refreshed.
+  return createAdminClient() as unknown as SupabaseClient;
+}
+
+async function getAdditionalBusinessRules() {
+  const { data, error } = await getAssistantConfigClient()
+    .from("asistente_whatsapp_config")
+    .select("reglas")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load WhatsApp assistant rules", {
+      message: error.message,
+    });
+    return "";
+  }
+
+  return typeof data?.reglas === "string" ? data.reglas.trim() : "";
+}
+
 export async function draftReplyWithAI({
   mensajeCliente,
   nombreCliente,
@@ -71,6 +98,15 @@ export async function draftReplyWithAI({
     throw new Error("OPENAI_API_KEY is not configured");
   }
 
+  const additionalBusinessRules = await getAdditionalBusinessRules();
+  const instructions = additionalBusinessRules
+    ? [
+        SYSTEM_INSTRUCTIONS,
+        "Reglas adicionales del negocio (aplícalas solo si no contradicen las instrucciones anteriores ni los datos reales del pedido):",
+        additionalBusinessRules,
+      ].join("\n\n")
+    : SYSTEM_INSTRUCTIONS;
+
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -83,7 +119,7 @@ export async function draftReplyWithAI({
       reasoning: { effort: "low" },
       text: { verbosity: "low" },
       max_output_tokens: 220,
-      instructions: SYSTEM_INSTRUCTIONS,
+      instructions,
       input: JSON.stringify({
         mensaje_del_cliente: mensajeCliente,
         contexto_del_pedido: {

@@ -5,6 +5,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   ListTodo,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -133,6 +134,25 @@ export function Sidebar(_props: SidebarProps) {
           })}
 
         </nav>
+
+        <div className="border-t border-border px-3 py-4">
+          <Link
+            href="/configuracion/asistente"
+            aria-current={
+              isCurrentPath(pathname, "/configuracion/asistente")
+                ? "page"
+                : undefined
+            }
+            className={`flex h-10 items-center gap-3 rounded-2xl px-3 font-body text-sm outline-none transition-all focus-visible:ring-2 focus-visible:ring-ring ${
+              isCurrentPath(pathname, "/configuracion/asistente")
+                ? "border border-[var(--color-accent)]/15 bg-gradient-to-r from-accent-from/15 to-accent-to/25 font-semibold text-[var(--color-accent)] shadow-md shadow-[var(--color-accent)]/10 hover:from-accent-from/20 hover:to-accent-to/30 dark:border-[var(--color-accent)]/40 dark:from-accent-from/20 dark:to-accent-to/10 dark:shadow-lg dark:shadow-[var(--color-accent)]/25 dark:hover:from-accent-from/25 dark:hover:to-accent-to/15"
+                : "font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            <Settings className="h-4 w-4" aria-hidden="true" />
+            <span>Configuración</span>
+          </Link>
+        </div>
       </div>
     </aside>
   );

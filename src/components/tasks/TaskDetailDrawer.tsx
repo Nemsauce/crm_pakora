@@ -45,7 +45,10 @@ import { getDisplayName } from "@/lib/profiles/getDisplayName";
 import { createClient } from "@/lib/supabase/client";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 import { resultadoOptions } from "@/lib/tasks/resultadoOptions";
-import { buildTaskWhatsAppMessage } from "@/lib/whatsapp/buildTaskMessage";
+import {
+  buildTaskWhatsAppMessage,
+  type LatestIncomingWhatsAppMessage,
+} from "@/lib/whatsapp/buildTaskMessage";
 import { formatPhoneForWhatsApp } from "@/lib/whatsapp/formatPhoneForWhatsApp";
 
 type Order = Tables<"orders">;
@@ -1189,6 +1192,9 @@ export function TaskDetailDrawer({
                 <SelectedTaskSection
                   task={selectedTask}
                   order={detail.order}
+                  latestIncomingWhatsAppMessage={
+                    detail.whatsappMessages[0] ?? null
+                  }
                   assigneeOptions={assigneeOptions}
                   assigneeOptionsError={assigneeOptionsError}
                   onCompleted={handleTaskCompleted}
@@ -1229,6 +1235,7 @@ export function TaskDetailDrawer({
 function SelectedTaskSection({
   task,
   order,
+  latestIncomingWhatsAppMessage,
   assigneeOptions,
   assigneeOptionsError,
   onCompleted,
@@ -1237,6 +1244,7 @@ function SelectedTaskSection({
 }: {
   task: Task;
   order: Order;
+  latestIncomingWhatsAppMessage: LatestIncomingWhatsAppMessage | null;
   assigneeOptions: AssigneeOption[] | null;
   assigneeOptionsError: string | null;
   onCompleted: (taskId: number, notes: string | null) => void;
@@ -1252,7 +1260,11 @@ function SelectedTaskSection({
   const description = task.descripcion?.trim();
   const completionNotes = task.notas_completado?.trim();
   const whatsappNumber = getWhatsappNumber(order);
-  const whatsappMessage = buildTaskWhatsAppMessage(task, order);
+  const whatsappMessage = buildTaskWhatsAppMessage(
+    task,
+    order,
+    latestIncomingWhatsAppMessage,
+  );
   const whatsappUrl = whatsappNumber
     ? `https://api.whatsapp.com/send/?phone=${whatsappNumber}${
         whatsappMessage ? `&text=${encodeURIComponent(whatsappMessage)}` : ""
