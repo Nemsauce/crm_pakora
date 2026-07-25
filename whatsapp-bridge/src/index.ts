@@ -20,6 +20,7 @@ const DEFAULT_WEBHOOK_URL =
   "https://crm.pakora.online/api/webhooks/whatsapp-incoming";
 const RECONNECT_DELAY_MS = 3_000;
 const REQUEST_TIMEOUT_MS = 15_000;
+const RECENT_MESSAGE_ID_CACHE_SIZE = 1_000;
 const CURRENT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = path.resolve(CURRENT_DIR, "..");
 const AUTH_SESSION_DIR = path.join(PROJECT_DIR, "auth_session");
@@ -58,6 +59,19 @@ let reconnectTimer: NodeJS.Timeout | undefined;
 let isConnecting = false;
 let isStopping = false;
 let activeSocket: ReturnType<typeof makeWASocket> | undefined;
+const recentlyForwardedMessageIds = new Set<string>();
+
+function rememberForwardedMessageId(messageId: string) {
+  recentlyForwardedMessageIds.add(messageId);
+
+  if (recentlyForwardedMessageIds.size > RECENT_MESSAGE_ID_CACHE_SIZE) {
+    const oldestMessageId = recentlyForwardedMessageIds.values().next().value;
+
+    if (oldestMessageId) {
+      recentlyForwardedMessageIds.delete(oldestMessageId);
+    }
+  }
+}
 
 function log(message: string) {
   console.log(
@@ -247,6 +261,23 @@ async function handleIncomingMessage(message: WAMessage, upsertType: string) {
       `Mensaje de ${redactPhone(telefono)} omitido: ${type} sin texto ni pie de foto.`,
     );
     return;
+  }
+
+  const messageId = message.key.id;
+
+  if (!messageId) {
+    log(
+      `Mensaje de ${redactPhone(telefono)} no incluye un ID único; se reenviará sin deduplicación.`,
+    );
+  } else if (recentlyForwardedMessageIds.has(messageId)) {
+    log(
+      `Mensaje duplicado de ${redactPhone(telefono)} omitido (ID: ${messageId}).`,
+    );
+    return;
+  } else {
+    // Baileys puede reemitir una notificación durante reenvíos o sincronizaciones.
+    // Marcarla antes de esperar el POST evita dos envíos concurrentes del mismo mensaje.
+    rememberForwardedMessageId(messageId);
   }
 
   log(
