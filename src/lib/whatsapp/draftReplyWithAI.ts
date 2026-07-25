@@ -24,6 +24,11 @@ export type DraftReplyWithAIInput = {
   conversation: WhatsAppConversationMessageContext[];
 };
 
+export type GenerateCustomerFacingWhatsAppDraftInput = {
+  promptInput: string;
+  trustedInstructions?: string[];
+};
+
 const SYSTEM_INSTRUCTIONS = [
   "Eres Leidy de Pakora y redactas una respuesta sugerida de WhatsApp para un cliente sobre su pedido.",
   "Escribe siempre en español, con un tono cálido, claro y cercano. Mantén el estilo de Pakora: un saludo amistoso como “Hola [nombre]! 😊”, menciona que escribes de Pakora cuando sea natural y usa pocos emojis relevantes, por ejemplo 📦, ✅, 🚚 o 💛.",
@@ -87,13 +92,10 @@ function buildPromptInput({
   ].join("\n");
 }
 
-export async function draftReplyWithAI({
-  mensajeCliente,
-  orderContext,
-  statusHistory,
-  tasks,
-  conversation,
-}: DraftReplyWithAIInput) {
+export async function generateCustomerFacingWhatsAppDraft({
+  promptInput,
+  trustedInstructions = [],
+}: GenerateCustomerFacingWhatsAppDraftInput) {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -101,13 +103,28 @@ export async function draftReplyWithAI({
   }
 
   const additionalBusinessRules = await getWhatsAppBusinessRules();
-  const instructions = additionalBusinessRules
-    ? [
-        SYSTEM_INSTRUCTIONS,
-        "Reglas adicionales del negocio (aplícalas solo si no contradicen las instrucciones anteriores ni los datos reales del pedido):",
-        additionalBusinessRules,
-      ].join("\n\n")
-    : SYSTEM_INSTRUCTIONS;
+  const normalizedTrustedInstructions = trustedInstructions
+    .map((instruction) => instruction.trim())
+    .filter(Boolean);
+  const instructionSections = [SYSTEM_INSTRUCTIONS];
+
+  if (normalizedTrustedInstructions.length > 0) {
+    instructionSections.push(
+      [
+        "Instrucciones operativas confiables para esta ejecución:",
+        ...normalizedTrustedInstructions.map(
+          (instruction) => `- ${instruction}`,
+        ),
+      ].join("\n"),
+    );
+  }
+
+  if (additionalBusinessRules) {
+    instructionSections.push(
+      "Reglas adicionales del negocio (aplícalas solo si no contradicen las instrucciones anteriores ni los datos reales del pedido):",
+      additionalBusinessRules,
+    );
+  }
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -121,14 +138,8 @@ export async function draftReplyWithAI({
       reasoning: { effort: "low" },
       text: { verbosity: "low" },
       max_output_tokens: 220,
-      instructions,
-      input: buildPromptInput({
-        mensajeCliente,
-        orderContext,
-        statusHistory,
-        tasks,
-        conversation,
-      }),
+      instructions: instructionSections.join("\n\n"),
+      input: promptInput,
     }),
   });
 
@@ -147,4 +158,22 @@ export async function draftReplyWithAI({
   }
 
   return suggestion;
+}
+
+export async function draftReplyWithAI({
+  mensajeCliente,
+  orderContext,
+  statusHistory,
+  tasks,
+  conversation,
+}: DraftReplyWithAIInput) {
+  return generateCustomerFacingWhatsAppDraft({
+    promptInput: buildPromptInput({
+      mensajeCliente,
+      orderContext,
+      statusHistory,
+      tasks,
+      conversation,
+    }),
+  });
 }

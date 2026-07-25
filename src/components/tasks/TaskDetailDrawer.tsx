@@ -11,6 +11,7 @@ import {
   MessageCircle,
   PackageCheck,
   Phone,
+  Sparkles,
   Truck,
   User,
   X,
@@ -34,6 +35,7 @@ import {
   reassignTask,
   snoozeTask,
 } from "@/app/(app)/tareas/actions";
+import { suggestTaskMessage } from "@/app/(app)/tareas/suggest-actions";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -1190,6 +1192,7 @@ export function TaskDetailDrawer({
             {!isLoading && detail && selectedTask ? (
               <div className="space-y-5">
                 <SelectedTaskSection
+                  key={`selected-task-${selectedTask.id}`}
                   task={selectedTask}
                   order={detail.order}
                   latestIncomingWhatsAppMessage={
@@ -1257,19 +1260,46 @@ function SelectedTaskSection({
   const isCompleted = task.estado === "completada";
   const isActionable =
     task.estado === "pendiente" || task.estado === "en_progreso";
+  const [isSuggesting, startSuggesting] = useTransition();
+  const [generatedSuggestion, setGeneratedSuggestion] = useState<
+    string | null
+  >(null);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
   const description = task.descripcion?.trim();
   const completionNotes = task.notas_completado?.trim();
   const whatsappNumber = getWhatsappNumber(order);
-  const whatsappMessage = buildTaskWhatsAppMessage(
+  const fallbackWhatsAppMessage = buildTaskWhatsAppMessage(
     task,
     order,
     latestIncomingWhatsAppMessage,
   );
+  const whatsappMessage = generatedSuggestion ?? fallbackWhatsAppMessage;
   const whatsappUrl = whatsappNumber
     ? `https://api.whatsapp.com/send/?phone=${whatsappNumber}${
         whatsappMessage ? `&text=${encodeURIComponent(whatsappMessage)}` : ""
       }`
     : null;
+
+  function handleSuggest() {
+    setSuggestionError(null);
+
+    startSuggesting(async () => {
+      try {
+        const result = await suggestTaskMessage(task.id);
+
+        if (result.error) {
+          setSuggestionError(result.error);
+          return;
+        }
+
+        setGeneratedSuggestion(result.suggestion);
+      } catch {
+        setSuggestionError(
+          "No se pudo generar la sugerencia. Intenta nuevamente.",
+        );
+      }
+    });
+  }
 
   return (
     <section className="rounded-2xl border border-[var(--color-accent)] bg-bg-surface p-4 shadow-lg">
@@ -1330,19 +1360,66 @@ function SelectedTaskSection({
           <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-[var(--foreground)]">
             {order.telefono?.trim() || "Sin teléfono"}
           </p>
-          {whatsappUrl ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {whatsappUrl ? (
+              <Button
+                asChild
+                className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90"
+              >
+                <a href={whatsappUrl} target="_blank" rel="noreferrer">
+                  <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                  WhatsApp
+                </a>
+              </Button>
+            ) : null}
             <Button
-              asChild
-              className="mt-3 h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90"
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isSuggesting}
+              onClick={handleSuggest}
+              className="h-9 rounded-full border-border bg-bg-surface px-4 text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)] disabled:opacity-60"
             >
-              <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                <MessageCircle className="h-4 w-4" aria-hidden="true" />
-                WhatsApp
-              </a>
+              {isSuggesting ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+              )}
+              {isSuggesting
+                ? "Generando…"
+                : generatedSuggestion
+                  ? "Sugerir de nuevo"
+                  : "Sugerir"}
             </Button>
-          ) : null}
+          </div>
         </div>
       </div>
+
+      {generatedSuggestion ? (
+        <div
+          className="mt-4 rounded-2xl border border-border bg-bg-page p-3"
+          aria-live="polite"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-body text-xs text-[var(--muted-foreground)]">
+              Sugerencia IA
+            </p>
+            <WhatsAppSuggestionCopyButton
+              key={generatedSuggestion}
+              suggestion={generatedSuggestion}
+            />
+          </div>
+          <p className="mt-2 whitespace-pre-wrap font-body text-sm text-[var(--foreground)]">
+            {generatedSuggestion}
+          </p>
+        </div>
+      ) : null}
+
+      {suggestionError ? (
+        <p role="alert" className="mt-3 font-body text-sm text-risk-high">
+          {suggestionError}
+        </p>
+      ) : null}
 
       {description || completionNotes ? (
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
