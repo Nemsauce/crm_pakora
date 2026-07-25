@@ -1,7 +1,12 @@
 import { format, isValid, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import Link from "next/link";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  AbandonadosList,
+  type AbandonadoListItem,
+} from "@/components/orders/AbandonadosList";
 import { Button } from "@/components/ui/button";
 import { OrderCardLink } from "@/components/orders/OrderCardLink";
 import { OrderDetailDrawer } from "@/components/orders/OrderDetailDrawer";
@@ -15,7 +20,9 @@ const PAGE_SIZE = 24;
 export const maxDuration = 300;
 
 type SearchParams = {
+  vista?: string;
   pais?: string;
+  estado_abandonado?: string;
   estado_crm?: string;
   nivel_riesgo?: string;
   q?: string;
@@ -31,6 +38,7 @@ type PedidosPageProps = {
 
 type Pais = Database["public"]["Enums"]["pais_enum"];
 type EstadoCrm = Database["public"]["Enums"]["estado_crm_enum"];
+type PedidosView = "pedidos" | "abandonados";
 
 const validCountries = new Set<string>(["CO", "MX"]);
 const validStatuses = new Set<string>([
@@ -41,6 +49,12 @@ const validStatuses = new Set<string>([
   "devolucion",
 ]);
 const validRisks = new Set<string>(["alto", "medio", "bajo", "sin_datos"]);
+const validAbandonadoStates = new Set<string>([
+  "nuevo",
+  "contactado",
+  "recuperado",
+  "descartado",
+]);
 
 function escapeIlikeTerm(term: string) {
   return term.replace(/[%,]/g, "");
@@ -137,12 +151,164 @@ function createPageHref(searchParams: SearchParams, page: number) {
   return query ? `/pedidos?${query}` : "/pedidos";
 }
 
+function PedidosViewSwitcher({ view }: { view: PedidosView }) {
+  const options = [
+    { value: "pedidos" as const, label: "Pedidos", href: "/pedidos" },
+    {
+      value: "abandonados" as const,
+      label: "Abandonados",
+      href: "/pedidos?vista=abandonados",
+    },
+  ];
+
+  return (
+    <nav
+      className="inline-flex flex-wrap rounded-full border border-border bg-bg-surface p-1 shadow-lg"
+      aria-label="Vista de pedidos"
+    >
+      {options.map((option) => {
+        const isActive = option.value === view;
+
+        return (
+          <Link
+            key={option.value}
+            href={option.href}
+            aria-current={isActive ? "page" : undefined}
+            className={`inline-flex h-9 items-center rounded-full px-4 font-body text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+              isActive
+                ? "bg-[var(--color-badge-nuevo-bg)] text-[var(--color-badge-nuevo)]"
+                : "text-text-secondary hover:bg-bg-page hover:text-text-primary"
+            }`}
+          >
+            {option.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function ListEntranceStyles() {
+  return (
+    <style>{`
+      @keyframes crm-fade-slide-in {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .crm-list-entrance {
+        opacity: 0;
+        animation: crm-fade-slide-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .crm-list-entrance {
+          opacity: 1;
+          transform: none;
+          animation: none;
+        }
+      }
+    `}</style>
+  );
+}
+
+function PedidosPageHeader({ view }: { view: PedidosView }) {
+  const isAbandonados = view === "abandonados";
+
+  return (
+    <>
+      <div className="flex flex-col gap-4 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="font-body text-xs uppercase text-text-secondary">
+            Pedidos
+          </p>
+          <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
+            {isAbandonados ? "Pedidos abandonados" : "Lista de pedidos"}
+          </h1>
+          {isAbandonados ? (
+            <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
+              Recupera conversaciones iniciadas antes de que el pedido fuera
+              confirmado.
+            </p>
+          ) : null}
+        </div>
+        {isAbandonados ? null : <RefreshOrdersButton />}
+      </div>
+
+      <div className="mt-5">
+        <PedidosViewSwitcher view={view} />
+      </div>
+    </>
+  );
+}
+
 export default async function PedidosPage({ searchParams }: PedidosPageProps) {
   const params = await searchParams;
+  const view: PedidosView =
+    params.vista === "abandonados" ? "abandonados" : "pedidos";
   const page = getPage(params.page);
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
   const supabase = await createClient();
+
+  if (view === "abandonados") {
+    const abandonadosClient = supabase as unknown as SupabaseClient;
+    let abandonadosQuery = abandonadosClient
+      .from("abandonados")
+      .select(
+        "id,pais,codigo_externo,nombre,apellido,telefono,direccion,ciudad,departamento,nombre_producto,precio,fecha_abandono,estado,sincronizado_en",
+        { count: "exact" },
+      )
+      .order("fecha_abandono", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: false })
+      .range(from, to);
+
+    if (params.pais && validCountries.has(params.pais)) {
+      abandonadosQuery = abandonadosQuery.eq("pais", params.pais);
+    }
+
+    if (
+      params.estado_abandonado &&
+      validAbandonadoStates.has(params.estado_abandonado)
+    ) {
+      abandonadosQuery = abandonadosQuery.eq(
+        "estado",
+        params.estado_abandonado,
+      );
+    }
+
+    const { data, error, count } = await abandonadosQuery;
+
+    if (error) {
+      throw new Error(
+        `No se pudieron cargar los pedidos abandonados: ${error.message}`,
+      );
+    }
+
+    const abandonados = (data ?? []) as AbandonadoListItem[];
+    const totalCount = count ?? abandonados.length;
+
+    return (
+      <section className="min-h-screen px-6 py-6 sm:px-8">
+        <ListEntranceStyles />
+        <PedidosPageHeader view={view} />
+        <AbandonadosList
+          rows={abandonados}
+          totalCount={totalCount}
+          page={page}
+          hasPreviousPage={page > 1}
+          hasNextPage={to + 1 < totalCount}
+        />
+      </section>
+    );
+  }
+
   const selectedDateRange = getSelectedDateRange(params);
   let query = supabase
     .from("orders")
@@ -197,43 +363,8 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
 
   return (
     <section className="min-h-screen px-6 py-6 sm:px-8">
-      <style>{`
-        @keyframes crm-fade-slide-in {
-          from {
-            opacity: 0;
-            transform: translateY(12px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .crm-list-entrance {
-          opacity: 0;
-          animation: crm-fade-slide-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .crm-list-entrance {
-            opacity: 1;
-            transform: none;
-            animation: none;
-          }
-        }
-      `}</style>
-
-      <div className="flex flex-col gap-4 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="font-body text-xs uppercase text-text-secondary">
-            Pedidos
-          </p>
-          <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
-            Lista de pedidos
-          </h1>
-        </div>
-        <RefreshOrdersButton />
-      </div>
+      <ListEntranceStyles />
+      <PedidosPageHeader view={view} />
 
       <div className="mt-5">
         <OrderFilters />
