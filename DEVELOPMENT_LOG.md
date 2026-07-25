@@ -286,3 +286,9 @@ Pendiente cuando se retome 'notis':
 - Costeos permite duplicar/eliminar y protege borradores con cambios sin guardar; Notificaciones tiene historial paginado y control para volver a marcar como no leída.
 - La capa visual usa Manrope para cuerpo/UI, mantiene Space Grotesk y JetBrains Mono, incorpora un motivo estático de ruta y reserva un pulso de radar accesible únicamente para riesgo alto.
 - Cada sección se verificó con build de producción y lint antes de su commit; el lint conserva tres warnings preexistentes fuera del overhaul.
+
+### [Fix WhatsApp bridge] QR de vinculación tras el backfill — COMPLETADO
+- Con `Browsers.macOS("Desktop")`, una sesión vacía alcanzaba el registro inicial pero WhatsApp cerraba el WebSocket antes de emitir `pair-device`; Baileys reportaba `Connection Terminated` / código 428 y no se recibía QR.
+- Se hizo un A/B controlado con la misma sesión vacía y `Browsers.macOS("Chrome")`, manteniendo `syncFullHistory: true`: WhatsApp emitió el QR correctamente.
+- La configuración final usa `Browsers.macOS("Chrome")`. El logger de Baileys volvió a `silent`; la instrumentación diagnóstica fue temporal y no quedó en el código.
+- Verificación: `npm run build` en `whatsapp-bridge` completó sin errores.
