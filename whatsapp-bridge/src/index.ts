@@ -16,8 +16,9 @@ import dotenv from "dotenv";
 import pino from "pino";
 import QRCode from "qrcode";
 
-const DEFAULT_WEBHOOK_URL =
+const DEFAULT_INCOMING_WEBHOOK_URL =
   "https://crm.pakora.online/api/webhooks/whatsapp-incoming";
+const OUTGOING_WEBHOOK_PATH = "/api/webhooks/whatsapp-outgoing";
 const RECONNECT_DELAY_MS = 3_000;
 const REQUEST_TIMEOUT_MS = 15_000;
 const RECENT_MESSAGE_ID_CACHE_SIZE = 1_000;
@@ -28,7 +29,10 @@ const AUTH_SESSION_DIR = path.join(PROJECT_DIR, "auth_session");
 dotenv.config({ path: path.join(PROJECT_DIR, ".env") });
 
 const bridgeSecret = process.env.WHATSAPP_BRIDGE_SECRET?.trim();
-const webhookUrl = (process.env.CRM_WEBHOOK_URL ?? DEFAULT_WEBHOOK_URL).trim();
+const incomingWebhookUrl = (
+  process.env.CRM_WEBHOOK_URL ?? DEFAULT_INCOMING_WEBHOOK_URL
+).trim();
+let outgoingWebhookUrl = "";
 
 if (!bridgeSecret) {
   console.error(
@@ -39,7 +43,7 @@ if (!bridgeSecret) {
 
 const webhookSecret = bridgeSecret;
 
-try {
+function parseHttpWebhookUrl(webhookUrl: string) {
   const parsedWebhookUrl = new URL(webhookUrl);
 
   if (
@@ -48,9 +52,21 @@ try {
   ) {
     throw new Error("unsupported protocol");
   }
+
+  return parsedWebhookUrl;
+}
+
+try {
+  const parsedIncomingWebhookUrl = parseHttpWebhookUrl(incomingWebhookUrl);
+  const configuredOutgoingWebhookUrl =
+    process.env.CRM_OUTGOING_WEBHOOK_URL?.trim();
+
+  outgoingWebhookUrl = configuredOutgoingWebhookUrl
+    ? parseHttpWebhookUrl(configuredOutgoingWebhookUrl).toString()
+    : new URL(OUTGOING_WEBHOOK_PATH, parsedIncomingWebhookUrl).toString();
 } catch {
   console.error(
-    "[whatsapp-bridge] CRM_WEBHOOK_URL must be an absolute HTTP(S) URL.",
+    "[whatsapp-bridge] CRM_WEBHOOK_URL and CRM_OUTGOING_WEBHOOK_URL must be absolute HTTP(S) URLs.",
   );
   process.exit(1);
 }
@@ -122,7 +138,7 @@ function getPhoneFromJid(jid: string | null | undefined) {
   return jid.slice(0, -"@s.whatsapp.net".length).split(":")[0] || null;
 }
 
-function getSenderPhone(message: WAMessage) {
+function getConversationPhone(message: WAMessage) {
   return (
     getPhoneFromJid(message.key.remoteJid) ??
     getPhoneFromJid(message.key.remoteJidAlt)
@@ -185,9 +201,16 @@ async function renderQrCode(qr: string) {
   }
 }
 
-async function forwardMessage(telefono: string, mensaje: string) {
+type MessageDirection = "entrante" | "saliente";
+
+async function forwardMessage(
+  destinationWebhookUrl: string,
+  telefono: string,
+  mensaje: string,
+  direction: MessageDirection,
+) {
   try {
-    const response = await fetch(webhookUrl, {
+    const response = await fetch(destinationWebhookUrl, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -199,7 +222,7 @@ async function forwardMessage(telefono: string, mensaje: string) {
 
     if (!response.ok) {
       log(
-        `No se pudo reenviar mensaje de ${redactPhone(telefono)}: CRM respondió HTTP ${response.status}.`,
+        `No se pudo reenviar mensaje ${direction} de ${redactPhone(telefono)}: CRM respondió HTTP ${response.status}.`,
       );
       return;
     }
@@ -214,24 +237,19 @@ async function forwardMessage(telefono: string, mensaje: string) {
         : null;
 
     log(
-      `Mensaje de ${redactPhone(telefono)} reenviado al CRM${matched === null ? "" : ` (pedido coincidente: ${matched ? "sí" : "no"})`}.`,
+      `Mensaje ${direction} de ${redactPhone(telefono)} reenviado al CRM${matched === null ? "" : ` (pedido coincidente: ${matched ? "sí" : "no"})`}.`,
     );
   } catch (error) {
     logError(
-      `Error al reenviar mensaje de ${redactPhone(telefono)} al CRM`,
+      `Error al reenviar mensaje ${direction} de ${redactPhone(telefono)} al CRM`,
       error,
     );
   }
 }
 
-async function handleIncomingMessage(message: WAMessage, upsertType: string) {
+async function handleMessage(message: WAMessage, upsertType: string) {
   if (upsertType !== "notify") {
     log("Mensaje omitido: pertenece a historial/sincronización, no a una notificación nueva.");
-    return;
-  }
-
-  if (message.key.fromMe) {
-    log("Mensaje omitido: fue enviado desde la cuenta vinculada.");
     return;
   }
 
@@ -247,7 +265,7 @@ async function handleIncomingMessage(message: WAMessage, upsertType: string) {
     return;
   }
 
-  const telefono = getSenderPhone(message);
+  const telefono = getConversationPhone(message);
 
   if (!telefono) {
     log("Mensaje omitido: el chat directo no expone un JID de teléfono.");
@@ -263,27 +281,36 @@ async function handleIncomingMessage(message: WAMessage, upsertType: string) {
     return;
   }
 
+  const direction: MessageDirection = message.key.fromMe
+    ? "saliente"
+    : "entrante";
   const messageId = message.key.id;
+  const deduplicationId = messageId ? `${direction}:${messageId}` : null;
 
-  if (!messageId) {
+  if (!deduplicationId) {
     log(
       `Mensaje de ${redactPhone(telefono)} no incluye un ID único; se reenviará sin deduplicación.`,
     );
-  } else if (recentlyForwardedMessageIds.has(messageId)) {
+  } else if (recentlyForwardedMessageIds.has(deduplicationId)) {
     log(
-      `Mensaje duplicado de ${redactPhone(telefono)} omitido (ID: ${messageId}).`,
+      `Mensaje ${direction} duplicado de ${redactPhone(telefono)} omitido (ID: ${messageId}).`,
     );
     return;
   } else {
     // Baileys puede reemitir una notificación durante reenvíos o sincronizaciones.
     // Marcarla antes de esperar el POST evita dos envíos concurrentes del mismo mensaje.
-    rememberForwardedMessageId(messageId);
+    rememberForwardedMessageId(deduplicationId);
   }
 
   log(
-    `Mensaje entrante de ${redactPhone(telefono)} recibido; reenviando al CRM.`,
+    `Mensaje ${direction} de ${redactPhone(telefono)} recibido; reenviando al CRM.`,
   );
-  await forwardMessage(telefono, text);
+  await forwardMessage(
+    direction === "saliente" ? outgoingWebhookUrl : incomingWebhookUrl,
+    telefono,
+    text,
+    direction,
+  );
 }
 
 async function connectToWhatsApp() {
@@ -351,8 +378,8 @@ async function connectToWhatsApp() {
 
     socket.ev.on("messages.upsert", ({ messages, type }) => {
       for (const message of messages) {
-        void handleIncomingMessage(message, type).catch((error) => {
-          logError("Error al procesar un mensaje entrante", error);
+        void handleMessage(message, type).catch((error) => {
+          logError("Error al procesar un mensaje de WhatsApp", error);
         });
       }
     });
