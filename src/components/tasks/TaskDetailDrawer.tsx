@@ -52,6 +52,12 @@ type Order = Tables<"orders">;
 type StatusHistory = Tables<"status_history">;
 type Task = Tables<"tasks">;
 type Comentario = Tables<"comentarios">;
+type WhatsAppIncomingMessage = {
+  id: number;
+  mensaje_cliente: string;
+  sugerencia_ia: string | null;
+  recibido_en: string | null;
+};
 type AssigneeOption = Pick<Tables<"profiles">, "id" | "email" | "nombre">;
 type RowOrder = Pick<
   Order,
@@ -74,6 +80,7 @@ type OrderDetail = {
   statusHistory: StatusHistory[];
   tasks: Task[];
   comentarios: Comentario[];
+  whatsappMessages: WhatsAppIncomingMessage[];
 };
 
 type TaskTone = {
@@ -286,6 +293,40 @@ function DropiIdCopyButton({
           className="h-3.5 w-3.5 text-[var(--muted-foreground)]"
           aria-hidden="true"
         />
+      )}
+    </button>
+  );
+}
+
+function WhatsAppSuggestionCopyButton({ suggestion }: { suggestion: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(suggestion);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-bg-page px-2.5 font-mono text-xs font-semibold tabular-nums text-[var(--foreground)] outline-none transition-colors hover:bg-bg-surface focus-visible:ring-2 focus-visible:ring-ring"
+      aria-label="Copiar sugerencia de IA"
+    >
+      {copied ? (
+        <>
+          <Check className="h-3.5 w-3.5 text-risk-low" aria-hidden="true" />
+          <span className="font-body text-risk-low">Copiado</span>
+        </>
+      ) : (
+        <>
+          <Copy
+            className="h-3.5 w-3.5 text-[var(--muted-foreground)]"
+            aria-hidden="true"
+          />
+          <span className="font-body">Copiar</span>
+        </>
       )}
     </button>
   );
@@ -1166,6 +1207,12 @@ export function TaskDetailDrawer({
                   key={`novedad-details-${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
                   statusHistory={detail.statusHistory}
                 />
+                {detail.whatsappMessages.length > 0 ? (
+                  <WhatsAppMessagesSection
+                    key={`whatsapp-messages-${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
+                    messages={detail.whatsappMessages}
+                  />
+                ) : null}
                 <StatusHistorySection
                   key={`${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
                   statusHistory={detail.statusHistory}
@@ -1686,6 +1733,86 @@ function NovedadDetailsSection({
               Sin novedad registrada
             </p>
           )}
+        </Collapsible.Content>
+      </section>
+    </Collapsible.Root>
+  );
+}
+
+function WhatsAppMessagesSection({
+  messages,
+}: {
+  messages: WhatsAppIncomingMessage[];
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
+      <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+        <Collapsible.Trigger asChild>
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="font-display text-base font-semibold text-[var(--foreground)]">
+              Mensajes de WhatsApp ({messages.length})
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform ${
+                open ? "rotate-180" : ""
+              }`}
+              aria-hidden="true"
+            />
+          </button>
+        </Collapsible.Trigger>
+
+        <Collapsible.Content>
+          <ol className="mt-4 space-y-3">
+            {messages.map((message) => {
+              const suggestion = message.sugerencia_ia?.trim() || null;
+
+              return (
+                <li
+                  key={message.id}
+                  className="rounded-2xl border border-border bg-bg-page p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-body text-xs text-[var(--muted-foreground)]">
+                        Mensaje del cliente
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap font-body text-sm text-[var(--foreground)]">
+                        {message.mensaje_cliente}
+                      </p>
+                    </div>
+                    <time className="shrink-0 font-mono text-xs tabular-nums text-[var(--muted-foreground)]">
+                      {formatDateTime(message.recibido_en)}
+                    </time>
+                  </div>
+
+                  <div className="mt-3 border-t border-border pt-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-body text-xs text-[var(--muted-foreground)]">
+                        Sugerencia IA
+                      </p>
+                      {suggestion ? (
+                        <WhatsAppSuggestionCopyButton suggestion={suggestion} />
+                      ) : null}
+                    </div>
+                    <p
+                      className={`mt-1 whitespace-pre-wrap font-body text-sm ${
+                        suggestion
+                          ? "text-[var(--foreground)]"
+                          : "text-[var(--muted-foreground)]"
+                      }`}
+                    >
+                      {suggestion ?? "Sin sugerencia"}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
         </Collapsible.Content>
       </section>
     </Collapsible.Root>
