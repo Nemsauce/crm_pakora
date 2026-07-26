@@ -1,12 +1,14 @@
 "use client";
 
 import { Loader2, MessageCircle, Send, X } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { Dialog } from "radix-ui";
 import {
   type FormEvent,
   type KeyboardEvent,
   type ReactElement,
   type ReactNode,
+  useRef,
   useState,
 } from "react";
 
@@ -33,6 +35,16 @@ function getActiveOrderLabel(activeOrder: ActiveOrderSummary) {
     : orderLabel;
 }
 
+function getDetailOrderId(value: string | null) {
+  if (!value || !/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const orderId = Number(value);
+
+  return Number.isSafeInteger(orderId) && orderId > 0 ? orderId : null;
+}
+
 export function AssistantProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -52,12 +64,15 @@ export function AssistantDrawerTrigger({
 }
 
 export function AssistantDrawer() {
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [activeOrder, setActiveOrder] = useState<ActiveOrderSummary | null>(
     null,
   );
   const [isSending, setIsSending] = useState(false);
+  const historyStartIndexRef = useRef(0);
+  const detailOrderId = getDetailOrderId(searchParams.get("detalle"));
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,10 +83,12 @@ export function AssistantDrawer() {
       return;
     }
 
-    const history = messages.map(({ role, content: previousContent }) => ({
-      role,
-      content: previousContent,
-    }));
+    const history = messages
+      .slice(historyStartIndexRef.current)
+      .map(({ role, content: previousContent }) => ({
+        role,
+        content: previousContent,
+      }));
     const userMessage: ChatMessage = {
       id: getMessageId("user"),
       role: "user",
@@ -87,6 +104,7 @@ export function AssistantDrawer() {
         message: content,
         history,
         activeOrderId: activeOrder?.id ?? null,
+        detailOrderId,
       });
 
       setMessages((current) => [
@@ -98,6 +116,10 @@ export function AssistantDrawer() {
         },
       ]);
       setActiveOrder(result.activeOrder);
+
+      if (result.historyReset) {
+        historyStartIndexRef.current = messages.length;
+      }
     } catch {
       setMessages((current) => [
         ...current,
@@ -196,8 +218,9 @@ export function AssistantDrawer() {
                 Empecemos por un pedido
               </p>
               <p className="mt-2 max-w-sm font-body text-sm text-text-secondary">
-                Escribe una pregunta que incluya un número como #1234 o el
-                teléfono del cliente.
+                {detailOrderId
+                  ? "Haz una pregunta sobre el pedido que tienes abierto."
+                  : "Escribe una pregunta que incluya un número como #1234 o el teléfono del cliente."}
               </p>
             </div>
           ) : (
@@ -244,7 +267,11 @@ export function AssistantDrawer() {
               onKeyDown={handleKeyDown}
               disabled={isSending}
               rows={2}
-              placeholder="Ej. ¿Qué pasó con el pedido #1234?"
+              placeholder={
+                detailOrderId
+                  ? "Ej. ¿Cuál es la guía?"
+                  : "Ej. ¿Qué pasó con el pedido #1234?"
+              }
               className="min-h-11 flex-1 resize-y rounded-xl border border-border bg-bg-page px-3 py-2 font-body text-sm text-text-primary outline-none placeholder:text-[var(--muted-foreground)] focus-visible:border-[var(--color-accent)] focus-visible:ring-3 focus-visible:ring-[var(--color-accent)]/20 disabled:cursor-not-allowed disabled:opacity-60"
             />
             <Button
