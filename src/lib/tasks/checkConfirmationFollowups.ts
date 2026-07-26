@@ -104,13 +104,13 @@ export function getConfirmationFollowupConfig(
 
   const orderNumber = getOrderNumber(order);
 
-  if (completedCount >= 6) {
+  if (completedCount >= 4) {
     return {
       stage: "cancelar",
       attemptNumber: CANCELLATION_ATTEMPT_NUMBER,
       titulo: `Cancelar pedido ${orderNumber} por falta de confirmación`,
       descripcion:
-        "El pedido sigue en PENDIENTE CONFIRMACION después de completar los 6 toques de confirmación. Cancelar el pedido por falta de confirmación.",
+        "El pedido sigue en PENDIENTE CONFIRMACION después de completar los 4 toques de confirmación. Cancelar el pedido por falta de confirmación.",
     };
   }
 
@@ -118,7 +118,7 @@ export function getConfirmationFollowupConfig(
     stage: `toque${nextTouchNumber}` as FollowupStage,
     attemptNumber: nextTouchNumber,
     titulo: `Toque ${nextTouchNumber}: llamar para confirmar pedido ${orderNumber}`,
-    descripcion: `Seguimiento diario ${nextTouchNumber} de 6 para confirmar el pedido. Se han completado ${completedCount} toques de confirmación.`,
+    descripcion: `Seguimiento diario ${nextTouchNumber} de 4 para confirmar el pedido. Se han completado ${completedCount} toques de confirmación.`,
   };
 }
 
@@ -222,7 +222,7 @@ export async function checkConfirmationFollowups(): Promise<CheckConfirmationFol
         continue;
       }
 
-      if (completedCount < 6) {
+      if (completedCount < 4) {
         const mostRecentCompletion = getMostRecentCompletion(completedTasks);
 
         if (
