@@ -20,7 +20,30 @@ type AbandonadoRow = {
   precio: number | string | null;
 };
 
+type IncomingConversationRow = {
+  id: number;
+  telefono_origen: string;
+  mensaje_cliente: string;
+  recibido_en: string;
+};
+
+type OutgoingConversationRow = {
+  id: number;
+  telefono_destino: string;
+  mensaje_enviado: string;
+  enviado_en: string;
+};
+
+type ConversationMessageWithSort = WhatsAppConversationMessageContext & {
+  id: number;
+  source: "incoming" | "outgoing";
+};
+
 type ContextValue = string | number | null | undefined;
+
+const PHONE_SUFFIX_LENGTH = 10;
+const PHONE_MATCH_PAGE_SIZE = 1_000;
+const MAX_CONVERSATION_MESSAGES = 20;
 
 function getAbandonadosClient() {
   // The live abandonados table was added after the generated database types.
@@ -112,6 +135,137 @@ async function getAbandonado(abandonadoId: number) {
   return data as AbandonadoRow | null;
 }
 
+function getPhoneSuffix(telefono: string | null | undefined) {
+  const digits = telefono?.replace(/\D/g, "") ?? "";
+
+  return digits.length >= PHONE_SUFFIX_LENGTH
+    ? digits.slice(-PHONE_SUFFIX_LENGTH)
+    : null;
+}
+
+function getPhoneSearchPattern(phoneSuffix: string) {
+  return `%${phoneSuffix.split("").join("%")}%`;
+}
+
+async function getIncomingMessages(phoneSuffix: string) {
+  const messages: IncomingConversationRow[] = [];
+  const phoneSearchPattern = getPhoneSearchPattern(phoneSuffix);
+  const supabase = getAbandonadosClient();
+
+  for (let from = 0; ; from += PHONE_MATCH_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("whatsapp_mensajes_entrantes")
+      .select("id,telefono_origen,mensaje_cliente,recibido_en")
+      .ilike("telefono_origen", phoneSearchPattern)
+      .order("recibido_en", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + PHONE_MATCH_PAGE_SIZE - 1);
+
+    if (error) {
+      throw new Error(
+        `Failed to fetch abandoned-contact incoming messages: ${error.message}`,
+      );
+    }
+
+    const candidates = (data ?? []) as IncomingConversationRow[];
+    messages.push(
+      ...candidates.filter(
+        (message) => getPhoneSuffix(message.telefono_origen) === phoneSuffix,
+      ),
+    );
+
+    if (candidates.length < PHONE_MATCH_PAGE_SIZE) {
+      return messages;
+    }
+  }
+}
+
+async function getOutgoingMessages(phoneSuffix: string) {
+  const messages: OutgoingConversationRow[] = [];
+  const phoneSearchPattern = getPhoneSearchPattern(phoneSuffix);
+  const supabase = getAbandonadosClient();
+
+  for (let from = 0; ; from += PHONE_MATCH_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("whatsapp_mensajes_salientes")
+      .select("id,telefono_destino,mensaje_enviado,enviado_en")
+      .ilike("telefono_destino", phoneSearchPattern)
+      .order("enviado_en", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + PHONE_MATCH_PAGE_SIZE - 1);
+
+    if (error) {
+      throw new Error(
+        `Failed to fetch abandoned-contact outgoing messages: ${error.message}`,
+      );
+    }
+
+    const candidates = (data ?? []) as OutgoingConversationRow[];
+    messages.push(
+      ...candidates.filter(
+        (message) => getPhoneSuffix(message.telefono_destino) === phoneSuffix,
+      ),
+    );
+
+    if (candidates.length < PHONE_MATCH_PAGE_SIZE) {
+      return messages;
+    }
+  }
+}
+
+function getConversationTimestamp(message: ConversationMessageWithSort) {
+  const timestamp = Date.parse(message.ocurrido_en);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+async function getConversationWithoutOrder(telefono: string) {
+  const phoneSuffix = getPhoneSuffix(telefono);
+
+  if (!phoneSuffix) {
+    return [];
+  }
+
+  const [incomingMessages, outgoingMessages] = await Promise.all([
+    getIncomingMessages(phoneSuffix),
+    getOutgoingMessages(phoneSuffix),
+  ]);
+  const conversation: ConversationMessageWithSort[] = [
+    ...incomingMessages.map((message) => ({
+      id: message.id,
+      source: "incoming" as const,
+      autor: "cliente" as const,
+      mensaje: message.mensaje_cliente,
+      ocurrido_en: message.recibido_en,
+    })),
+    ...outgoingMessages.map((message) => ({
+      id: message.id,
+      source: "outgoing" as const,
+      autor: "nosotros" as const,
+      mensaje: message.mensaje_enviado,
+      ocurrido_en: message.enviado_en,
+    })),
+  ];
+
+  return conversation
+    .sort((left, right) => {
+      const timestampDifference =
+        getConversationTimestamp(left) - getConversationTimestamp(right);
+
+      if (timestampDifference !== 0) {
+        return timestampDifference;
+      }
+
+      const sourceDifference = left.source.localeCompare(right.source);
+      return sourceDifference !== 0 ? sourceDifference : left.id - right.id;
+    })
+    .slice(-MAX_CONVERSATION_MESSAGES)
+    .map(({ autor, mensaje, ocurrido_en }) => ({
+      autor,
+      mensaje,
+      ocurrido_en,
+    }));
+}
+
 async function getConversation(telefono: string | null) {
   if (!telefono?.trim()) {
     return [];
@@ -122,7 +276,11 @@ async function getConversation(telefono: string | null) {
     conversationPhone: telefono,
   });
 
-  return orderContext?.conversation ?? [];
+  if (orderContext?.isComplete) {
+    return orderContext.conversation;
+  }
+
+  return getConversationWithoutOrder(telefono);
 }
 
 function buildPromptInput(
