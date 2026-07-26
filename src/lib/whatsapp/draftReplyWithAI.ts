@@ -133,7 +133,7 @@ export async function generateCustomerFacingWhatsAppDraft({
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-5.6-luna",
+      model: "gpt-5.6-terra",
       store: false,
       reasoning: { effort: "low" },
       text: { verbosity: "low" },

@@ -22,6 +22,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Collapsible, Dialog, Select } from "radix-ui";
 import {
   type KeyboardEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -166,6 +167,12 @@ const snoozeTimeFormatter = new Intl.DateTimeFormat("es-CO", {
 type ActionFeedback = {
   message: string;
   type: "error" | "success";
+};
+
+type TaskSuggestionState = {
+  error: string | null;
+  isGenerating: boolean;
+  suggestion: string | null;
 };
 
 function getCustomerName(order: Pick<Order, "nombre" | "apellido"> | null) {
@@ -856,8 +863,15 @@ export function TaskDetailDrawer({
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [taskSuggestions, setTaskSuggestions] = useState<
+    Record<number, TaskSuggestionState>
+  >({});
   const completionNavigationTimeoutRef = useRef<number | null>(null);
   const lastLoggedTaskIdRef = useRef<number | null>(null);
+  const autoSuggestedTaskIdsRef = useRef(new Set<number>());
+  const activeSuggestionRequestIdsRef = useRef(new Map<number, number>());
+  const nextSuggestionRequestIdRef = useRef(0);
+  const [, startTaskSuggestionTransition] = useTransition();
   const isOpen = Boolean(selectedOrderId);
 
   const closeHref = useMemo(() => {
@@ -897,6 +911,67 @@ export function TaskDetailDrawer({
     (!selectedTaskId || String(selectedTask.id) === selectedTaskId)
       ? selectedTask.id
       : null;
+
+  const generateSuggestionForTask = useCallback(
+    (taskId: number) => {
+      const requestId = ++nextSuggestionRequestIdRef.current;
+      activeSuggestionRequestIdsRef.current.set(taskId, requestId);
+
+      setTaskSuggestions((currentSuggestions) => {
+        const currentSuggestion = currentSuggestions[taskId];
+
+        return {
+          ...currentSuggestions,
+          [taskId]: {
+            suggestion: currentSuggestion?.suggestion ?? null,
+            error: null,
+            isGenerating: true,
+          },
+        };
+      });
+
+      startTaskSuggestionTransition(async () => {
+        try {
+          const result = await suggestTaskMessage(taskId);
+
+          if (activeSuggestionRequestIdsRef.current.get(taskId) !== requestId) {
+            return;
+          }
+
+          setTaskSuggestions((currentSuggestions) => {
+            const currentSuggestion = currentSuggestions[taskId];
+
+            return {
+              ...currentSuggestions,
+              [taskId]: {
+                suggestion: result.suggestion ?? currentSuggestion?.suggestion ?? null,
+                error: result.error,
+                isGenerating: false,
+              },
+            };
+          });
+        } catch {
+          if (activeSuggestionRequestIdsRef.current.get(taskId) !== requestId) {
+            return;
+          }
+
+          setTaskSuggestions((currentSuggestions) => {
+            const currentSuggestion = currentSuggestions[taskId];
+
+            return {
+              ...currentSuggestions,
+              [taskId]: {
+                suggestion: currentSuggestion?.suggestion ?? null,
+                error: "No se pudo generar la sugerencia. Intenta nuevamente.",
+                isGenerating: false,
+              },
+            };
+          });
+        }
+      });
+    },
+    [startTaskSuggestionTransition],
+  );
 
   function closeDrawer() {
     if (completionNavigationTimeoutRef.current !== null) {
@@ -942,6 +1017,19 @@ export function TaskDetailDrawer({
 
     void logOpen();
   }, [isOpen, loggableTaskId]);
+
+  useEffect(() => {
+    if (
+      !isOpen ||
+      loggableTaskId === null ||
+      autoSuggestedTaskIdsRef.current.has(loggableTaskId)
+    ) {
+      return;
+    }
+
+    autoSuggestedTaskIdsRef.current.add(loggableTaskId);
+    generateSuggestionForTask(loggableTaskId);
+  }, [generateSuggestionForTask, isOpen, loggableTaskId]);
 
   useEffect(() => {
     if (!selectedOrderId) {
@@ -1200,6 +1288,8 @@ export function TaskDetailDrawer({
                   }
                   assigneeOptions={assigneeOptions}
                   assigneeOptionsError={assigneeOptionsError}
+                  suggestion={taskSuggestions[selectedTask.id] ?? null}
+                  onSuggest={generateSuggestionForTask}
                   onCompleted={handleTaskCompleted}
                   onReassigned={handleTaskReassigned}
                   onSnoozed={handleTaskSnoozed}
@@ -1241,6 +1331,8 @@ function SelectedTaskSection({
   latestIncomingWhatsAppMessage,
   assigneeOptions,
   assigneeOptionsError,
+  suggestion,
+  onSuggest,
   onCompleted,
   onReassigned,
   onSnoozed,
@@ -1250,6 +1342,8 @@ function SelectedTaskSection({
   latestIncomingWhatsAppMessage: LatestIncomingWhatsAppMessage | null;
   assigneeOptions: AssigneeOption[] | null;
   assigneeOptionsError: string | null;
+  suggestion: TaskSuggestionState | null;
+  onSuggest: (taskId: number) => void;
   onCompleted: (taskId: number, notes: string | null) => void;
   onReassigned: (taskId: number, userId: string | null) => void;
   onSnoozed: (taskId: number) => void;
@@ -1260,11 +1354,9 @@ function SelectedTaskSection({
   const isCompleted = task.estado === "completada";
   const isActionable =
     task.estado === "pendiente" || task.estado === "en_progreso";
-  const [isSuggesting, startSuggesting] = useTransition();
-  const [generatedSuggestion, setGeneratedSuggestion] = useState<
-    string | null
-  >(null);
-  const [suggestionError, setSuggestionError] = useState<string | null>(null);
+  const generatedSuggestion = suggestion?.suggestion ?? null;
+  const suggestionError = suggestion?.error ?? null;
+  const isSuggesting = suggestion?.isGenerating ?? false;
   const description = task.descripcion?.trim();
   const completionNotes = task.notas_completado?.trim();
   const whatsappNumber = getWhatsappNumber(order);
@@ -1281,24 +1373,7 @@ function SelectedTaskSection({
     : null;
 
   function handleSuggest() {
-    setSuggestionError(null);
-
-    startSuggesting(async () => {
-      try {
-        const result = await suggestTaskMessage(task.id);
-
-        if (result.error) {
-          setSuggestionError(result.error);
-          return;
-        }
-
-        setGeneratedSuggestion(result.suggestion);
-      } catch {
-        setSuggestionError(
-          "No se pudo generar la sugerencia. Intenta nuevamente.",
-        );
-      }
-    });
+    onSuggest(task.id);
   }
 
   return (
@@ -1388,8 +1463,8 @@ function SelectedTaskSection({
               {isSuggesting
                 ? "Generando…"
                 : generatedSuggestion
-                  ? "Sugerir de nuevo"
-                  : "Sugerir"}
+                  ? "Generar otra opción"
+                  : "Generar sugerencia"}
             </Button>
           </div>
         </div>
