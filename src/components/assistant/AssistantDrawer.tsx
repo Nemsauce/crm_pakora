@@ -1,9 +1,12 @@
 "use client";
 
-import { Loader2, MessageCircle, Send } from "lucide-react";
+import { Loader2, MessageCircle, Send, X } from "lucide-react";
+import { Dialog } from "radix-ui";
 import {
   type FormEvent,
   type KeyboardEvent,
+  type ReactElement,
+  type ReactNode,
   useState,
 } from "react";
 
@@ -30,7 +33,25 @@ function getActiveOrderLabel(activeOrder: ActiveOrderSummary) {
     : orderLabel;
 }
 
-export default function AssistantPage() {
+export function AssistantProvider({ children }: { children: ReactNode }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Dialog.Root modal={false} open={isOpen} onOpenChange={setIsOpen}>
+      {children}
+    </Dialog.Root>
+  );
+}
+
+export function AssistantDrawerTrigger({
+  children,
+}: {
+  children: ReactElement;
+}) {
+  return <Dialog.Trigger asChild>{children}</Dialog.Trigger>;
+}
+
+export function AssistantDrawer() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [activeOrder, setActiveOrder] = useState<ActiveOrderSummary | null>(
@@ -100,24 +121,60 @@ export default function AssistantPage() {
   }
 
   return (
-    <section className="min-h-screen px-6 py-6 sm:px-8">
-      <div className="border-b border-border pb-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="font-body text-xs uppercase text-text-secondary">
-              Operación interna
-            </p>
-            <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
-              Asistente de pedidos
-            </h1>
-            <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
-              Consulta un pedido por número de orden o teléfono. El asistente
-              usa su historial completo, tareas y conversación de WhatsApp.
-            </p>
+    <Dialog.Portal>
+      <style>{`
+        @keyframes crm-assistant-drawer-enter {
+          from {
+            opacity: 0;
+            transform: translateX(-24px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        .crm-assistant-drawer[data-state="open"] {
+          animation: crm-assistant-drawer-enter 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .crm-assistant-drawer[data-state="open"] {
+            animation: none;
+          }
+        }
+      `}</style>
+      <Dialog.Content
+        id="assistant-drawer"
+        className="crm-assistant-drawer fixed inset-y-0 left-0 z-50 flex w-full max-w-xl flex-col border-r border-border bg-bg-surface text-[var(--foreground)] shadow-xl outline-none"
+        onPointerDownOutside={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <Dialog.Title className="font-display text-lg font-semibold text-[var(--foreground)]">
+                Asistente de pedidos
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
+                Consulta pedidos sin salir de tu flujo de trabajo.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                className="rounded-lg border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+                aria-label="Cerrar asistente"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </Dialog.Close>
           </div>
 
           {activeOrder ? (
-            <div className="inline-flex max-w-full items-center gap-2 self-start rounded-full border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/10 px-3 py-2 font-body text-xs font-semibold text-[var(--color-accent)]">
+            <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/10 px-3 py-2 font-body text-xs font-semibold text-[var(--color-accent)]">
               <MessageCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               <span className="truncate">
                 Pedido activo: {getActiveOrderLabel(activeOrder)}
@@ -125,25 +182,13 @@ export default function AssistantPage() {
             </div>
           ) : null}
         </div>
-      </div>
-
-      <div className="mt-6 flex min-h-[calc(100vh-17rem)] flex-col overflow-hidden rounded-2xl border border-border bg-bg-surface shadow-lg">
-        <div className="border-b border-border px-5 py-4">
-          <p className="font-display text-base font-semibold text-text-primary">
-            Conversación
-          </p>
-          <p className="mt-1 font-body text-sm text-text-secondary">
-            El historial se conserva solo mientras esta página permanezca
-            abierta.
-          </p>
-        </div>
 
         <div
-          className="flex-1 space-y-4 overflow-y-auto bg-bg-page/60 p-5"
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-bg-page/60 p-5"
           aria-live="polite"
         >
           {messages.length === 0 ? (
-            <div className="flex min-h-48 flex-col items-center justify-center text-center">
+            <div className="flex min-h-full flex-col items-center justify-center py-12 text-center">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--color-accent)]/10 text-[var(--color-accent)]">
                 <MessageCircle className="h-5 w-5" aria-hidden="true" />
               </div>
@@ -162,7 +207,7 @@ export default function AssistantPage() {
                 className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <article
-                  className={`max-w-[min(42rem,88%)] whitespace-pre-wrap rounded-2xl px-4 py-3 font-body text-sm leading-6 shadow-sm ${
+                  className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-4 py-3 font-body text-sm leading-6 shadow-sm ${
                     message.role === "user"
                       ? "bg-gradient-to-r from-accent-from to-accent-to text-bg-surface"
                       : "border border-border bg-bg-surface text-text-primary"
@@ -220,7 +265,7 @@ export default function AssistantPage() {
             Enter para enviar · Shift + Enter para una nueva línea
           </p>
         </form>
-      </div>
-    </section>
+      </Dialog.Content>
+    </Dialog.Portal>
   );
 }

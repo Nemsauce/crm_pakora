@@ -5,15 +5,10 @@ import {
   ClipboardList,
   LayoutDashboard,
   ListTodo,
-  MessageCircle,
   Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-type SidebarProps = {
-  userEmail: string | null;
-};
 
 const navItems = [
   {
@@ -25,11 +20,6 @@ const navItems = [
     label: "Tareas",
     href: "/tareas",
     icon: ListTodo,
-  },
-  {
-    label: "Asistente",
-    href: "/asistente",
-    icon: MessageCircle,
   },
   {
     label: "Costeos",
@@ -97,7 +87,7 @@ function PakoraLogoMark() {
   );
 }
 
-export function Sidebar(_props: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname();
 
   return (
