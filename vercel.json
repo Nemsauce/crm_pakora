@@ -14,7 +14,7 @@
     },
     {
       "path": "/api/cron/sync-abandonados",
-      "schedule": "0 1,14,19 * * *"
+      "schedule": "0 14 * * *"
     }
   ]
 }
