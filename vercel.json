@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/sync-abandonados",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/sync-direccion-granular",
+      "schedule": "0 15 * * *"
     }
   ]
 }

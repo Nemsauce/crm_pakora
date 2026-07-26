@@ -8,6 +8,7 @@ type ShopifyAddress = {
   address2?: unknown;
   city?: unknown;
   province?: unknown;
+  zip?: unknown;
 };
 
 type ShopifyLineItem = {
@@ -31,6 +32,7 @@ type ShopifyOrder = JsonRecord & {
   note?: unknown;
   total_price?: string | number | null;
   billing_address?: ShopifyAddress | null;
+  shipping_address?: ShopifyAddress | null;
   line_items?: ShopifyLineItem[] | null;
   note_attributes?: ShopifyNoteAttribute[] | null;
 };
@@ -56,10 +58,35 @@ export type MappedShopifyOrder = {
   comentario: string | null;
 };
 
+type MappedShopifyOrderPayload = MappedShopifyOrder & {
+  codigo_postal: string;
+};
+
 function sanitize(value: unknown) {
   if (!value) return "";
 
   return String(value).replace(/[\x00-\x1F\x7F]/g, " ").trim();
+}
+
+function firstNonEmpty(...values: unknown[]) {
+  for (const value of values) {
+    const sanitized = sanitize(value);
+
+    if (sanitized) {
+      return sanitized;
+    }
+  }
+
+  return "";
+}
+
+function asMappedShopifyOrder(
+  payload: MappedShopifyOrderPayload,
+): MappedShopifyOrder {
+  // codigo_postal exists in the live schema but not in the generated database
+  // types yet. Keep it enumerable at runtime while exposing the legacy shape to
+  // the typed webhook upsert until those generated types can be refreshed.
+  return payload;
 }
 
 function readOrder(rawOrder: unknown): ShopifyOrder {
@@ -100,20 +127,30 @@ export function mapShopifyOrderCO(rawOrder: unknown): MappedShopifyOrder {
     const attribute = noteAttributes.find((item) => item.name === name);
     return attribute ? sanitize(attribute.value) : "";
   };
-  const address = readAddress(order.billing_address);
+  const shipping = readAddress(order.shipping_address);
+  const billing = readAddress(order.billing_address);
   const comentario = sanitize(order.note || "");
 
-  return {
+  return asMappedShopifyOrder({
     numero_orden: order.name as string | null,
     id_orden_shopify: String(order.id),
     fecha: mapDate(order),
-    nombre: sanitize(address.first_name || getAttribute("Nombre")),
-    apellido: sanitize(address.last_name || getAttribute("Apellido")),
-    telefono: sanitize(order.phone || address.phone),
-    direccion: sanitize(address.address1),
-    barrio_referencia: sanitize(address.address2),
-    ciudad: sanitize(address.city),
-    departamento: sanitize(address.province),
+    nombre: firstNonEmpty(
+      shipping.first_name,
+      billing.first_name,
+      getAttribute("Nombre"),
+    ),
+    apellido: firstNonEmpty(
+      shipping.last_name,
+      billing.last_name,
+      getAttribute("Apellido"),
+    ),
+    telefono: sanitize(order.phone || billing.phone),
+    direccion: firstNonEmpty(shipping.address1, billing.address1),
+    barrio_referencia: firstNonEmpty(shipping.address2, billing.address2),
+    ciudad: firstNonEmpty(shipping.city, billing.city),
+    departamento: firstNonEmpty(shipping.province, billing.province),
+    codigo_postal: firstNonEmpty(shipping.zip, billing.zip),
     nombre_producto: sanitize(lineItem.title),
     cantidad: lineItem.quantity || 1,
     precio: parseAmount(lineItem.price),
@@ -122,27 +159,29 @@ export function mapShopifyOrderCO(rawOrder: unknown): MappedShopifyOrder {
     estado_crm: "nuevo",
     activo: true,
     comentario,
-  };
+  });
 }
 
 export function mapShopifyOrderMX(rawOrder: unknown): MappedShopifyOrder {
   const order = readOrder(rawOrder);
+  const shipping = readAddress(order.shipping_address);
   const billing = readAddress(order.billing_address);
   const lineItem = readFirstLineItem(order);
   const notas = sanitize(order.note);
   const comentario = notas.length > 0 ? notas : null;
 
-  return {
+  return asMappedShopifyOrder({
     numero_orden: order.order_number ? `#${order.order_number}` : null,
     id_orden_shopify: String(order.id),
     fecha: mapDate(order),
-    nombre: sanitize(billing.first_name),
-    apellido: sanitize(billing.last_name),
+    nombre: firstNonEmpty(shipping.first_name, billing.first_name),
+    apellido: firstNonEmpty(shipping.last_name, billing.last_name),
     telefono: sanitize(billing.phone || order.phone),
-    direccion: sanitize(billing.address1),
-    barrio_referencia: sanitize(billing.address2),
-    ciudad: sanitize(billing.city),
-    departamento: sanitize(billing.province),
+    direccion: firstNonEmpty(shipping.address1, billing.address1),
+    barrio_referencia: firstNonEmpty(shipping.address2, billing.address2),
+    ciudad: firstNonEmpty(shipping.city, billing.city),
+    departamento: firstNonEmpty(shipping.province, billing.province),
+    codigo_postal: firstNonEmpty(shipping.zip, billing.zip),
     nombre_producto: sanitize(lineItem.title),
     cantidad: lineItem.quantity || 1,
     precio: parseAmount(lineItem.price),
@@ -151,5 +190,5 @@ export function mapShopifyOrderMX(rawOrder: unknown): MappedShopifyOrder {
     estado_crm: "nuevo",
     activo: true,
     comentario,
-  };
+  });
 }
