@@ -44,7 +44,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getCustomerHistoryStats } from "@/lib/orders/getCustomerHistoryStats";
+import { useCustomerHistoryStats } from "@/lib/orders/getCustomerHistoryStats";
 import { getDisplayName } from "@/lib/profiles/getDisplayName";
 import { createClient } from "@/lib/supabase/client";
 import type { Database, Tables } from "@/lib/supabase/database.types";
@@ -1360,7 +1360,7 @@ function SelectedTaskSection({
   const isSuggesting = suggestion?.isGenerating ?? false;
   const description = task.descripcion?.trim();
   const completionNotes = task.notas_completado?.trim();
-  const customerHistory = getCustomerHistoryStats(order);
+  const customerHistory = useCustomerHistoryStats(order);
   const whatsappNumber = getWhatsappNumber(order);
   const fallbackWhatsAppMessage = buildTaskWhatsAppMessage(
     task,
@@ -1430,7 +1430,7 @@ function SelectedTaskSection({
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 lg:min-w-52">
+        <div className="flex flex-col gap-3 lg:min-w-64">
           <div className="rounded-2xl border border-border bg-bg-page p-3">
             <p className="font-body text-xs text-[var(--muted-foreground)]">
               Teléfono cliente
@@ -1476,14 +1476,24 @@ function SelectedTaskSection({
             <p className="font-body text-xs text-[var(--muted-foreground)]">
               Historial del cliente
             </p>
-            {customerHistory.hasHistory ? (
-              <dl className="mt-3 grid grid-cols-3 gap-2">
-                <div>
+            {customerHistory.isLoading ? (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="col-span-2 h-9 rounded-lg bg-bg-surface motion-safe:animate-pulse" />
+                <div className="h-9 rounded-lg bg-bg-surface motion-safe:animate-pulse" />
+                <div className="h-9 rounded-lg bg-bg-surface motion-safe:animate-pulse" />
+              </div>
+            ) : customerHistory.error ? (
+              <p role="alert" className="mt-3 font-body text-sm text-risk-high">
+                {customerHistory.error}
+              </p>
+            ) : customerHistory.stats?.hasHistory ? (
+              <dl className="mt-3 grid grid-cols-2 gap-2">
+                <div className="col-span-2">
                   <dt className="font-body text-xs text-[var(--muted-foreground)]">
                     Total pedidos
                   </dt>
                   <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-[var(--foreground)]">
-                    {customerHistory.totalOrders}
+                    {customerHistory.stats.totalOrders}
                   </dd>
                 </div>
                 <div>
@@ -1491,7 +1501,15 @@ function SelectedTaskSection({
                     Entregados
                   </dt>
                   <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-low">
-                    {customerHistory.deliveredOrders}
+                    {customerHistory.stats.deliveredOrders}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-body text-xs text-[var(--muted-foreground)]">
+                    Cancelados
+                  </dt>
+                  <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-high">
+                    {customerHistory.stats.canceledOrders}
                   </dd>
                 </div>
                 <div>
@@ -1499,7 +1517,15 @@ function SelectedTaskSection({
                     Devoluciones
                   </dt>
                   <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-high">
-                    {customerHistory.returnedOrders}
+                    {customerHistory.stats.returnedOrders}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-body text-xs text-[var(--muted-foreground)]">
+                    En curso
+                  </dt>
+                  <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-medium">
+                    {customerHistory.stats.inProgressOrders}
                   </dd>
                 </div>
               </dl>

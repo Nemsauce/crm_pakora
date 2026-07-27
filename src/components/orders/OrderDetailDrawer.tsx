@@ -18,7 +18,7 @@ import { updateOrderPhone } from "@/app/(app)/pedidos/actions";
 import { getTaskTypeLabel } from "@/components/tasks/TaskDetailDrawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getCustomerHistoryStats } from "@/lib/orders/getCustomerHistoryStats";
+import { useCustomerHistoryStats } from "@/lib/orders/getCustomerHistoryStats";
 import type { Tables } from "@/lib/supabase/database.types";
 
 import { RiskOrb } from "./RiskOrb";
@@ -375,12 +375,7 @@ export function OrderDetailDrawer() {
 
 function CustomerRiskProfileSection({ order }: { order: Order }) {
   const risk = normalizeRisk(order.nivel_riesgo);
-  const {
-    totalOrders,
-    deliveredOrders,
-    returnedOrders,
-    hasHistory,
-  } = getCustomerHistoryStats(order);
+  const customerHistory = useCustomerHistoryStats(order);
 
   return (
     <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
@@ -400,14 +395,23 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
         </span>
       </div>
 
-      {hasHistory ? (
+      {customerHistory.isLoading ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="h-20 rounded-2xl border border-border bg-bg-page motion-safe:animate-pulse" />
+          <div className="h-20 rounded-2xl border border-border bg-bg-page motion-safe:animate-pulse" />
+        </div>
+      ) : customerHistory.error ? (
+        <p role="alert" className="mt-4 font-body text-sm text-risk-high">
+          {customerHistory.error}
+        </p>
+      ) : customerHistory.stats?.hasHistory ? (
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border border-border bg-bg-page p-3">
             <dt className="font-body text-xs text-[var(--muted-foreground)]">
               Total de pedidos
             </dt>
             <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-[var(--foreground)]">
-              {totalOrders}
+              {customerHistory.stats.totalOrders}
             </dd>
           </div>
           <div className="rounded-2xl border border-border bg-bg-page p-3">
@@ -415,7 +419,15 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
               Entregados
             </dt>
             <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-risk-low">
-              {deliveredOrders}
+              {customerHistory.stats.deliveredOrders}
+            </dd>
+          </div>
+          <div className="rounded-2xl border border-border bg-bg-page p-3">
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              Cancelados
+            </dt>
+            <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-risk-high">
+              {customerHistory.stats.canceledOrders}
             </dd>
           </div>
           <div className="rounded-2xl border border-border bg-bg-page p-3">
@@ -423,7 +435,15 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
               Devoluciones
             </dt>
             <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-risk-high">
-              {returnedOrders}
+              {customerHistory.stats.returnedOrders}
+            </dd>
+          </div>
+          <div className="rounded-2xl border border-border bg-bg-page p-3">
+            <dt className="font-body text-xs text-[var(--muted-foreground)]">
+              En curso
+            </dt>
+            <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-risk-medium">
+              {customerHistory.stats.inProgressOrders}
             </dd>
           </div>
           <div className="rounded-2xl border border-border bg-bg-page p-3">
@@ -431,7 +451,10 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
               Tasa de devolución
             </dt>
             <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-[var(--foreground)]">
-              {formatReturnRate(returnedOrders, totalOrders)}
+              {formatReturnRate(
+                customerHistory.stats.returnedOrders,
+                customerHistory.stats.totalOrders,
+              )}
             </dd>
           </div>
         </dl>
