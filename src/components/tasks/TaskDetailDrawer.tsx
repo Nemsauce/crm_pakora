@@ -44,7 +44,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCustomerHistoryStats } from "@/lib/orders/getCustomerHistoryStats";
+import { getCustomerHistoryStats } from "@/lib/orders/getCustomerHistoryStats";
 import { getDisplayName } from "@/lib/profiles/getDisplayName";
 import { createClient } from "@/lib/supabase/client";
 import type { Database, Tables } from "@/lib/supabase/database.types";
@@ -1360,7 +1360,7 @@ function SelectedTaskSection({
   const isSuggesting = suggestion?.isGenerating ?? false;
   const description = task.descripcion?.trim();
   const completionNotes = task.notas_completado?.trim();
-  const customerHistory = useCustomerHistoryStats(order);
+  const customerHistory = getCustomerHistoryStats(order);
   const whatsappNumber = getWhatsappNumber(order);
   const fallbackWhatsAppMessage = buildTaskWhatsAppMessage(
     task,
@@ -1476,24 +1476,14 @@ function SelectedTaskSection({
             <p className="font-body text-xs text-[var(--muted-foreground)]">
               Historial del cliente
             </p>
-            {customerHistory.isLoading ? (
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <div className="col-span-2 h-9 rounded-lg bg-bg-surface motion-safe:animate-pulse" />
-                <div className="h-9 rounded-lg bg-bg-surface motion-safe:animate-pulse" />
-                <div className="h-9 rounded-lg bg-bg-surface motion-safe:animate-pulse" />
-              </div>
-            ) : customerHistory.error ? (
-              <p role="alert" className="mt-3 font-body text-sm text-risk-high">
-                {customerHistory.error}
-              </p>
-            ) : customerHistory.stats?.hasHistory ? (
+            {customerHistory.hasHistory ? (
               <dl className="mt-3 grid grid-cols-2 gap-2">
-                <div className="col-span-2">
+                <div>
                   <dt className="font-body text-xs text-[var(--muted-foreground)]">
                     Total pedidos
                   </dt>
                   <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-[var(--foreground)]">
-                    {customerHistory.stats.totalOrders}
+                    {customerHistory.totalOrders}
                   </dd>
                 </div>
                 <div>
@@ -1501,15 +1491,7 @@ function SelectedTaskSection({
                     Entregados
                   </dt>
                   <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-low">
-                    {customerHistory.stats.deliveredOrders}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-body text-xs text-[var(--muted-foreground)]">
-                    Cancelados
-                  </dt>
-                  <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-high">
-                    {customerHistory.stats.canceledOrders}
+                    {customerHistory.deliveredOrders}
                   </dd>
                 </div>
                 <div>
@@ -1517,15 +1499,15 @@ function SelectedTaskSection({
                     Devoluciones
                   </dt>
                   <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-high">
-                    {customerHistory.stats.returnedOrders}
+                    {customerHistory.returnedOrders}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-body text-xs text-[var(--muted-foreground)]">
-                    En curso
+                    Otros
                   </dt>
                   <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-medium">
-                    {customerHistory.stats.inProgressOrders}
+                    {customerHistory.otherOrders}
                   </dd>
                 </div>
               </dl>

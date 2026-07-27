@@ -18,7 +18,7 @@ import { updateOrderPhone } from "@/app/(app)/pedidos/actions";
 import { getTaskTypeLabel } from "@/components/tasks/TaskDetailDrawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useCustomerHistoryStats } from "@/lib/orders/getCustomerHistoryStats";
+import { getCustomerHistoryStats } from "@/lib/orders/getCustomerHistoryStats";
 import type { Tables } from "@/lib/supabase/database.types";
 
 import { RiskOrb } from "./RiskOrb";
@@ -163,6 +163,10 @@ function normalizeRisk(nivelRiesgo: string | null): RiskLevel {
 }
 
 function formatReturnRate(returnedOrders: number, totalOrders: number) {
+  if (totalOrders === 0) {
+    return "0%";
+  }
+
   return `${returnRateFormatter.format((returnedOrders / totalOrders) * 100)}%`;
 }
 
@@ -375,7 +379,13 @@ export function OrderDetailDrawer() {
 
 function CustomerRiskProfileSection({ order }: { order: Order }) {
   const risk = normalizeRisk(order.nivel_riesgo);
-  const customerHistory = useCustomerHistoryStats(order);
+  const {
+    totalOrders,
+    deliveredOrders,
+    returnedOrders,
+    otherOrders,
+    hasHistory,
+  } = getCustomerHistoryStats(order);
 
   return (
     <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
@@ -395,23 +405,14 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
         </span>
       </div>
 
-      {customerHistory.isLoading ? (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="h-20 rounded-2xl border border-border bg-bg-page motion-safe:animate-pulse" />
-          <div className="h-20 rounded-2xl border border-border bg-bg-page motion-safe:animate-pulse" />
-        </div>
-      ) : customerHistory.error ? (
-        <p role="alert" className="mt-4 font-body text-sm text-risk-high">
-          {customerHistory.error}
-        </p>
-      ) : customerHistory.stats?.hasHistory ? (
+      {hasHistory ? (
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border border-border bg-bg-page p-3">
             <dt className="font-body text-xs text-[var(--muted-foreground)]">
               Total de pedidos
             </dt>
             <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-[var(--foreground)]">
-              {customerHistory.stats.totalOrders}
+              {totalOrders}
             </dd>
           </div>
           <div className="rounded-2xl border border-border bg-bg-page p-3">
@@ -419,15 +420,7 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
               Entregados
             </dt>
             <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-risk-low">
-              {customerHistory.stats.deliveredOrders}
-            </dd>
-          </div>
-          <div className="rounded-2xl border border-border bg-bg-page p-3">
-            <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              Cancelados
-            </dt>
-            <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-risk-high">
-              {customerHistory.stats.canceledOrders}
+              {deliveredOrders}
             </dd>
           </div>
           <div className="rounded-2xl border border-border bg-bg-page p-3">
@@ -435,26 +428,23 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
               Devoluciones
             </dt>
             <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-risk-high">
-              {customerHistory.stats.returnedOrders}
+              {returnedOrders}
             </dd>
           </div>
           <div className="rounded-2xl border border-border bg-bg-page p-3">
             <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              En curso
+              Otros
             </dt>
             <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-risk-medium">
-              {customerHistory.stats.inProgressOrders}
+              {otherOrders}
             </dd>
           </div>
-          <div className="rounded-2xl border border-border bg-bg-page p-3">
+          <div className="rounded-2xl border border-border bg-bg-page p-3 sm:col-span-2">
             <dt className="font-body text-xs text-[var(--muted-foreground)]">
               Tasa de devolución
             </dt>
             <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-[var(--foreground)]">
-              {formatReturnRate(
-                customerHistory.stats.returnedOrders,
-                customerHistory.stats.totalOrders,
-              )}
+              {formatReturnRate(returnedOrders, totalOrders)}
             </dd>
           </div>
         </dl>
