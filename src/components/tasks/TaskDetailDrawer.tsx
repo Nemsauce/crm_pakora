@@ -44,6 +44,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getCustomerHistoryStats } from "@/lib/orders/getCustomerHistoryStats";
 import { getDisplayName } from "@/lib/profiles/getDisplayName";
 import { createClient } from "@/lib/supabase/client";
 import type { Database, Tables } from "@/lib/supabase/database.types";
@@ -1359,6 +1360,7 @@ function SelectedTaskSection({
   const isSuggesting = suggestion?.isGenerating ?? false;
   const description = task.descripcion?.trim();
   const completionNotes = task.notas_completado?.trim();
+  const customerHistory = getCustomerHistoryStats(order);
   const whatsappNumber = getWhatsappNumber(order);
   const fallbackWhatsAppMessage = buildTaskWhatsAppMessage(
     task,
@@ -1428,44 +1430,84 @@ function SelectedTaskSection({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-bg-page p-3 lg:min-w-44">
-          <p className="font-body text-xs text-[var(--muted-foreground)]">
-            Teléfono cliente
-          </p>
-          <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-[var(--foreground)]">
-            {order.telefono?.trim() || "Sin teléfono"}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {whatsappUrl ? (
+        <div className="flex flex-col gap-3 lg:min-w-52">
+          <div className="rounded-2xl border border-border bg-bg-page p-3">
+            <p className="font-body text-xs text-[var(--muted-foreground)]">
+              Teléfono cliente
+            </p>
+            <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-[var(--foreground)]">
+              {order.telefono?.trim() || "Sin teléfono"}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {whatsappUrl ? (
+                <Button
+                  asChild
+                  className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90"
+                >
+                  <a href={whatsappUrl} target="_blank" rel="noreferrer">
+                    <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                    WhatsApp
+                  </a>
+                </Button>
+              ) : null}
               <Button
-                asChild
-                className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90"
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isSuggesting}
+                onClick={handleSuggest}
+                className="h-9 rounded-full border-border bg-bg-surface px-4 text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)] disabled:opacity-60"
               >
-                <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                  <MessageCircle className="h-4 w-4" aria-hidden="true" />
-                  WhatsApp
-                </a>
+                {isSuggesting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                )}
+                {isSuggesting
+                  ? "Generando…"
+                  : generatedSuggestion
+                    ? "Generar otra opción"
+                    : "Generar sugerencia"}
               </Button>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isSuggesting}
-              onClick={handleSuggest}
-              className="h-9 rounded-full border-border bg-bg-surface px-4 text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)] disabled:opacity-60"
-            >
-              {isSuggesting ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
-              )}
-              {isSuggesting
-                ? "Generando…"
-                : generatedSuggestion
-                  ? "Generar otra opción"
-                  : "Generar sugerencia"}
-            </Button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-bg-page p-3">
+            <p className="font-body text-xs text-[var(--muted-foreground)]">
+              Historial del cliente
+            </p>
+            {customerHistory.hasHistory ? (
+              <dl className="mt-3 grid grid-cols-3 gap-2">
+                <div>
+                  <dt className="font-body text-xs text-[var(--muted-foreground)]">
+                    Total pedidos
+                  </dt>
+                  <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-[var(--foreground)]">
+                    {customerHistory.totalOrders}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-body text-xs text-[var(--muted-foreground)]">
+                    Entregados
+                  </dt>
+                  <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-low">
+                    {customerHistory.deliveredOrders}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-body text-xs text-[var(--muted-foreground)]">
+                    Devoluciones
+                  </dt>
+                  <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-high">
+                    {customerHistory.returnedOrders}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="mt-3 font-body text-sm text-[var(--muted-foreground)]">
+                Cliente sin historial en Dropi
+              </p>
+            )}
           </div>
         </div>
       </div>

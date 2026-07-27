@@ -18,6 +18,7 @@ import { updateOrderPhone } from "@/app/(app)/pedidos/actions";
 import { getTaskTypeLabel } from "@/components/tasks/TaskDetailDrawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getCustomerHistoryStats } from "@/lib/orders/getCustomerHistoryStats";
 import type { Tables } from "@/lib/supabase/database.types";
 
 import { RiskOrb } from "./RiskOrb";
@@ -374,10 +375,12 @@ export function OrderDetailDrawer() {
 
 function CustomerRiskProfileSection({ order }: { order: Order }) {
   const risk = normalizeRisk(order.nivel_riesgo);
-  const totalOrders = order.total_pedidos_cliente ?? 0;
-  const deliveredOrders = order.pedidos_entregados_cliente ?? 0;
-  const returnedOrders = order.pedidos_devueltos_cliente ?? 0;
-  const hasHistory = totalOrders > 0;
+  const {
+    totalOrders,
+    deliveredOrders,
+    returnedOrders,
+    hasHistory,
+  } = getCustomerHistoryStats(order);
 
   return (
     <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
