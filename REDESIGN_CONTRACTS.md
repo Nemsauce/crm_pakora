@@ -10,7 +10,7 @@ operativo, financiero o de datos.
 | Elemento | Valor verificado | Contrato | Protección |
 | --- | --- | --- | --- |
 | Commit base | `3ffd66aad1cb0a11f4228b439f07e512b877b255` | Toda comparación de regresión parte de este commit. | `BASE-001` — verificado manualmente |
-| Rama de trabajo | `redesign/crm-v4` | Ningún commit parcial del rediseño entra directamente a `main`. | `BASE-002` — verificado manualmente; CI por configurar |
+| Rama de trabajo | `redesign/crm-v4` | Ningún commit parcial del rediseño entra directamente a `main`. | `BASE-002` — verificado; CI configurado |
 | Tag de recuperación | `pre-crm-v4-20260728` | Punto inmutable previo al primer cambio del rediseño. | `BASE-003` — verificado manualmente |
 | Producción | Fuera de alcance de pruebas mutables | Toda escritura automatizada usa exclusivamente Supabase staging y registros fixture. | `ENV-001` — bloqueado hasta conectar staging |
 | Zona operativa | `America/Bogota` | Fechas relativas, “Hoy” y fixtures se calculan explícitamente en esta zona. | `TIME-001` — planificado |
@@ -51,8 +51,8 @@ rutas sin seguimiento antes y después de cada gate. Estado: **planificado**.
 | ID | Ruta | Contrato actual | Evolución v4 permitida | Protección |
 | --- | --- | --- | --- | --- |
 | `ROUTE-001` | `/` | Redirige a `/pedidos`. | Solo cambiará a `/hoy` después de que `/hoy` apruebe G9. | `E2E-ROUTE-001` — planificado G9 |
-| `ROUTE-002` | `/login` | Acepta `error`; muestra login por correo/contraseña; no ofrece registro público. | Puede cambiar su presentación y ofrecer tema, no el flujo de Auth. | `E2E-AUTH-001` — bloqueado staging |
-| `ROUTE-003` | `/set-password` | Requiere sesión de invitación; sin sesión muestra enlace inválido; contraseña mínima de 8 caracteres. | Solo rediseño visual; PKCE y permisos no cambian. | `E2E-AUTH-002` — bloqueado staging |
+| `ROUTE-002` | `/login` | Acepta `error`; muestra login por correo/contraseña; no ofrece registro público. | Puede cambiar su presentación y ofrecer tema, no el flujo de Auth. | `E2E-AUTH-PUBLIC-001` — automatizado read-only; login mutable bloqueado staging |
+| `ROUTE-003` | `/set-password` | Requiere sesión de invitación; sin sesión muestra enlace inválido; contraseña mínima de 8 caracteres. | Solo rediseño visual; PKCE y permisos no cambian. | `E2E-AUTH-PUBLIC-002` — invitación inválida automatizada; invitación válida bloqueada staging |
 | `ROUTE-004` | `/auth/callback` | Completa el callback de autenticación existente. | Contrato técnico sin cambios. | `E2E-AUTH-003` — bloqueado staging |
 | `ROUTE-005` | `/pedidos` | Lista paginada de pedidos y subvista de abandonados; conserva filtros y abre el drawer por URL. | La lista puede pasar de cards a tabla/cards responsive sin cambiar consulta, conteo o navegación. | `E2E-ORD-001` — bloqueado staging |
 | `ROUTE-006` | `/tareas` | Cola filtrable; selección de pedido/tarea por URL; completar puede avanzar a la siguiente tarea visible. | Puede cambiar jerarquía y composición, no acciones ni orden vigente. | `E2E-TASK-001` — bloqueado staging |
@@ -224,7 +224,7 @@ relevantes se anuncian; el color nunca es la única señal.
 | `VIS-009` | Hoy | loading, cero actividad, error parcial por origen, poblado, CO/MX separados. | `VIS-TODAY-001` + `AXE-TODAY-001` — planificado G9 |
 | `VIS-010` | Finanzas/analítica | loading, sin movimientos, error total/parcial, datos, FX indisponible, rango inválido/custom. | `VIS-FIN-001` + `AXE-FIN-001` — planificado G10 |
 | `VIS-011` | Costeos | nuevo, seleccionado, guardando, éxito/error, promoción, cambios sin guardar, delete/duplicate, CO/MX. | `VIS-COST-001` + `AXE-COST-001` — planificado G11 |
-| `VIS-012` | Configuración/Auth | loading, error inline, éxito, sesión expirada, invitación inválida, ambos temas. | `VIS-AUTH-001` + `AXE-AUTH-001` — planificado G11 |
+| `VIS-012` | Configuración/Auth | loading, error inline, éxito, sesión expirada, invitación inválida, ambos temas. | Login normal/error e invitación inválida: `VIS-AUTH-PUBLIC-001` automatizado. `AXE-AUTH-PUBLIC-001` registra una deuda conocida de contraste únicamente en el error light (`3.95:1`) que G3 debe eliminar; estados autenticados planificados G11 |
 | `VIS-013` | Overlays | cerrado/abriendo/abierto/cerrando, foco inicial, Escape, foco restaurado, coexistencia de paneles. | `E2E-OVERLAY-001` — planificado G4 |
 | `VIS-014` | Motion | normal y `prefers-reduced-motion`; el modo reducido conserva feedback textual/color/icono sin desplazamiento, escala, pulso o stagger. | `E2E-MOTION-001` — planificado G3/G12 |
 
