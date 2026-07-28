@@ -44,6 +44,44 @@ rutas sin seguimiento antes y después de cada gate. Estado: **planificado**.
 - **Bloqueante**: cuando exista la prueba, su fallo detiene el gate; no se
   actualizarán snapshots para ocultarlo.
 
+### 1.3 Seguridad y readiness de G0
+
+| ID | Estado verificable | Invariante | Protección |
+| --- | --- | --- | --- |
+| `ENV-PUBLIC-001` | Suite pública local/read-only | Next arranca con las tres variables Supabase vacías; requests HTTP se abortan fuera del origen local y WebSockets se interceptan/cancelan antes de conectar a hosts externos; proyectos mutables ni Auth se cargan. | Playwright `102` aprobadas / `7` skips intencionales; CI ejecuta guard vacío antes de UI |
+| `ENV-MUT-001` | Ejecución mutable fail-closed | Solo `VERCEL_ENV=preview`, origen HTTPS exacto, ref Supabase en allowlist positiva versionada, marker staging read-only, habilitación literal y secretos completos. La allowlist permanece vacía hasta provisionar y auditar staging. | `staging-guard.spec.ts`; `test:e2e:guard:empty` |
+| `ENV-DEPLOY-001` | Identidad real del preview | El propio deployment debe atestiguar mismo origen, ref, entorno preview y marker mediante `/api/e2e/attestation`; redirects o drift de identidad bloquean la suite. | ramas `404/401/503/409/200` automatizadas; smoke HTTP local `404`; ejecución live bloqueada staging |
+| `ENV-AUTH-001` | Auth staging | Sin credenciales no se crea storage state vacío. Login exige `/pedidos`, navegación principal y heading real; artefactos de Auth están desactivados. | proyecto `auth` dependiente de guard; bloqueado staging real |
+| `SCHEMA-READINESS-001` | Tipos generados incompletos | El scanner AST usa fuentes rastreadas —excluye los archivos protegidos del usuario— y falla ante gaps nuevos no allowlisted dentro de llamadas literales `.from()`/`.rpc()`. Wrappers y nombres dinámicos quedan fuera de su prueba. | `schema-readiness.spec.ts`; `detectionScope=literal-supabase-from-and-rpc-calls`; `schemaTypesReady=false` |
+| `FIXTURE-LOGICAL-001` | Contrato lógico determinista | Manifiesto inmutable con claves `FX-*`, sin PK hardcodeadas y anclado a Bogotá. Sus oráculos prueban coherencia de escenarios, no fórmulas privadas ni RPC. El adaptador DB está bloqueado. | paridad productiva real: historial Dropi, resultados de tareas y teléfono WhatsApp; resto marcado `scenarioOnly` |
+
+Deuda exacta de tipos que debe resolverse desde el schema auditado de staging,
+no mediante tipos inventados:
+
+- tablas usadas y ausentes: `abandonados`, `asistente_whatsapp_config`,
+  `dropi_sessions`, `dropkiller_saved_products`, `shopify_webhook_events`,
+  `task_handling_events`, `whatsapp_mensajes_entrantes` y
+  `whatsapp_mensajes_salientes`;
+- RPC usados y ausentes: `dinero_en_la_calle`, `reporte_semanal`,
+  `task_completions_by_user`, `task_handling_time_by_user` y
+  `wallet_daily_summary`;
+- columnas live observadas y ausentes del tipo: `orders.codigo_postal`,
+  `orders.colonia`, `orders.numero_interior`, `orders.monto_a_ganar`,
+  `tasks.resultado`, `tasks.snoozed_until`,
+  `dropkiller_products_daily.primary_image_url` y
+  `dropkiller_products_daily.providers_count`.
+
+Dentro de su alcance literal, la deuda conocida del scanner es exacta; no se
+interpreta como auditoría completa de wrappers, SQL dinámico o del schema live.
+El contrato lógico cubre CO/MX, cinco estados CRM, las trece categorías de
+`status_catalog`, los cinco tipos de tarea, vencida/hoy/futura/pospuesta,
+notificaciones `99+`, WhatsApp, abandonados, wallet, productos y costeos. El
+caso canónico `#1007: 118 = 39 + 78 + 1` sí se compara con
+`getCustomerHistoryStats`, la función productiva usada por ambos drawers. Las
+demás cifras marcadas `scenarioOnly` son casos QA esperados, no evidencia de
+paridad con código privado o RPC. Nada de esto autoriza una escritura hasta
+cerrar schema, Auth, RLS, marker y allowlist de staging.
+
 ## 2. Contratos de rutas
 
 ### 2.1 Rutas actuales que deben permanecer funcionales
@@ -68,6 +106,7 @@ rutas sin seguimiento antes y después de cada gate. Estado: **planificado**.
 | `ROUTE-016` | `/configuracion/asistente` | Lee y guarda las reglas reales del asistente. | Se integra al shell de Configuración; no se inventan secciones sin backend. | `E2E-SETTINGS-001` — bloqueado staging |
 | `ROUTE-017` | `/api/orders/[id]` | `GET` autenticado devuelve `{ order, statusHistory, tasks, comentarios, whatsappMessages }`; ID inválido `400`, ausente `404`, error de lectura `500`. | Es contrato público inmutable durante el rediseño. | `API-ORD-001` — bloqueado staging |
 | `ROUTE-018` | `/api/cron/*`, `/api/webhooks/*`, `/api/fx/mxn-cop` | Integraciones, cron, conciliación, webhooks y FX existentes. | El rediseño no cambia payloads, autorización ni efectos. | `API-SMOKE-001` — planificado read-only/config; mutaciones aisladas |
+| `ROUTE-QA-001` | `/api/e2e/attestation` | Solo existe operativamente en Vercel Preview, omite exclusivamente el redirect de sesión del middleware, exige su propio secreto staging y devuelve únicamente identidad no sensible después de verificar marker read-only. En producción responde `404`. | `ENV-DEPLOY-001` — handler `404/401/503/409/200` y HTTP local `404` sin redirect automatizados; live bloqueado staging |
 
 ### 2.2 Nuevas rutas v4
 

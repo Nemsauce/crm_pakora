@@ -10,9 +10,11 @@
     "start": "next start",
     "lint": "eslint",
     "test:e2e:guard": "node scripts/e2e/assert-staging.mjs",
+    "test:e2e:guard:empty": "node scripts/e2e/assert-empty-staging-guard.mjs",
     "test:e2e:functional": "playwright test --project=functional",
     "test:e2e:visual": "playwright test --project=desktop-light --project=desktop-dark --project=tablet-light --project=tablet-dark --project=mobile-light --project=mobile-dark",
-    "test:e2e:a11y": "playwright test --grep @a11y",
+    "test:e2e:a11y:baseline": "playwright test --grep @a11y",
+    "test:e2e:mutable": "E2E_RUN_MUTABLE=true playwright test --project=mutable",
     "test:e2e": "playwright test"
   },
   "dependencies": {

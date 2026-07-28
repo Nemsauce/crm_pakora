@@ -1,11 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
 
+export const PRODUCTION_PROJECT_REFS = Object.freeze([
+  "nauqpgsspwfqkxidenkx",
+]);
+export const PRODUCTION_APP_ORIGINS = Object.freeze([
+  "https://crm.pakora.online",
+]);
+// Environment variables alone cannot authorize a mutable target. This list
+// stays empty until G0 provisions and audits the dedicated staging project.
+export const ALLOWED_STAGING_PROJECT_REFS = Object.freeze([]);
+
 export const STAGING_GUARD_ENV_NAMES = Object.freeze({
   allowMutations: "E2E_ALLOW_MUTATIONS",
   vercelEnvironment: "VERCEL_ENV",
+  appBaseUrl: "E2E_BASE_URL",
+  playwrightBaseUrl: "PLAYWRIGHT_BASE_URL",
+  expectedAppOrigin: "E2E_EXPECTED_APP_ORIGIN",
+  attestationToken: "E2E_ATTESTATION_TOKEN",
   supabaseUrl: "NEXT_PUBLIC_SUPABASE_URL",
   expectedProjectRef: "E2E_EXPECTED_PROJECT_REF",
-  productionProjectRef: "E2E_PRODUCTION_PROJECT_REF",
   serviceRoleKey: "SUPABASE_SERVICE_ROLE_KEY",
   markerTable: "E2E_STAGING_MARKER_TABLE",
   markerId: "E2E_STAGING_MARKER_ID",
@@ -38,12 +51,66 @@ function freezeInspection(ok, errors, config) {
   });
 }
 
+function parseCanonicalOrigin(value, environmentName, errors) {
+  if (missingOrPlaceholder(value)) {
+    errors.push(
+      issue(
+        "APP_ORIGIN_INVALID",
+        `${environmentName} must contain an explicit staging application origin.`,
+        environmentName,
+      ),
+    );
+    return null;
+  }
+
+  try {
+    const parsed = new URL(value);
+    const canonicalValue = parsed.origin;
+    const normalizedInput = value.replace(/\/$/, "");
+
+    if (
+      parsed.protocol !== "https:" ||
+      parsed.username ||
+      parsed.password ||
+      parsed.pathname !== "/" ||
+      parsed.search ||
+      parsed.hash ||
+      normalizedInput !== canonicalValue
+    ) {
+      errors.push(
+        issue(
+          "APP_ORIGIN_NOT_CANONICAL",
+          `${environmentName} must be a canonical HTTPS origin without credentials, path, query, or hash.`,
+          environmentName,
+        ),
+      );
+      return null;
+    }
+
+    return canonicalValue;
+  } catch {
+    errors.push(
+      issue(
+        "APP_ORIGIN_INVALID",
+        `${environmentName} must be a valid URL origin.`,
+        environmentName,
+      ),
+    );
+    return null;
+  }
+}
+
 /**
  * Pure, side-effect-free validation for the environment gates that must pass
  * before any mutable E2E test is allowed to run.
  */
-export function inspectStagingEnvironment(environment = process.env) {
+export function inspectStagingEnvironment(
+  environment = process.env,
+  policy = {},
+) {
   const errors = [];
+  const allowedStagingProjectRefs =
+    policy.allowedStagingProjectRefs ?? ALLOWED_STAGING_PROJECT_REFS;
   const allowMutations = valueFrom(
     environment,
     STAGING_GUARD_ENV_NAMES.allowMutations,
@@ -52,6 +119,26 @@ export function inspectStagingEnvironment(environment = process.env) {
     environment,
     STAGING_GUARD_ENV_NAMES.vercelEnvironment,
   );
+  const playwrightBaseUrl = valueFrom(
+    environment,
+    STAGING_GUARD_ENV_NAMES.playwrightBaseUrl,
+  );
+  const e2eBaseUrl = valueFrom(
+    environment,
+    STAGING_GUARD_ENV_NAMES.appBaseUrl,
+  );
+  const appBaseUrl = playwrightBaseUrl || e2eBaseUrl;
+  const appBaseUrlEnvironmentName = playwrightBaseUrl
+    ? STAGING_GUARD_ENV_NAMES.playwrightBaseUrl
+    : STAGING_GUARD_ENV_NAMES.appBaseUrl;
+  const expectedAppOriginValue = valueFrom(
+    environment,
+    STAGING_GUARD_ENV_NAMES.expectedAppOrigin,
+  );
+  const attestationToken = valueFrom(
+    environment,
+    STAGING_GUARD_ENV_NAMES.attestationToken,
+  );
   const supabaseUrl = valueFrom(
     environment,
     STAGING_GUARD_ENV_NAMES.supabaseUrl,
@@ -59,10 +146,6 @@ export function inspectStagingEnvironment(environment = process.env) {
   const expectedProjectRef = valueFrom(
     environment,
     STAGING_GUARD_ENV_NAMES.expectedProjectRef,
-  ).toLowerCase();
-  const productionProjectRef = valueFrom(
-    environment,
-    STAGING_GUARD_ENV_NAMES.productionProjectRef,
   ).toLowerCase();
   const supabaseServiceRoleKey = valueFrom(
     environment,
@@ -95,11 +178,11 @@ export function inspectStagingEnvironment(environment = process.env) {
         STAGING_GUARD_ENV_NAMES.vercelEnvironment,
       ),
     );
-  } else if (vercelEnvironment.toLowerCase() === "production") {
+  } else if (vercelEnvironment.toLowerCase() !== "preview") {
     errors.push(
       issue(
-        "PRODUCTION_VERCEL_ENV",
-        "Mutable E2E tests are forbidden when VERCEL_ENV is production.",
+        "NON_PREVIEW_VERCEL_ENV",
+        "Mutable E2E tests require VERCEL_ENV to be exactly preview.",
         STAGING_GUARD_ENV_NAMES.vercelEnvironment,
       ),
     );
@@ -118,29 +201,70 @@ export function inspectStagingEnvironment(environment = process.env) {
     );
   }
 
+  if (missingOrPlaceholder(attestationToken) || attestationToken.length < 32) {
+    errors.push(
+      issue(
+        "ATTESTATION_TOKEN_INVALID",
+        `${STAGING_GUARD_ENV_NAMES.attestationToken} must be a staging-only secret of at least 32 characters.`,
+        STAGING_GUARD_ENV_NAMES.attestationToken,
+      ),
+    );
+  }
+
+  if (PRODUCTION_PROJECT_REFS.includes(expectedProjectRef)) {
+    errors.push(
+      issue(
+        "PRODUCTION_PROJECT_REF",
+        "The expected staging project ref matches a versioned production denylist entry.",
+        STAGING_GUARD_ENV_NAMES.expectedProjectRef,
+      ),
+    );
+  }
+
+  if (!allowedStagingProjectRefs.includes(expectedProjectRef)) {
+    errors.push(
+      issue(
+        "STAGING_PROJECT_NOT_ALLOWLISTED",
+        "The expected project ref is not in the versioned staging allowlist.",
+        STAGING_GUARD_ENV_NAMES.expectedProjectRef,
+      ),
+    );
+  }
+
+  const appOrigin = parseCanonicalOrigin(
+    appBaseUrl,
+    appBaseUrlEnvironmentName,
+    errors,
+  );
+  const expectedAppOrigin = parseCanonicalOrigin(
+    expectedAppOriginValue,
+    STAGING_GUARD_ENV_NAMES.expectedAppOrigin,
+    errors,
+  );
+
   if (
-    missingOrPlaceholder(productionProjectRef) ||
-    !SUPABASE_PROJECT_REF.test(productionProjectRef)
+    appOrigin &&
+    expectedAppOrigin &&
+    appOrigin !== expectedAppOrigin
   ) {
     errors.push(
       issue(
-        "PRODUCTION_PROJECT_REF_INVALID",
-        `${STAGING_GUARD_ENV_NAMES.productionProjectRef} must contain the exact production Supabase project ref.`,
-        STAGING_GUARD_ENV_NAMES.productionProjectRef,
+        "APP_ORIGIN_MISMATCH",
+        "The Playwright application origin must exactly match the expected staging origin.",
+        STAGING_GUARD_ENV_NAMES.expectedAppOrigin,
       ),
     );
   }
 
   if (
-    expectedProjectRef &&
-    productionProjectRef &&
-    expectedProjectRef === productionProjectRef
+    (appOrigin && PRODUCTION_APP_ORIGINS.includes(appOrigin)) ||
+    (expectedAppOrigin && PRODUCTION_APP_ORIGINS.includes(expectedAppOrigin))
   ) {
     errors.push(
       issue(
-        "PROJECT_REFS_MATCH",
-        "The expected staging project ref must not match the production project ref.",
-        STAGING_GUARD_ENV_NAMES.expectedProjectRef,
+        "PRODUCTION_APP_ORIGIN",
+        "Authenticated or mutable E2E tests must never target a production application origin.",
+        STAGING_GUARD_ENV_NAMES.expectedAppOrigin,
       ),
     );
   }
@@ -170,13 +294,16 @@ export function inspectStagingEnvironment(environment = process.env) {
 
   if (parsedSupabaseUrl) {
     const expectedHostname = `${expectedProjectRef}.supabase.co`;
-    const productionHostname = `${productionProjectRef}.supabase.co`;
 
     if (
       parsedSupabaseUrl.protocol !== "https:" ||
       parsedSupabaseUrl.port ||
       parsedSupabaseUrl.username ||
-      parsedSupabaseUrl.password
+      parsedSupabaseUrl.password ||
+      parsedSupabaseUrl.pathname !== "/" ||
+      parsedSupabaseUrl.search ||
+      parsedSupabaseUrl.hash ||
+      supabaseUrl.replace(/\/$/, "") !== parsedSupabaseUrl.origin
     ) {
       errors.push(
         issue(
@@ -201,8 +328,11 @@ export function inspectStagingEnvironment(environment = process.env) {
     }
 
     if (
-      productionProjectRef &&
-      parsedSupabaseUrl.hostname.toLowerCase() === productionHostname
+      PRODUCTION_PROJECT_REFS.some(
+        (projectRef) =>
+          parsedSupabaseUrl.hostname.toLowerCase() ===
+          `${projectRef}.supabase.co`,
+      )
     ) {
       errors.push(
         issue(
@@ -262,16 +392,24 @@ export function inspectStagingEnvironment(environment = process.env) {
     );
   }
 
-  if (errors.length > 0 || !parsedSupabaseUrl) {
+  if (
+    errors.length > 0 ||
+    !parsedSupabaseUrl ||
+    !appOrigin ||
+    !expectedAppOrigin
+  ) {
     return freezeInspection(false, errors, null);
   }
 
   return freezeInspection(true, [], {
+    environmentVerified: true,
     allowMutations: true,
     vercelEnvironment,
+    appOrigin,
     supabaseUrl: parsedSupabaseUrl.origin,
     projectRef: expectedProjectRef,
-    productionProjectRef,
+    productionProjectRefs: PRODUCTION_PROJECT_REFS,
+    attestationToken,
     supabaseServiceRoleKey,
     markerTable,
     markerId,
@@ -287,8 +425,11 @@ export class StagingGuardError extends Error {
   }
 }
 
-export function assertSafeStagingEnvironment(environment = process.env) {
-  const inspection = inspectStagingEnvironment(environment);
+export function assertSafeStagingEnvironment(
+  environment = process.env,
+  policy = {},
+) {
+  const inspection = inspectStagingEnvironment(environment, policy);
 
   if (!inspection.ok || !inspection.config) {
     const detail = inspection.errors
@@ -309,7 +450,11 @@ export function assertSafeStagingEnvironment(environment = process.env) {
  * deletes data.
  */
 export async function assertStagingDatabaseMarker(config, options = {}) {
-  if (!config?.supabaseUrl || !config?.supabaseServiceRoleKey) {
+  if (
+    config?.environmentVerified !== true ||
+    !config?.supabaseUrl ||
+    !config?.supabaseServiceRoleKey
+  ) {
     throw new StagingGuardError(
       "A validated staging guard config is required before checking the database marker.",
       [
@@ -402,6 +547,140 @@ export async function assertStagingEnvironment(
   environment = process.env,
   options = {},
 ) {
-  const config = assertSafeStagingEnvironment(environment);
+  const config = assertSafeStagingEnvironment(environment, options);
   return assertStagingDatabaseMarker(config, options);
+}
+
+export async function assertStagingDeploymentAttestation(config, options = {}) {
+  if (!config?.markerVerified || !config?.appOrigin || !config?.attestationToken) {
+    throw new StagingGuardError(
+      "A marker-verified staging guard config is required before deployment attestation.",
+      [
+        issue(
+          "UNVERIFIED_DEPLOYMENT_CONFIG",
+          "Call assertStagingEnvironment before deployment attestation.",
+        ),
+      ],
+    );
+  }
+
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+  if (typeof fetchImpl !== "function") {
+    throw new StagingGuardError("Deployment attestation requires fetch support.", [
+      issue("ATTESTATION_FETCH_UNAVAILABLE", "No fetch implementation exists."),
+    ]);
+  }
+
+  const attestationUrl = `${config.appOrigin}/api/e2e/attestation`;
+  let response;
+  try {
+    response = await fetchImpl(attestationUrl, {
+      method: "GET",
+      headers: {
+        "x-e2e-attestation-token": config.attestationToken,
+      },
+      redirect: "error",
+      cache: "no-store",
+    });
+  } catch (error) {
+    throw new StagingGuardError(
+      "The staging deployment attestation endpoint could not be reached.",
+      [
+        issue(
+          "ATTESTATION_REQUEST_FAILED",
+          "The attestation request threw before a response was received.",
+          STAGING_GUARD_ENV_NAMES.expectedAppOrigin,
+        ),
+      ],
+      { cause: error },
+    );
+  }
+
+  let responseOrigin = null;
+  let responseUrl = null;
+  try {
+    responseUrl = new URL(response.url).href;
+    responseOrigin = new URL(response.url).origin;
+  } catch {
+    // The explicit mismatch below reports malformed or missing response URLs.
+  }
+
+  if (responseOrigin !== config.appOrigin) {
+    throw new StagingGuardError(
+      "The attestation request left the expected staging application origin.",
+      [
+        issue(
+          "ATTESTATION_ORIGIN_MISMATCH",
+          "Redirects to another preview or production origin are forbidden.",
+          STAGING_GUARD_ENV_NAMES.expectedAppOrigin,
+        ),
+      ],
+    );
+  }
+
+  if (response.redirected === true || responseUrl !== attestationUrl) {
+    throw new StagingGuardError(
+      "The attestation endpoint redirected or changed its canonical URL.",
+      [
+        issue(
+          "ATTESTATION_REDIRECTED",
+          "The attestation response must come directly from the exact endpoint URL.",
+          STAGING_GUARD_ENV_NAMES.expectedAppOrigin,
+        ),
+      ],
+    );
+  }
+
+  if (!response.ok) {
+    throw new StagingGuardError(
+      `The staging deployment attestation endpoint returned HTTP ${response.status}.`,
+      [
+        issue(
+          "ATTESTATION_HTTP_ERROR",
+          "The target deployment did not attest its staging identity.",
+          STAGING_GUARD_ENV_NAMES.expectedAppOrigin,
+        ),
+      ],
+    );
+  }
+
+  let attestation;
+  try {
+    attestation = await response.json();
+  } catch (error) {
+    throw new StagingGuardError(
+      "The staging deployment returned an invalid attestation payload.",
+      [issue("ATTESTATION_PAYLOAD_INVALID", "Expected a JSON payload.")],
+      { cause: error },
+    );
+  }
+
+  if (
+    attestation?.version !== 1 ||
+    attestation?.appOrigin !== config.appOrigin ||
+    attestation?.vercelEnvironment !== "preview" ||
+    attestation?.projectRef !== config.projectRef ||
+    attestation?.markerVerified !== true
+  ) {
+    throw new StagingGuardError(
+      "The staging deployment attestation does not match the runner configuration.",
+      [
+        issue(
+          "ATTESTATION_IDENTITY_MISMATCH",
+          "App origin, Vercel environment, Supabase ref and marker must all match.",
+          STAGING_GUARD_ENV_NAMES.expectedAppOrigin,
+        ),
+      ],
+    );
+  }
+
+  return Object.freeze({ ...config, deploymentAttested: true });
+}
+
+export async function assertStagingDeployment(
+  environment = process.env,
+  options = {},
+) {
+  const config = await assertStagingEnvironment(environment, options);
+  return assertStagingDeploymentAttestation(config, options);
 }

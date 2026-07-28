@@ -4,13 +4,15 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/supabase/database.types";
 
 export async function middleware(request: NextRequest) {
-  // These routes are called server-to-server (n8n, Vercel Cron) and never
-  // carry a Supabase session cookie. They authenticate themselves via
-  // shared-secret headers (x-webhook-secret, CRON_SECRET), so session
-  // refresh/redirect must be skipped or every call gets bounced to /login.
+  // These routes are called server-to-server and never carry a Supabase
+  // session cookie. They authenticate themselves via shared-secret headers,
+  // so session refresh/redirect must be skipped or every call gets bounced to
+  // /login. The E2E attestation route additionally stays hidden outside
+  // Preview and verifies its own staging-only secret plus database marker.
   if (
     request.nextUrl.pathname.startsWith("/api/webhooks/") ||
-    request.nextUrl.pathname.startsWith("/api/cron/")
+    request.nextUrl.pathname.startsWith("/api/cron/") ||
+    request.nextUrl.pathname === "/api/e2e/attestation"
   ) {
     return NextResponse.next();
   }

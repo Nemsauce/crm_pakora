@@ -11,19 +11,31 @@ export interface StagingGuardIssue {
 }
 
 export interface StagingGuardConfig {
+  readonly environmentVerified: true;
   readonly allowMutations: true;
   readonly vercelEnvironment: string;
+  readonly appOrigin: string;
   readonly supabaseUrl: string;
   readonly projectRef: string;
-  readonly productionProjectRef: string;
+  readonly productionProjectRefs: readonly string[];
+  readonly attestationToken: string;
   readonly supabaseServiceRoleKey: string;
   readonly markerTable: string;
   readonly markerId: string;
   readonly markerIdColumn: string;
 }
 
+export const PRODUCTION_PROJECT_REFS: readonly string[];
+export const PRODUCTION_APP_ORIGINS: readonly string[];
+export const ALLOWED_STAGING_PROJECT_REFS: readonly string[];
+
 export interface VerifiedStagingGuardConfig extends StagingGuardConfig {
   readonly markerVerified: true;
+}
+
+export interface AttestedStagingGuardConfig
+  extends VerifiedStagingGuardConfig {
+  readonly deploymentAttested: true;
 }
 
 export type StagingGuardInspection =
@@ -38,17 +50,25 @@ export type StagingGuardInspection =
       config: null;
     }>;
 
-export interface StagingMarkerOptions {
+export interface StagingGuardPolicy {
+  readonly allowedStagingProjectRefs?: readonly string[];
+}
+
+export interface StagingMarkerOptions extends StagingGuardPolicy {
   readonly client?: SupabaseClient;
   readonly clientFactory?: typeof createClient;
+  readonly fetchImpl?: typeof fetch;
 }
 
 export const STAGING_GUARD_ENV_NAMES: Readonly<{
   allowMutations: "E2E_ALLOW_MUTATIONS";
   vercelEnvironment: "VERCEL_ENV";
+  appBaseUrl: "E2E_BASE_URL";
+  playwrightBaseUrl: "PLAYWRIGHT_BASE_URL";
+  expectedAppOrigin: "E2E_EXPECTED_APP_ORIGIN";
+  attestationToken: "E2E_ATTESTATION_TOKEN";
   supabaseUrl: "NEXT_PUBLIC_SUPABASE_URL";
   expectedProjectRef: "E2E_EXPECTED_PROJECT_REF";
-  productionProjectRef: "E2E_PRODUCTION_PROJECT_REF";
   serviceRoleKey: "SUPABASE_SERVICE_ROLE_KEY";
   markerTable: "E2E_STAGING_MARKER_TABLE";
   markerId: "E2E_STAGING_MARKER_ID";
@@ -67,10 +87,12 @@ export class StagingGuardError extends Error {
 
 export function inspectStagingEnvironment(
   environment?: StagingGuardEnvironment,
+  policy?: StagingGuardPolicy,
 ): StagingGuardInspection;
 
 export function assertSafeStagingEnvironment(
   environment?: StagingGuardEnvironment,
+  policy?: StagingGuardPolicy,
 ): Readonly<StagingGuardConfig>;
 
 export function assertStagingDatabaseMarker(
@@ -82,3 +104,13 @@ export function assertStagingEnvironment(
   environment?: StagingGuardEnvironment,
   options?: StagingMarkerOptions,
 ): Promise<Readonly<VerifiedStagingGuardConfig>>;
+
+export function assertStagingDeploymentAttestation(
+  config: Readonly<VerifiedStagingGuardConfig>,
+  options?: Pick<StagingMarkerOptions, "fetchImpl">,
+): Promise<Readonly<AttestedStagingGuardConfig>>;
+
+export function assertStagingDeployment(
+  environment?: StagingGuardEnvironment,
+  options?: StagingMarkerOptions,
+): Promise<Readonly<AttestedStagingGuardConfig>>;
