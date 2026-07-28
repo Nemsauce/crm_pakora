@@ -1,0 +1,70 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Build, lint, types and read-only UI checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      TZ: America/Bogota
+      PLAYWRIGHT_BASE_URL: http://localhost:3100
+      PLAYWRIGHT_WEB_SERVER_COMMAND: pnpm start -- -p 3100
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: TypeScript
+        run: pnpm exec tsc --noEmit
+
+      - name: Build
+        run: pnpm build
+
+      - name: Read-only Playwright suite
+        run: pnpm test:e2e
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
