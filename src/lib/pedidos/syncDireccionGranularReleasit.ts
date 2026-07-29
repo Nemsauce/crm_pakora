@@ -1,7 +1,5 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type Pais = "CO" | "MX";
@@ -25,8 +23,12 @@ type ExistingOrder = {
   numero_interior: string | null;
 };
 
+type MatchedOrder = ExistingOrder & {
+  numero_orden: string;
+};
+
 type PendingUpdate = {
-  order: ExistingOrder;
+  order: MatchedOrder;
   patch: {
     colonia?: string;
     numero_interior?: string;
@@ -76,9 +78,7 @@ const SELECT_BATCH_SIZE = 100;
 const UPDATE_BATCH_SIZE = 25;
 
 function getOrdersClient() {
-  // These order columns were migrated after the generated database types.
-  // Keep the temporary untyped access contained in this server-only module.
-  return createAdminClient() as unknown as SupabaseClient;
+  return createAdminClient();
 }
 
 function cleanCell(value: string | null | undefined) {
@@ -283,7 +283,7 @@ async function findExistingOrders(orderNumbers: string[]) {
       throw new Error(`Failed to find MX orders: ${error.message}`);
     }
 
-    orders.push(...((data ?? []) as ExistingOrder[]));
+    orders.push(...(data ?? []));
   }
 
   return orders;
@@ -301,7 +301,11 @@ function getPendingUpdates(
       continue;
     }
 
-    const address = addresses.get(order.numero_orden);
+    const matchedOrder: MatchedOrder = {
+      ...order,
+      numero_orden: order.numero_orden,
+    };
+    const address = addresses.get(matchedOrder.numero_orden);
 
     if (!address) {
       continue;
@@ -309,13 +313,16 @@ function getPendingUpdates(
 
     const patch: PendingUpdate["patch"] = {};
 
-    if (address.colonia && cleanCell(order.colonia) !== address.colonia) {
+    if (
+      address.colonia &&
+      cleanCell(matchedOrder.colonia) !== address.colonia
+    ) {
       patch.colonia = address.colonia;
     }
 
     if (
       address.numeroInterior &&
-      cleanCell(order.numero_interior) !== address.numeroInterior
+      cleanCell(matchedOrder.numero_interior) !== address.numeroInterior
     ) {
       patch.numero_interior = address.numeroInterior;
     }
@@ -323,7 +330,7 @@ function getPendingUpdates(
     if (Object.keys(patch).length === 0) {
       unchangedOrders += 1;
     } else {
-      updates.push({ order, patch });
+      updates.push({ order: matchedOrder, patch });
     }
   }
 

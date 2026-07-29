@@ -19,24 +19,10 @@ import {
   type DropkillerProductSearchResult,
 } from "@/lib/dropkiller/searchDropkillerProduct";
 import { createClient } from "@/lib/supabase/server";
+import type { Database, Tables } from "@/lib/supabase/database.types";
 
-type SweetSpotRpcClient = {
-  rpc: (
-    functionName: "dropkiller_sweet_spot_candidates",
-  ) => Promise<{
-    data: SweetSpotCandidate[] | null;
-    error: { message: string } | null;
-  }>;
-};
-
-type SavedProductsReadClient = {
-  from(table: "dropkiller_saved_products"): {
-    select: (columns: "*") => Promise<{
-      data: SavedDropkillerProduct[] | null;
-      error: { message: string } | null;
-    }>;
-  };
-};
+type SweetSpotCandidateRow =
+  Database["public"]["Functions"]["dropkiller_sweet_spot_candidates"]["Returns"][number];
 
 type PageProps = {
   searchParams: Promise<{
@@ -88,9 +74,8 @@ export default async function CommandCenterInvestigacionPage({
   const searchedProductId = getSingleValue(params.producto).trim().slice(0, 100);
   const searchedCountry = getSearchCountry(params.pais_producto);
   const supabase = await createClient();
-  const savedProductsClient = supabase as unknown as SavedProductsReadClient;
   const [savedProductsResult, productLookup] = await Promise.all([
-    savedProductsClient.from("dropkiller_saved_products").select("*"),
+    supabase.from("dropkiller_saved_products").select("*"),
     loadProductLookup(searchedProductId, searchedCountry),
   ]);
   const { data: savedProductsData, error: savedProductsError } =
@@ -123,10 +108,9 @@ export default async function CommandCenterInvestigacionPage({
     );
   }
 
-  const { data: candidatesData, error: candidatesError } =
-    await (supabase as unknown as SweetSpotRpcClient).rpc(
-      "dropkiller_sweet_spot_candidates",
-    );
+  const { data: candidatesData, error: candidatesError } = await supabase.rpc(
+    "dropkiller_sweet_spot_candidates",
+  );
 
   if (candidatesError) {
     throw new Error(
@@ -437,8 +421,8 @@ function SavedProductsSection({
 }
 
 function isSweetSpotCandidate(
-  candidate: SweetSpotCandidate,
-): candidate is SweetSpotCandidate {
+  candidate: SweetSpotCandidateRow,
+): candidate is SweetSpotCandidateRow & SweetSpotCandidate {
   return (
     candidate.es_sweet_spot === true &&
     (candidate.country_code === "CO" || candidate.country_code === "MX")
@@ -446,8 +430,8 @@ function isSweetSpotCandidate(
 }
 
 function isSavedProduct(
-  product: SavedDropkillerProduct,
-): product is SavedDropkillerProduct {
+  product: Tables<"dropkiller_saved_products">,
+): product is Tables<"dropkiller_saved_products"> & SavedDropkillerProduct {
   return (
     product.id !== null &&
     product.id !== undefined &&

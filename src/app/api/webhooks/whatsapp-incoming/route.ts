@@ -1,6 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getFullOrderContext } from "@/lib/orders/getFullOrderContext";
@@ -61,9 +60,7 @@ function isIncomingWhatsAppMessage(
 }
 
 function getWhatsAppMessagesClient() {
-  // WhatsApp message tables were migrated after the generated database types.
-  // Keep this cast local until those types are refreshed.
-  return createAdminClient() as unknown as SupabaseClient;
+  return createAdminClient();
 }
 
 async function storeIncomingMessage(message: WhatsAppIncomingMessageInsert) {

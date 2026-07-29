@@ -1,7 +1,5 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import {
   getFullOrderContext,
   type WhatsAppConversationMessageContext,
@@ -46,9 +44,7 @@ const PHONE_MATCH_PAGE_SIZE = 1_000;
 const MAX_CONVERSATION_MESSAGES = 20;
 
 function getAbandonadosClient() {
-  // The live abandonados table was added after the generated database types.
-  // Keep the temporary untyped access contained in this server-only generator.
-  return createAdminClient() as unknown as SupabaseClient;
+  return createAdminClient();
 }
 
 function formatContextValue(value: ContextValue) {
@@ -132,7 +128,7 @@ async function getAbandonado(abandonadoId: number) {
     );
   }
 
-  return data as AbandonadoRow | null;
+  return data;
 }
 
 function getPhoneSuffix(telefono: string | null | undefined) {
@@ -167,7 +163,7 @@ async function getIncomingMessages(phoneSuffix: string) {
       );
     }
 
-    const candidates = (data ?? []) as IncomingConversationRow[];
+    const candidates = data ?? [];
     messages.push(
       ...candidates.filter(
         (message) => getPhoneSuffix(message.telefono_origen) === phoneSuffix,
@@ -200,7 +196,7 @@ async function getOutgoingMessages(phoneSuffix: string) {
       );
     }
 
-    const candidates = (data ?? []) as OutgoingConversationRow[];
+    const candidates = data ?? [];
     messages.push(
       ...candidates.filter(
         (message) => getPhoneSuffix(message.telefono_destino) === phoneSuffix,

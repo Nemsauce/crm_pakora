@@ -1,0 +1,116 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Build, lint, types and read-only UI checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      TZ: America/Bogota
+      PLAYWRIGHT_BASE_URL: http://localhost:3100
+      E2E_RUN_MUTABLE: "false"
+      E2E_ALLOW_MUTATIONS: "false"
+      E2E_ATTESTATION_TOKEN: ""
+      E2E_VERCEL_AUTOMATION_BYPASS_SECRET: ""
+      VERCEL_ENV: ""
+      NEXT_PUBLIC_SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Reject empty mutable environment
+        run: pnpm test:e2e:guard:empty
+
+      - name: Check patch whitespace
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          PUSH_AFTER_SHA: ${{ github.event.after }}
+          EMPTY_TREE_SHA: 4b825dc642cb6eb9a060e54bf8d69288fbee4904
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            test -n "$PR_BASE_SHA"
+            test -n "$PR_HEAD_SHA"
+            git diff --check "$PR_BASE_SHA"..."$PR_HEAD_SHA"
+            exit 0
+          fi
+
+          test "$EVENT_NAME" = "push"
+          test -n "$PUSH_AFTER_SHA"
+
+          if [ -z "$PUSH_BEFORE_SHA" ] || [ "$PUSH_BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            git diff --check "$EMPTY_TREE_SHA" "$PUSH_AFTER_SHA"
+            exit 0
+          fi
+
+          if ! git cat-file -e "${PUSH_BEFORE_SHA}^{commit}" 2>/dev/null; then
+            git fetch --no-tags origin "$PUSH_BEFORE_SHA"
+          fi
+
+          git cat-file -e "${PUSH_BEFORE_SHA}^{commit}"
+          git diff --check "$PUSH_BEFORE_SHA" "$PUSH_AFTER_SHA"
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: TypeScript
+        run: pnpm exec tsc --noEmit
+
+      - name: Build
+        run: env NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_ANON_KEY= SUPABASE_SERVICE_ROLE_KEY= pnpm build
+
+      - name: Read-only Playwright suite
+        run: pnpm test:e2e
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14

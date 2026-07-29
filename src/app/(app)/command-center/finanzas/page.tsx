@@ -1,9 +1,6 @@
 import { CapitalMovementsCard } from "@/components/command-center/CapitalMovementsCard";
 import { DateRangeSelector } from "@/components/command-center/DateRangeSelector";
-import {
-  DineroEnLaCalleTable,
-  type DineroEnLaCalleRow,
-} from "@/components/command-center/DineroEnLaCalleTable";
+import { DineroEnLaCalleTable } from "@/components/command-center/DineroEnLaCalleTable";
 import {
   MovementBreakdownTable,
   type WalletSummaryRow,
@@ -34,23 +31,6 @@ type WalletDailySummaryRow = {
   entradas: number | string | null;
   salidas: number | string | null;
   neto: number | string | null;
-};
-
-type WalletDailySummaryRpcClient = {
-  rpc: (
-    functionName: "wallet_daily_summary",
-    args: { p_date_from: string; p_date_to: string },
-  ) => PromiseLike<{
-    data: WalletDailySummaryRow[] | null;
-    error: { message: string } | null;
-  }>;
-};
-
-type DineroEnLaCalleRpcClient = {
-  rpc: (functionName: "dinero_en_la_calle") => PromiseLike<{
-    data: DineroEnLaCalleRow[] | null;
-    error: { message: string } | null;
-  }>;
 };
 
 const validRanges = new Set(["7", "30", "90"]);
@@ -236,21 +216,16 @@ function getWalletDailySummary(
   dateFrom: string,
   dateTo: string,
 ) {
-  return (supabase as unknown as WalletDailySummaryRpcClient).rpc(
-    "wallet_daily_summary",
-    {
-      p_date_from: dateFrom,
-      p_date_to: dateTo,
-    },
-  );
+  return supabase.rpc("wallet_daily_summary", {
+    p_date_from: dateFrom,
+    p_date_to: dateTo,
+  });
 }
 
 function getDineroEnLaCalle(
   supabase: Awaited<ReturnType<typeof createClient>>,
 ) {
-  return (supabase as unknown as DineroEnLaCalleRpcClient).rpc(
-    "dinero_en_la_calle",
-  );
+  return supabase.rpc("dinero_en_la_calle");
 }
 
 export default async function CommandCenterFinanzasPage({

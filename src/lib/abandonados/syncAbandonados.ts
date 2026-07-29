@@ -1,7 +1,5 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type Pais = "CO" | "MX";
@@ -52,9 +50,7 @@ const MAX_CSV_SIZE = 10_000_000;
 const UPSERT_BATCH_SIZE = 500;
 
 function getAbandonadosClient() {
-  // The live abandonados table was added after the generated database types.
-  // Keep the temporary untyped access contained in this server-only module.
-  return createAdminClient() as unknown as SupabaseClient;
+  return createAdminClient();
 }
 
 function cleanCell(value: string | undefined) {

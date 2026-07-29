@@ -21,21 +21,6 @@ type WeeklyReportRow = WeeklyReportMetrics & {
   pais: TelegramCountry;
 };
 
-type WeeklyReportRpcClient = {
-  rpc(
-    functionName: "reporte_semanal",
-    args: { p_date_from: string; p_date_to: string },
-  ): PromiseLike<{
-    data: WeeklyReportRow[] | null;
-    error: { message: string } | null;
-  }>;
-};
-
-type WeeklyReportRecipient = {
-  id: string;
-  telegram_chat_id: string | null;
-};
-
 type WeeklyReportRange = {
   dateFrom: string;
   dateTo: string;
@@ -182,8 +167,7 @@ export async function runWeeklyReport(
 ): Promise<WeeklyReportRunResult> {
   const range = getWeeklyReportRange(now);
   const supabase = createAdminClient();
-  const reportsClient = supabase as unknown as WeeklyReportRpcClient;
-  const { data: reportRows, error: reportError } = await reportsClient.rpc(
+  const { data: reportRows, error: reportError } = await supabase.rpc(
     "reporte_semanal",
     {
       p_date_from: range.dateFrom,
@@ -205,7 +189,7 @@ export async function runWeeklyReport(
     throw new Error(`Failed to load Telegram recipients: ${profilesError.message}`);
   }
 
-  const recipients = (activeProfiles ?? []) as WeeklyReportRecipient[];
+  const recipients = activeProfiles ?? [];
   let sent = 0;
   let failed = 0;
 

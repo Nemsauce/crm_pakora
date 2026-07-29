@@ -1,7 +1,5 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import {
   buildFullOrderContextSections,
   getFullOrderContext,
@@ -57,9 +55,7 @@ const TASK_FRAMING = {
 } satisfies Record<TaskType, string>;
 
 function getTaskSuggestionClient() {
-  // tasks.resultado was added after the generated database types.
-  // Keep the cast contained in this server-only generator.
-  return createAdminClient() as unknown as SupabaseClient;
+  return createAdminClient();
 }
 
 function formatContextValue(value: ContextValue) {
@@ -220,7 +216,7 @@ async function getTask(taskId: number) {
     throw new Error(`Failed to fetch task for AI suggestion: ${error.message}`);
   }
 
-  return data as TaskSuggestionRow | null;
+  return data;
 }
 
 export async function generateTaskSuggestion(taskId: number) {

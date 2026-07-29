@@ -3,8 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { createClient } from "@/lib/supabase/server";
 
 const ASSISTANT_SETTINGS_PATH = "/configuracion/asistente";
@@ -28,10 +26,7 @@ export async function saveAssistantRules(formData: FormData) {
     throw new Error("Debes iniciar sesión para guardar las reglas.");
   }
 
-  // asistente_whatsapp_config was added after the generated database types.
-  // Keep this cast local until those types are refreshed.
-  const assistantConfigClient = supabase as unknown as SupabaseClient;
-  const { data, error } = await assistantConfigClient
+  const { data, error } = await supabase
     .from("asistente_whatsapp_config")
     .update({ reglas, updated_por: updatedBy })
     .eq("id", 1)

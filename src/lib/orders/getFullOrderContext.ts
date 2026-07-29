@@ -22,6 +22,9 @@ export type WhatsAppOrderContext = {
   direccion: string | null;
   ciudad: string | null;
   departamento: string | null;
+  codigo_postal: string | null;
+  colonia: string | null;
+  numero_interior: string | null;
   barrio_referencia: string | null;
   nombre_producto: string | null;
   cantidad: number | null;
@@ -77,6 +80,9 @@ type OrderRow = Pick<
   | "direccion"
   | "ciudad"
   | "departamento"
+  | "codigo_postal"
+  | "colonia"
+  | "numero_interior"
   | "barrio_referencia"
   | "nombre_producto"
   | "cantidad"
@@ -115,12 +121,10 @@ const PHONE_SUFFIX_LENGTH = 10;
 const PHONE_MATCH_PAGE_SIZE = 1_000;
 const MAX_CONVERSATION_MESSAGES = 20;
 const ORDER_SELECT =
-  "id,numero_orden,nombre,apellido,telefono,direccion,ciudad,departamento,barrio_referencia,nombre_producto,cantidad,precio,total,fecha,estado_dropi,guia_envio,transportadora,fecha_entrega_real,nivel_riesgo";
+  "id,numero_orden,nombre,apellido,telefono,direccion,ciudad,departamento,codigo_postal,colonia,numero_interior,barrio_referencia,nombre_producto,cantidad,precio,total,fecha,estado_dropi,guia_envio,transportadora,fecha_entrega_real,nivel_riesgo";
 
 function getWhatsAppContextClient() {
-  // WhatsApp tables and tasks.resultado were added after the generated types.
-  // Keep the cast contained in this shared server-only helper.
-  return createAdminClient() as unknown as SupabaseClient;
+  return createAdminClient();
 }
 
 function getPhoneSuffix(telefono: string | null | undefined) {
@@ -158,7 +162,7 @@ async function findOrderById(
     throw new Error(`Failed to fetch order: ${error.message}`);
   }
 
-  return data as OrderRow | null;
+  return data;
 }
 
 async function findOrderByNumeroOrden(
@@ -184,7 +188,7 @@ async function findOrderByNumeroOrden(
     throw new Error(`Failed to find order by number: ${error.message}`);
   }
 
-  return data as OrderRow | null;
+  return data;
 }
 
 async function findOrderByPhone(
@@ -212,7 +216,7 @@ async function findOrderByPhone(
       throw new Error(`Failed to find order by phone: ${error.message}`);
     }
 
-    const candidates = (data ?? []) as OrderRow[];
+    const candidates = data ?? [];
     const order = candidates.find(
       (candidate) => getPhoneSuffix(candidate.telefono) === phoneSuffix,
     );
@@ -317,7 +321,7 @@ async function getIncomingConversationMessages(phoneSuffix: string) {
       );
     }
 
-    const candidates = (data ?? []) as IncomingConversationRow[];
+    const candidates = data ?? [];
     messages.push(
       ...candidates.filter(
         (message) => getPhoneSuffix(message.telefono_origen) === phoneSuffix,
@@ -350,7 +354,7 @@ async function getOutgoingConversationMessages(phoneSuffix: string) {
       );
     }
 
-    const candidates = (data ?? []) as OutgoingConversationRow[];
+    const candidates = data ?? [];
     messages.push(
       ...candidates.filter(
         (message) =>
@@ -468,6 +472,9 @@ function toOrderContext(
     direccion: order.direccion,
     ciudad: order.ciudad,
     departamento: order.departamento,
+    codigo_postal: order.codigo_postal,
+    colonia: order.colonia,
+    numero_interior: order.numero_interior,
     barrio_referencia: order.barrio_referencia,
     nombre_producto: order.nombre_producto,
     cantidad: order.cantidad,
@@ -535,7 +542,7 @@ export async function getFullOrderContext(
       isComplete: true,
       orderContext: toOrderContext(order, categoria),
       statusHistory: historyResult.data ?? [],
-      tasks: (tasksResult.data ?? []) as WhatsAppTaskContext[],
+      tasks: tasksResult.data ?? [],
       conversation,
     };
   } catch (error) {
@@ -599,6 +606,9 @@ function buildOrderDetails(orderContext: WhatsAppOrderContext) {
     formatField("Dirección", orderContext.direccion),
     formatField("Ciudad", orderContext.ciudad),
     formatField("Departamento", orderContext.departamento),
+    formatField("Código postal", orderContext.codigo_postal),
+    formatField("Colonia", orderContext.colonia),
+    formatField("Número interior", orderContext.numero_interior),
     formatField("Barrio o referencia", orderContext.barrio_referencia),
     formatField("Producto", orderContext.nombre_producto),
     formatField("Cantidad", orderContext.cantidad),
