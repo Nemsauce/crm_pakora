@@ -179,7 +179,7 @@ async function findMatchingOrder(
       throw error;
     }
 
-    const candidates = (data ?? []) as WhatsAppOrder[];
+    const candidates = data ?? [];
     const order = candidates.find(
       (candidate) => getPhoneSuffix(candidate.telefono) === phoneSuffix,
     );
@@ -195,9 +195,7 @@ async function findMatchingOrder(
 }
 
 function getWhatsAppMessagesClient() {
-  // WhatsApp message tables were migrated after the generated database types.
-  // Keep this cast local until those types are refreshed.
-  return createAdminClient() as unknown as SupabaseClient;
+  return createAdminClient();
 }
 
 function getTimestampWindow(ocurridoEn: string) {
@@ -210,7 +208,7 @@ function getTimestampWindow(ocurridoEn: string) {
 }
 
 async function historicalMessageExists(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   message: NormalizedHistoricalWhatsAppMessage,
 ) {
   const phoneSuffix = getPhoneSuffix(message.telefono);
@@ -264,7 +262,7 @@ async function historicalMessageExists(
 }
 
 async function storeHistoricalMessage(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   orderId: number,
   message: NormalizedHistoricalWhatsAppMessage,
 ) {

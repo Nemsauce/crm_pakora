@@ -124,9 +124,7 @@ const ORDER_SELECT =
   "id,numero_orden,nombre,apellido,telefono,direccion,ciudad,departamento,codigo_postal,colonia,numero_interior,barrio_referencia,nombre_producto,cantidad,precio,total,fecha,estado_dropi,guia_envio,transportadora,fecha_entrega_real,nivel_riesgo";
 
 function getWhatsAppContextClient() {
-  // WhatsApp tables and tasks.resultado were added after the generated types.
-  // Keep the cast contained in this shared server-only helper.
-  return createAdminClient() as unknown as SupabaseClient;
+  return createAdminClient();
 }
 
 function getPhoneSuffix(telefono: string | null | undefined) {
@@ -164,7 +162,7 @@ async function findOrderById(
     throw new Error(`Failed to fetch order: ${error.message}`);
   }
 
-  return data as OrderRow | null;
+  return data;
 }
 
 async function findOrderByNumeroOrden(
@@ -190,7 +188,7 @@ async function findOrderByNumeroOrden(
     throw new Error(`Failed to find order by number: ${error.message}`);
   }
 
-  return data as OrderRow | null;
+  return data;
 }
 
 async function findOrderByPhone(
@@ -218,7 +216,7 @@ async function findOrderByPhone(
       throw new Error(`Failed to find order by phone: ${error.message}`);
     }
 
-    const candidates = (data ?? []) as OrderRow[];
+    const candidates = data ?? [];
     const order = candidates.find(
       (candidate) => getPhoneSuffix(candidate.telefono) === phoneSuffix,
     );
@@ -323,7 +321,7 @@ async function getIncomingConversationMessages(phoneSuffix: string) {
       );
     }
 
-    const candidates = (data ?? []) as IncomingConversationRow[];
+    const candidates = data ?? [];
     messages.push(
       ...candidates.filter(
         (message) => getPhoneSuffix(message.telefono_origen) === phoneSuffix,
@@ -356,7 +354,7 @@ async function getOutgoingConversationMessages(phoneSuffix: string) {
       );
     }
 
-    const candidates = (data ?? []) as OutgoingConversationRow[];
+    const candidates = data ?? [];
     messages.push(
       ...candidates.filter(
         (message) =>
@@ -544,7 +542,7 @@ export async function getFullOrderContext(
       isComplete: true,
       orderContext: toOrderContext(order, categoria),
       statusHistory: historyResult.data ?? [],
-      tasks: (tasksResult.data ?? []) as WhatsAppTaskContext[],
+      tasks: tasksResult.data ?? [],
       conversation,
     };
   } catch (error) {

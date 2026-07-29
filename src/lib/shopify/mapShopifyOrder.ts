@@ -48,6 +48,7 @@ export type MappedShopifyOrder = {
   barrio_referencia: string;
   ciudad: string;
   departamento: string;
+  codigo_postal: string;
   nombre_producto: string;
   cantidad: number;
   precio: number;
@@ -56,10 +57,6 @@ export type MappedShopifyOrder = {
   estado_crm: "nuevo";
   activo: true;
   comentario: string | null;
-};
-
-type MappedShopifyOrderPayload = MappedShopifyOrder & {
-  codigo_postal: string;
 };
 
 function sanitize(value: unknown) {
@@ -78,15 +75,6 @@ function firstNonEmpty(...values: unknown[]) {
   }
 
   return "";
-}
-
-function asMappedShopifyOrder(
-  payload: MappedShopifyOrderPayload,
-): MappedShopifyOrder {
-  // codigo_postal exists in the live schema but not in the generated database
-  // types yet. Keep it enumerable at runtime while exposing the legacy shape to
-  // the typed webhook upsert until those generated types can be refreshed.
-  return payload;
 }
 
 function readOrder(rawOrder: unknown): ShopifyOrder {
@@ -131,7 +119,7 @@ export function mapShopifyOrderCO(rawOrder: unknown): MappedShopifyOrder {
   const billing = readAddress(order.billing_address);
   const comentario = sanitize(order.note || "");
 
-  return asMappedShopifyOrder({
+  return {
     numero_orden: order.name as string | null,
     id_orden_shopify: String(order.id),
     fecha: mapDate(order),
@@ -159,7 +147,7 @@ export function mapShopifyOrderCO(rawOrder: unknown): MappedShopifyOrder {
     estado_crm: "nuevo",
     activo: true,
     comentario,
-  });
+  };
 }
 
 export function mapShopifyOrderMX(rawOrder: unknown): MappedShopifyOrder {
@@ -170,7 +158,7 @@ export function mapShopifyOrderMX(rawOrder: unknown): MappedShopifyOrder {
   const notas = sanitize(order.note);
   const comentario = notas.length > 0 ? notas : null;
 
-  return asMappedShopifyOrder({
+  return {
     numero_orden: order.order_number ? `#${order.order_number}` : null,
     id_orden_shopify: String(order.id),
     fecha: mapDate(order),
@@ -190,5 +178,5 @@ export function mapShopifyOrderMX(rawOrder: unknown): MappedShopifyOrder {
     estado_crm: "nuevo",
     activo: true,
     comentario,
-  });
+  };
 }

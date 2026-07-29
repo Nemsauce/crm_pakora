@@ -103,7 +103,7 @@ async function findMatchingOrder(
       throw error;
     }
 
-    const candidates = (data ?? []) as WhatsAppOrder[];
+    const candidates = data ?? [];
     const order = candidates.find(
       (candidate) =>
         getPhoneSuffix(candidate.telefono) === outgoingPhoneSuffix,
@@ -120,9 +120,7 @@ async function findMatchingOrder(
 }
 
 function getWhatsAppOutgoingMessagesClient() {
-  // whatsapp_mensajes_salientes was added after the generated database types.
-  // Keep this cast local until those types are refreshed.
-  return createAdminClient() as unknown as SupabaseClient;
+  return createAdminClient();
 }
 
 async function storeOutgoingMessage(message: WhatsAppOutgoingMessageInsert) {

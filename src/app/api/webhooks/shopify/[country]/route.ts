@@ -21,25 +21,6 @@ type RouteContext = {
   params: Promise<{ country: string }>;
 };
 
-type DatabaseError = {
-  code?: string;
-  message: string;
-};
-
-type WebhookEventTable = {
-  select(columns: "webhook_id"): {
-    eq(column: "webhook_id", value: string): {
-      maybeSingle(): Promise<{
-        data: { webhook_id: string } | null;
-        error: DatabaseError | null;
-      }>;
-    };
-  };
-  insert(values: { webhook_id: string }): PromiseLike<{
-    error: DatabaseError | null;
-  }>;
-};
-
 type WebhookClaim = "claimed" | "duplicate";
 
 export async function POST(request: Request, context: RouteContext) {
@@ -223,10 +204,8 @@ async function webhookEventExists(
   supabase: ReturnType<typeof createAdminClient>,
   webhookId: string,
 ): Promise<boolean> {
-  const table = supabase.from(
-    "shopify_webhook_events" as never,
-  ) as unknown as WebhookEventTable;
-  const { data: existingEvent, error: lookupError } = await table
+  const { data: existingEvent, error: lookupError } = await supabase
+    .from("shopify_webhook_events")
     .select("webhook_id")
     .eq("webhook_id", webhookId)
     .maybeSingle();
@@ -242,11 +221,9 @@ async function claimWebhookEvent(
   supabase: ReturnType<typeof createAdminClient>,
   webhookId: string,
 ): Promise<WebhookClaim> {
-  const table = supabase.from(
-    "shopify_webhook_events" as never,
-  ) as unknown as WebhookEventTable;
-
-  const { error: insertError } = await table.insert({
+  const { error: insertError } = await supabase
+    .from("shopify_webhook_events")
+    .insert({
     webhook_id: webhookId,
   });
 

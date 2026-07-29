@@ -1,12 +1,8 @@
 import { format, isValid, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import Link from "next/link";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
-import {
-  AbandonadosList,
-  type AbandonadoListItem,
-} from "@/components/orders/AbandonadosList";
+import { AbandonadosList } from "@/components/orders/AbandonadosList";
 import { Button } from "@/components/ui/button";
 import { OrderCardLink } from "@/components/orders/OrderCardLink";
 import { OrderDetailDrawer } from "@/components/orders/OrderDetailDrawer";
@@ -38,6 +34,7 @@ type PedidosPageProps = {
 
 type Pais = Database["public"]["Enums"]["pais_enum"];
 type EstadoCrm = Database["public"]["Enums"]["estado_crm_enum"];
+type EstadoAbandonado = Database["public"]["Enums"]["estado_abandonado_enum"];
 type PedidosView = "pedidos" | "abandonados";
 
 const validCountries = new Set<string>(["CO", "MX"]);
@@ -258,8 +255,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
   const supabase = await createClient();
 
   if (view === "abandonados") {
-    const abandonadosClient = supabase as unknown as SupabaseClient;
-    let abandonadosQuery = abandonadosClient
+    let abandonadosQuery = supabase
       .from("abandonados")
       .select(
         "id,pais,codigo_externo,nombre,apellido,telefono,direccion,ciudad,departamento,nombre_producto,precio,fecha_abandono,estado,sincronizado_en",
@@ -270,7 +266,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
       .range(from, to);
 
     if (params.pais && validCountries.has(params.pais)) {
-      abandonadosQuery = abandonadosQuery.eq("pais", params.pais);
+      abandonadosQuery = abandonadosQuery.eq("pais", params.pais as Pais);
     }
 
     if (
@@ -279,7 +275,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     ) {
       abandonadosQuery = abandonadosQuery.eq(
         "estado",
-        params.estado_abandonado,
+        params.estado_abandonado as EstadoAbandonado,
       );
     }
 
@@ -291,7 +287,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
       );
     }
 
-    const abandonados = (data ?? []) as AbandonadoListItem[];
+    const abandonados = data ?? [];
     const totalCount = count ?? abandonados.length;
 
     return (

@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      abandonados: {
+        Row: {
+          apellido: string | null
+          ciudad: string | null
+          codigo_externo: string
+          departamento: string | null
+          direccion: string | null
+          estado: Database["public"]["Enums"]["estado_abandonado_enum"]
+          fecha_abandono: string | null
+          id: number
+          nombre: string | null
+          nombre_producto: string | null
+          pais: Database["public"]["Enums"]["pais_enum"]
+          precio: number | null
+          sincronizado_en: string
+          telefono: string | null
+        }
+        Insert: {
+          apellido?: string | null
+          ciudad?: string | null
+          codigo_externo: string
+          departamento?: string | null
+          direccion?: string | null
+          estado?: Database["public"]["Enums"]["estado_abandonado_enum"]
+          fecha_abandono?: string | null
+          id?: never
+          nombre?: string | null
+          nombre_producto?: string | null
+          pais: Database["public"]["Enums"]["pais_enum"]
+          precio?: number | null
+          sincronizado_en?: string
+          telefono?: string | null
+        }
+        Update: {
+          apellido?: string | null
+          ciudad?: string | null
+          codigo_externo?: string
+          departamento?: string | null
+          direccion?: string | null
+          estado?: Database["public"]["Enums"]["estado_abandonado_enum"]
+          fecha_abandono?: string | null
+          id?: never
+          nombre?: string | null
+          nombre_producto?: string | null
+          pais?: Database["public"]["Enums"]["pais_enum"]
+          precio?: number | null
+          sincronizado_en?: string
+          telefono?: string | null
+        }
+        Relationships: []
+      }
+      asistente_whatsapp_config: {
+        Row: {
+          id: number
+          reglas: string
+          updated_at: string
+          updated_por: string | null
+        }
+        Insert: {
+          id?: never
+          reglas?: string
+          updated_at?: string
+          updated_por?: string | null
+        }
+        Update: {
+          id?: never
+          reglas?: string
+          updated_at?: string
+          updated_por?: string | null
+        }
+        Relationships: []
+      }
       comentarios: {
         Row: {
           comentario: string
@@ -117,6 +189,27 @@ export type Database = {
           },
         ]
       }
+      dropi_sessions: {
+        Row: {
+          expires_at: string
+          pais: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          expires_at: string
+          pais: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          expires_at?: string
+          pais?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dropkiller_config: {
         Row: {
           activo: boolean
@@ -149,6 +242,8 @@ export type Database = {
           id: number
           nombre_producto: string
           platform: string
+          primary_image_url: string | null
+          providers_count: number | null
           sale_price: number | null
           sold_units_last_30_days: number | null
           sold_units_last_7_days: number | null
@@ -166,6 +261,8 @@ export type Database = {
           id?: never
           nombre_producto: string
           platform: string
+          primary_image_url?: string | null
+          providers_count?: number | null
           sale_price?: number | null
           sold_units_last_30_days?: number | null
           sold_units_last_7_days?: number | null
@@ -183,6 +280,8 @@ export type Database = {
           id?: never
           nombre_producto?: string
           platform?: string
+          primary_image_url?: string | null
+          providers_count?: number | null
           sale_price?: number | null
           sold_units_last_30_days?: number | null
           sold_units_last_7_days?: number | null
@@ -191,6 +290,65 @@ export type Database = {
           total_sold_units?: number | null
         }
         Relationships: []
+      }
+      dropkiller_saved_products: {
+        Row: {
+          country_code: string
+          dropkiller_uuid: string | null
+          external_id: string
+          id: number
+          nombre_producto: string
+          notas: string | null
+          primary_image_url: string | null
+          providers_count: number | null
+          sale_price: number | null
+          saved_at: string
+          saved_by: string | null
+          sold_units_last_30_days: number | null
+          sold_units_last_7_days: number | null
+          total_sold_units: number | null
+        }
+        Insert: {
+          country_code: string
+          dropkiller_uuid?: string | null
+          external_id: string
+          id?: never
+          nombre_producto: string
+          notas?: string | null
+          primary_image_url?: string | null
+          providers_count?: number | null
+          sale_price?: number | null
+          saved_at?: string
+          saved_by?: string | null
+          sold_units_last_30_days?: number | null
+          sold_units_last_7_days?: number | null
+          total_sold_units?: number | null
+        }
+        Update: {
+          country_code?: string
+          dropkiller_uuid?: string | null
+          external_id?: string
+          id?: never
+          nombre_producto?: string
+          notas?: string | null
+          primary_image_url?: string | null
+          providers_count?: number | null
+          sale_price?: number | null
+          saved_at?: string
+          saved_by?: string | null
+          sold_units_last_30_days?: number | null
+          sold_units_last_7_days?: number | null
+          total_sold_units?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dropkiller_saved_products_saved_by_fkey"
+            columns: ["saved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -257,6 +415,8 @@ export type Database = {
           barrio_referencia: string | null
           cantidad: number | null
           ciudad: string | null
+          codigo_postal: string | null
+          colonia: string | null
           comision_cod: number | null
           costo_devolucion: number | null
           costo_envio: number | null
@@ -275,10 +435,12 @@ export type Database = {
           id: number
           id_orden_dropi: number | null
           id_orden_shopify: string | null
+          monto_a_ganar: number | null
           nivel_riesgo: string | null
           nombre: string | null
           nombre_producto: string | null
           notas_pedido: string | null
+          numero_interior: string | null
           numero_orden: string | null
           pais: Database["public"]["Enums"]["pais_enum"]
           pedidos_devueltos_cliente: number | null
@@ -298,6 +460,8 @@ export type Database = {
           barrio_referencia?: string | null
           cantidad?: number | null
           ciudad?: string | null
+          codigo_postal?: string | null
+          colonia?: string | null
           comision_cod?: number | null
           costo_devolucion?: number | null
           costo_envio?: number | null
@@ -316,10 +480,12 @@ export type Database = {
           id?: never
           id_orden_dropi?: number | null
           id_orden_shopify?: string | null
+          monto_a_ganar?: number | null
           nivel_riesgo?: string | null
           nombre?: string | null
           nombre_producto?: string | null
           notas_pedido?: string | null
+          numero_interior?: string | null
           numero_orden?: string | null
           pais: Database["public"]["Enums"]["pais_enum"]
           pedidos_devueltos_cliente?: number | null
@@ -339,6 +505,8 @@ export type Database = {
           barrio_referencia?: string | null
           cantidad?: number | null
           ciudad?: string | null
+          codigo_postal?: string | null
+          colonia?: string | null
           comision_cod?: number | null
           costo_devolucion?: number | null
           costo_envio?: number | null
@@ -357,10 +525,12 @@ export type Database = {
           id?: never
           id_orden_dropi?: number | null
           id_orden_shopify?: string | null
+          monto_a_ganar?: number | null
           nivel_riesgo?: string | null
           nombre?: string | null
           nombre_producto?: string | null
           notas_pedido?: string | null
+          numero_interior?: string | null
           numero_orden?: string | null
           pais?: Database["public"]["Enums"]["pais_enum"]
           pedidos_devueltos_cliente?: number | null
@@ -453,6 +623,21 @@ export type Database = {
           },
         ]
       }
+      shopify_webhook_events: {
+        Row: {
+          received_at: string
+          webhook_id: string
+        }
+        Insert: {
+          received_at?: string
+          webhook_id: string
+        }
+        Update: {
+          received_at?: string
+          webhook_id?: string
+        }
+        Relationships: []
+      }
       status_catalog: {
         Row: {
           activo: boolean
@@ -534,6 +719,35 @@ export type Database = {
           },
         ]
       }
+      task_handling_events: {
+        Row: {
+          id: number
+          opened_at: string
+          task_id: number
+          usuario: string
+        }
+        Insert: {
+          id?: never
+          opened_at?: string
+          task_id: number
+          usuario: string
+        }
+        Update: {
+          id?: never
+          opened_at?: string
+          task_id?: number
+          usuario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_handling_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           asignado_a: string | null
@@ -548,6 +762,8 @@ export type Database = {
           intento_numero: number
           notas_completado: string | null
           order_id: number
+          resultado: string | null
+          snoozed_until: string | null
           tipo: Database["public"]["Enums"]["tipo_tarea_enum"]
           titulo: string
           updated_at: string
@@ -565,6 +781,8 @@ export type Database = {
           intento_numero?: number
           notas_completado?: string | null
           order_id: number
+          resultado?: string | null
+          snoozed_until?: string | null
           tipo: Database["public"]["Enums"]["tipo_tarea_enum"]
           titulo: string
           updated_at?: string
@@ -582,6 +800,8 @@ export type Database = {
           intento_numero?: number
           notas_completado?: string | null
           order_id?: number
+          resultado?: string | null
+          snoozed_until?: string | null
           tipo?: Database["public"]["Enums"]["tipo_tarea_enum"]
           titulo?: string
           updated_at?: string
@@ -693,12 +913,124 @@ export type Database = {
           },
         ]
       }
+      whatsapp_mensajes_entrantes: {
+        Row: {
+          id: number
+          mensaje_cliente: string
+          order_id: number | null
+          procesado: boolean
+          recibido_en: string
+          sugerencia_ia: string | null
+          telefono_origen: string
+        }
+        Insert: {
+          id?: never
+          mensaje_cliente: string
+          order_id?: number | null
+          procesado?: boolean
+          recibido_en?: string
+          sugerencia_ia?: string | null
+          telefono_origen: string
+        }
+        Update: {
+          id?: never
+          mensaje_cliente?: string
+          order_id?: number | null
+          procesado?: boolean
+          recibido_en?: string
+          sugerencia_ia?: string | null
+          telefono_origen?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_mensajes_entrantes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_mensajes_salientes: {
+        Row: {
+          enviado_en: string
+          enviado_por: string | null
+          id: number
+          mensaje_enviado: string
+          order_id: number | null
+          telefono_destino: string
+        }
+        Insert: {
+          enviado_en?: string
+          enviado_por?: string | null
+          id?: never
+          mensaje_enviado: string
+          order_id?: number | null
+          telefono_destino: string
+        }
+        Update: {
+          enviado_en?: string
+          enviado_por?: string | null
+          id?: never
+          mensaje_enviado?: string
+          order_id?: number | null
+          telefono_destino?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_mensajes_salientes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      dinero_en_la_calle: {
+        Args: never
+        Returns: {
+          dinero_en_la_calle: number
+          nombre_producto: string
+          pais: Database["public"]["Enums"]["pais_enum"]
+          pedidos_por_entregar: number
+        }[]
+      }
       dropkiller_sweet_spot_candidates: {
+        Args: never
+        Returns: {
+          captured_at: string
+          country_code: string
+          cumple_banda_sweet_spot: boolean
+          cumple_consistencia: boolean
+          cumple_tendencia_ascendente: boolean
+          dias_con_venta_7d: number
+          dropkiller_uuid: string
+          es_sweet_spot: boolean
+          external_id: string
+          nombre_producto: string
+          percentil_ritmo: number
+          platform: string
+          primary_image_url: string
+          providers_count: number
+          ritmo_reciente: number
+          sale_price: number
+          sold_units_last_30_days: number
+          sold_units_last_7_days: number
+          stock: number
+          suggested_price: number
+          tendencia_ratio: number
+          tercio1_promedio: number
+          tercio2_promedio: number
+          tercio3_promedio: number
+          total_sold_units: number
+        }[]
+      }
+      dropkiller_sweet_spot_candidates_scored_v3: {
         Args: never
         Returns: {
           captured_at: string
@@ -745,6 +1077,43 @@ export type Database = {
           total: number
         }[]
       }
+      reporte_semanal: {
+        Args: { p_date_from: string; p_date_to: string }
+        Returns: {
+          cancelados: number
+          confirmados: number
+          devoluciones: number
+          entregas: number
+          pais: Database["public"]["Enums"]["pais_enum"]
+          pedidos_nuevos: number
+        }[]
+      }
+      task_completions_by_user: {
+        Args: { p_date_from: string; p_date_to: string }
+        Returns: {
+          tareas_completadas: number
+          tipo: string
+          usuario: string
+        }[]
+      }
+      task_handling_time_by_user: {
+        Args: { p_date_from: string; p_date_to: string }
+        Returns: {
+          minutos_promedio: number
+          tareas_medidas: number
+          usuario: string
+        }[]
+      }
+      wallet_daily_summary: {
+        Args: { p_date_from: string; p_date_to: string }
+        Returns: {
+          dia: string
+          entradas: number
+          neto: number
+          pais: Database["public"]["Enums"]["pais_enum"]
+          salidas: number
+        }[]
+      }
       wallet_summary: {
         Args: { p_date_from: string; p_date_to: string }
         Returns: {
@@ -770,6 +1139,11 @@ export type Database = {
         | "en_reparto"
         | "recoger_oficina"
         | "intento_fallido"
+      estado_abandonado_enum:
+        | "nuevo"
+        | "contactado"
+        | "recuperado"
+        | "descartado"
       estado_crm_enum:
         | "nuevo"
         | "en_ruta"
@@ -950,6 +1324,12 @@ export const Constants = {
         "en_reparto",
         "recoger_oficina",
         "intento_fallido",
+      ],
+      estado_abandonado_enum: [
+        "nuevo",
+        "contactado",
+        "recuperado",
+        "descartado",
       ],
       estado_crm_enum: [
         "nuevo",

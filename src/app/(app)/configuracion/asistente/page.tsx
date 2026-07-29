@@ -1,5 +1,3 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { saveAssistantRules } from "@/app/(app)/configuracion/asistente/actions";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
@@ -20,10 +18,7 @@ export default async function AssistantSettingsPage({
   const params = await searchParams;
   const saved = getFirstSearchParam(params?.guardado) === "1";
   const supabase = await createClient();
-  // asistente_whatsapp_config was added after the generated database types.
-  // Keep this cast local until those types are refreshed.
-  const assistantConfigClient = supabase as unknown as SupabaseClient;
-  const { data, error } = await assistantConfigClient
+  const { data, error } = await supabase
     .from("asistente_whatsapp_config")
     .select("reglas")
     .eq("id", 1)

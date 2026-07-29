@@ -34,22 +34,6 @@ type SavedProductInsert = {
   saved_by: string;
 };
 
-type MutationResult = PromiseLike<{
-  error: { message: string } | null;
-}>;
-
-type SavedProductsMutationClient = {
-  from(table: "dropkiller_saved_products"): {
-    upsert: (
-      values: SavedProductInsert,
-      options: { onConflict: string; ignoreDuplicates: boolean },
-    ) => MutationResult;
-    delete: () => {
-      eq: (column: "id", value: string | number) => MutationResult;
-    };
-  };
-};
-
 export type TriggerDropkillerSyncResult =
   | { ok: true; message: string }
   | { ok: false; message: string };
@@ -104,8 +88,7 @@ export async function saveDropkillerProduct(
   }
 
   const payload = normalizeSavedProduct(input, user.id);
-  const mutationClient = supabase as unknown as SavedProductsMutationClient;
-  const { error } = await mutationClient
+  const { error } = await supabase
     .from("dropkiller_saved_products")
     .upsert(payload, {
       onConflict: "external_id,country_code",
@@ -122,13 +105,7 @@ export async function saveDropkillerProduct(
 export async function removeSavedProduct(
   savedProductId: string | number,
 ) {
-  if (
-    (typeof savedProductId !== "string" &&
-      typeof savedProductId !== "number") ||
-    String(savedProductId).trim() === ""
-  ) {
-    throw new Error("El producto guardado no es válido.");
-  }
+  const productId = parseSavedProductId(savedProductId);
 
   const supabase = await createClient();
   const {
@@ -140,17 +117,28 @@ export async function removeSavedProduct(
     throw new Error("Debes iniciar sesión para quitar productos guardados.");
   }
 
-  const mutationClient = supabase as unknown as SavedProductsMutationClient;
-  const { error } = await mutationClient
+  const { error } = await supabase
     .from("dropkiller_saved_products")
     .delete()
-    .eq("id", savedProductId);
+    .eq("id", productId);
 
   if (error) {
     throw new Error(`No se pudo quitar el producto: ${error.message}`);
   }
 
   revalidatePath(INVESTIGACION_PATH);
+}
+
+function parseSavedProductId(value: string | number) {
+  const parsed = typeof value === "number"
+    ? value
+    : Number(value.trim());
+
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new Error("El producto guardado no es válido.");
+  }
+
+  return parsed;
 }
 
 function normalizeSavedProduct(

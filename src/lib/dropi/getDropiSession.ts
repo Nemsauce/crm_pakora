@@ -1,10 +1,9 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { dropiAuthWithToken } from "@/lib/dropi/dropiAuth";
 import { dropiAuthMXWithToken } from "@/lib/dropi/dropiAuthMX";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Database } from "@/lib/supabase/database.types";
 
 export type DropiCountry = "CO" | "MX";
 
@@ -14,10 +13,10 @@ export type DropiSession = {
   source: "cache" | "fresh";
 };
 
-type DropiSessionRow = {
-  token: string;
-  expires_at: string;
-};
+type DropiSessionRow = Pick<
+  Database["public"]["Tables"]["dropi_sessions"]["Row"],
+  "token" | "expires_at"
+>;
 
 type GetDropiSessionOptions = {
   forceRefresh?: boolean;
@@ -36,9 +35,7 @@ export class DropiSessionError extends Error {
 }
 
 function getSessionsClient() {
-  // dropi_sessions was migrated after the last generated database.types.ts.
-  // Keep this narrow untyped cast local until those generated types are refreshed.
-  return createAdminClient() as unknown as SupabaseClient;
+  return createAdminClient();
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
@@ -142,7 +139,7 @@ async function getCachedSession(pais: DropiCountry) {
     );
   }
 
-  return readCachedSession(data as DropiSessionRow | null, Date.now());
+  return readCachedSession(data, Date.now());
 }
 
 async function loginFresh(pais: DropiCountry) {
