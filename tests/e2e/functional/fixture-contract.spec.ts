@@ -4,6 +4,7 @@ import {
   assertFixtureContract,
   calculateCosteoScenarioMetrics,
   calculateDropiHistoryScenario,
+  calculateStreetMoneyScenario,
   calculateWalletScenarioTotals,
   classifyTaskTimeScenario,
   createFixtureContract,
@@ -47,6 +48,7 @@ test("fixture contract is deterministic, deeply immutable, and mutation-blocked"
   expect(Object.isFrozen(first)).toBe(true);
   expect(Object.isFrozen(first.orders)).toBe(true);
   expect(Object.isFrozen(first.orders[0].history)).toBe(true);
+  expect(Object.isFrozen(first.orders[0].currentStatus)).toBe(true);
   expect(first.mutableAdapter).toMatchObject({ status: "blocked", enabled: false });
   expect(first.verificationScope).toEqual({
     productionParity: [
@@ -84,7 +86,12 @@ test("all logical fixtures use globally stable FX keys without database primary 
   expect(propertyNames).not.toContain("id");
   expect(propertyNames.filter((name) => /_id$/i.test(name))).toEqual([]);
   expect(inspection.ok).toBe(true);
-  expect(inspection.summary?.fixtureKeys).toBeGreaterThan(150);
+  expect(inspection.summary).toMatchObject({
+    fixtureKeys: 190,
+    orders: 6,
+    tasks: 6,
+    notifications: 104,
+  });
   expect(
     contract.orders.every(
       ({ key, adapterNaturalKey }) =>
@@ -102,6 +109,8 @@ test("all logical fixtures use globally stable FX keys without database primary 
 test("orders cover both countries, five CRM states, four risks, null, zero, and #1007", () => {
   const contract = createFixtureContract(ANCHOR);
 
+  expect(contract.orders).toHaveLength(6);
+
   expect(new Set(contract.orders.map(({ country }) => country))).toEqual(
     new Set(["CO", "MX"]),
   );
@@ -116,6 +125,15 @@ test("orders cover both countries, five CRM states, four risks, null, zero, and 
     ({ key }) => key === "FX-ORD-CO-1007-DROPI",
   );
   expect(order1007?.numeroOrden).toBe("#1007");
+  expect(order1007).toMatchObject({
+    active: true,
+    currentStatus: {
+      estado: "E2E ESTADO CONFIRMADO",
+      transportadora: "E2E Carrier",
+      expectedCategory: "confirmado",
+    },
+    expectedProfit: 80_000,
+  });
   expect(calculateDropiHistoryScenario(order1007!.history)).toEqual({
     hasHistory: true,
     totalOrders: 118,
@@ -141,6 +159,23 @@ test("orders cover both countries, five CRM states, four risks, null, zero, and 
       returnedOrders: 2,
     }),
   ).toThrow(/cannot exceed total/i);
+
+  expect(
+    contract.orders.find(({ key }) => key === "FX-ORD-MX-STREET"),
+  ).toMatchObject({
+    adapterNaturalKey: "e2e:order:mx:street",
+    country: "MX",
+    crmState: "en_ruta",
+    active: true,
+    currentStatus: {
+      estado: "E2E GUIA GENERADA",
+      transportadora: null,
+      expectedCategory: "guia_generada",
+    },
+    productKey: "FX-PROD-METRICS-MX",
+    expectedProfit: 700,
+    orderDate: "2026-07-28",
+  });
 });
 
 test("available pure production contracts agree with their fixture scenarios", () => {
@@ -223,6 +258,17 @@ test("status scenario oracle covers 13 categories with carrier precedence and sa
   expect(resolveStatusCategoryScenario(contract.statusCatalog, "NO EXISTE", null)).toBe(
     "sin_clasificar",
   );
+  for (const order of contract.orders) {
+    expect(order.currentStatus.transportadora).toBe(order.logistics.carrier);
+    expect(
+      contract.statusCatalog.find(
+        ({ estado, transportadora }) =>
+          estado === order.currentStatus.estado &&
+          transportadora === order.currentStatus.transportadora,
+      )?.category,
+      `Missing exact current-status mapping for ${order.key}`,
+    ).toBe(order.currentStatus.expectedCategory);
+  }
 });
 
 test("task scenario oracle covers five types, four states, time classes, unassigned, and multiples", () => {
@@ -374,6 +420,18 @@ test("wallet scenario oracle preserves Bogota periods and declared arithmetic", 
     expect.objectContaining({ country: "CO", pendingOrders: 2, amount: 150_000 }),
     expect.objectContaining({ country: "MX", pendingOrders: 1, amount: 700 }),
   ]);
+  expect(
+    calculateStreetMoneyScenario(contract.orders, contract.statusCatalog),
+  ).toEqual(
+    contract.wallet.streetMoney.map(
+      ({ country, productKey, pendingOrders, amount }) => ({
+        country,
+        productKey,
+        pendingOrders,
+        amount,
+      }),
+    ),
+  );
 });
 
 test("costeo scenario oracle covers CO/MX projections and negative margin", () => {
@@ -428,13 +486,31 @@ test("inspection rejects drift instead of silently accepting broken fixtures", (
   (drifted.mutableAdapter as { status: string }).status = "ready";
   (drifted.orders[0].history as { returnedOrders: number }).returnedOrders = 120;
 
-  const inspection = inspectFixtureContract(drifted);
-  expect(inspection.ok).toBe(false);
-  expect(inspection.errors.map(({ code }) => code)).toEqual(
+  const invalidHistoryInspection = inspectFixtureContract(drifted);
+  expect(invalidHistoryInspection.ok).toBe(false);
+  expect(invalidHistoryInspection.errors.map(({ code }) => code)).toEqual(
     expect.arrayContaining([
       "MUTABLE_ADAPTER_NOT_BLOCKED",
       "CONTRACT_INSPECTION_FAILED",
     ]),
   );
   expect(() => assertFixtureContract(drifted)).toThrow(/failed validation/i);
+
+  const statusDrifted = mutableCopy(createFixtureContract(ANCHOR));
+  (
+    statusDrifted.orders.find(({ key }) => key === "FX-ORD-MX-STREET")!
+      .currentStatus as { estado: string }
+  ).estado = "E2E ESTADO NUEVO";
+
+  const statusInspection = inspectFixtureContract(statusDrifted);
+  expect(statusInspection.ok).toBe(false);
+  expect(statusInspection.errors.map(({ code }) => code)).toEqual(
+    expect.arrayContaining([
+      "ORDER_CURRENT_STATUS_MAPPING",
+      "SCENARIO_STREET_MONEY",
+    ]),
+  );
+  expect(() => assertFixtureContract(statusDrifted)).toThrow(
+    /failed validation/i,
+  );
 });

@@ -42,6 +42,25 @@ export interface FixtureStatusCatalogRow {
   readonly active: boolean;
 }
 
+export interface FixtureStreetMoneyOrder {
+  readonly key: string;
+  readonly country: FixtureCountry;
+  readonly productKey: string;
+  readonly expectedProfit: number | null;
+  readonly currentStatus: Readonly<{
+    estado: string;
+    transportadora: string | null;
+    expectedCategory: FixtureStatusCategory;
+  }>;
+}
+
+export interface FixtureStreetMoneyRow {
+  readonly country: FixtureCountry;
+  readonly productKey: string;
+  readonly pendingOrders: number;
+  readonly amount: number;
+}
+
 export interface WalletMovement {
   readonly key: string;
   readonly externalMovementKey: string;
@@ -187,8 +206,14 @@ export interface FixtureContract {
     numeroOrden: string;
     country: FixtureCountry;
     crmState: FixtureCrmState;
+    active: boolean;
     expectedRisk: FixtureRisk;
     history: Readonly<DropiHistoryInput>;
+    currentStatus: Readonly<{
+      estado: string;
+      transportadora: string | null;
+      expectedCategory: FixtureStatusCategory;
+    }>;
     customer: Readonly<{
       name: string | null;
       surname: string | null;
@@ -322,6 +347,12 @@ export function resolveStatusCategoryScenario(
   estado: string | null | undefined,
   transportadora?: string | null,
 ): FixtureStatusCategory;
+
+/** Scenario oracle for the exact status/carrier join used by dinero_en_la_calle. */
+export function calculateStreetMoneyScenario(
+  orders: readonly Readonly<FixtureStreetMoneyOrder>[],
+  catalog: readonly Readonly<FixtureStatusCatalogRow>[],
+): readonly Readonly<FixtureStreetMoneyRow>[];
 
 /** Scenario oracle only; does not execute or verify the production RPC. */
 export function calculateWalletScenarioTotals(

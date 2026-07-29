@@ -27,24 +27,9 @@ const PROTECTED_UNTRACKED_SOURCE_PATHS = new Set([
 export const SCHEMA_USAGE_DETECTION_SCOPE =
   "literal-supabase-from-and-rpc-calls";
 
-export const KNOWN_MISSING_USED_TABLES = Object.freeze([
-  "abandonados",
-  "asistente_whatsapp_config",
-  "dropi_sessions",
-  "dropkiller_saved_products",
-  "shopify_webhook_events",
-  "task_handling_events",
-  "whatsapp_mensajes_entrantes",
-  "whatsapp_mensajes_salientes",
-]);
+export const KNOWN_MISSING_USED_TABLES = Object.freeze([]);
 
-export const KNOWN_MISSING_USED_RPCS = Object.freeze([
-  "dinero_en_la_calle",
-  "reporte_semanal",
-  "task_completions_by_user",
-  "task_handling_time_by_user",
-  "wallet_daily_summary",
-]);
+export const KNOWN_MISSING_USED_RPCS = Object.freeze([]);
 
 export const OBSERVED_LIVE_COLUMNS = Object.freeze({
   orders: Object.freeze([

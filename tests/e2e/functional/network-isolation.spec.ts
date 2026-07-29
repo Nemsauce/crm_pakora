@@ -1,6 +1,20 @@
 import { expect, test, type WebSocketRoute } from "@playwright/test";
 
-import { enforceWebSocketHostIsolation } from "../helpers/staging-network";
+import {
+  VERCEL_PROTECTION_BYPASS_HEADER,
+  classifyStagingRequest,
+  enforceWebSocketHostIsolation,
+  getAllowedStagingWebSocketHosts,
+  getStagingAppRequestHeaders,
+  stripVercelProtectionHeaders,
+} from "../helpers/staging-network";
+
+const stagingConfig = {
+  appOrigin: "https://crm-v4-preview.vercel.app",
+  supabaseUrl: "https://stagingref123.supabase.co",
+} as const;
+const runnerBypassSecret = "0123456789abcdefghijklmnopqrstuv";
+const stagingWebSocketProtocols = new Set(["wss:"]);
 
 function fakeSocket(url: string) {
   const calls = {
@@ -21,36 +35,110 @@ function fakeSocket(url: string) {
   return { calls, socket };
 }
 
-test("WebSocket isolation connects only to an explicitly allowed host", async () => {
-  const { calls, socket } = fakeSocket("wss://preview.example.test/realtime");
+test("HTTP isolation adds the Vercel bypass only to the Preview origin", () => {
+  const originalHeaders = {
+    accept: "text/html",
+    "x-vercel-protection-bypass": "inherited-secret-must-be-overwritten",
+    "x-vercel-set-bypass-cookie": "true",
+  };
+  const appHeaders = getStagingAppRequestHeaders(
+    `${stagingConfig.appOrigin}/pedidos`,
+    originalHeaders,
+    stagingConfig,
+    runnerBypassSecret,
+  );
+  const supabaseHeaders = getStagingAppRequestHeaders(
+    `${stagingConfig.supabaseUrl}/rest/v1/orders`,
+    originalHeaders,
+    stagingConfig,
+    runnerBypassSecret,
+  );
+
+  expect(appHeaders).toEqual({
+    accept: "text/html",
+    [VERCEL_PROTECTION_BYPASS_HEADER]: runnerBypassSecret,
+  });
+  expect(appHeaders).not.toHaveProperty("x-vercel-set-bypass-cookie");
+  expect(supabaseHeaders).toBeNull();
+  expect(stripVercelProtectionHeaders(originalHeaders)).toEqual({
+    accept: "text/html",
+  });
+});
+
+test("HTTP isolation classifies redirects outside staging as blocked", () => {
+  expect(
+    classifyStagingRequest(
+      `${stagingConfig.appOrigin}/login`,
+      stagingConfig,
+    ),
+  ).toBe("app");
+  expect(
+    classifyStagingRequest(
+      `${stagingConfig.supabaseUrl}/auth/v1/token`,
+      stagingConfig,
+    ),
+  ).toBe("supabase");
+  expect(
+    classifyStagingRequest(
+      "https://vercel.com/sso-api?url=protected-preview",
+      stagingConfig,
+    ),
+  ).toBe("blocked");
+  expect(
+    classifyStagingRequest(
+      "https://crm.pakora.online/pedidos",
+      stagingConfig,
+    ),
+  ).toBe("blocked");
+  expect(
+    classifyStagingRequest(
+      `${stagingConfig.appOrigin}/login?x-vercel-protection-bypass=must-not-be-in-a-url`,
+      stagingConfig,
+    ),
+  ).toBe("blocked");
+});
+
+test("WebSocket isolation connects only to Supabase Realtime", async () => {
+  const allowedHosts = getAllowedStagingWebSocketHosts(stagingConfig);
+  const { calls, socket } = fakeSocket(
+    "wss://stagingref123.supabase.co/realtime/v1/websocket",
+  );
   const result = await enforceWebSocketHostIsolation(
     socket,
-    new Set(["preview.example.test"]),
+    allowedHosts,
     "E2E isolation",
+    stagingWebSocketProtocols,
   );
 
   expect(result).toEqual({
     allowed: true,
-    url: "wss://preview.example.test/realtime",
+    url: "wss://stagingref123.supabase.co/realtime/v1/websocket",
   });
+  expect([...allowedHosts]).toEqual(["stagingref123.supabase.co"]);
   expect(calls.connected).toBe(1);
   expect(calls.closeOptions).toEqual([]);
 });
 
-test("WebSocket isolation closes a disallowed socket before connecting", async () => {
-  const { calls, socket } = fakeSocket("wss://crm.pakora.online/realtime");
-  const result = await enforceWebSocketHostIsolation(
-    socket,
-    new Set(["preview.example.test"]),
-    "E2E isolation",
-  );
+test("WebSocket isolation closes Preview and production sockets before connecting", async () => {
+  const allowedHosts = getAllowedStagingWebSocketHosts(stagingConfig);
 
-  expect(result).toEqual({
-    allowed: false,
-    url: "wss://crm.pakora.online/realtime",
-  });
-  expect(calls.connected).toBe(0);
-  expect(calls.closeOptions).toEqual([
-    { code: 1008, reason: "E2E isolation" },
-  ]);
+  for (const socketUrl of [
+    "wss://crm-v4-preview.vercel.app/realtime",
+    "wss://crm.pakora.online/realtime",
+    "ws://stagingref123.supabase.co/realtime/v1/websocket",
+  ]) {
+    const { calls, socket } = fakeSocket(socketUrl);
+    const result = await enforceWebSocketHostIsolation(
+      socket,
+      allowedHosts,
+      "E2E isolation",
+      stagingWebSocketProtocols,
+    );
+
+    expect(result).toEqual({ allowed: false, url: socketUrl });
+    expect(calls.connected).toBe(0);
+    expect(calls.closeOptions).toEqual([
+      { code: 1008, reason: "E2E isolation" },
+    ]);
+  }
 });

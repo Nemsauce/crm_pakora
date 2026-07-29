@@ -14,14 +14,14 @@ import {
 
 const repositoryRoot = resolve(import.meta.dirname, "../../..");
 
-test("schema readiness records the exact known generated-type debt", async () => {
+test("schema readiness confirms the audited generated types are complete", async () => {
   const report = await inspectSchemaReadiness(repositoryRoot);
 
   expect(report.detectionScope).toBe(SCHEMA_USAGE_DETECTION_SCOPE);
   expect(report.missingUsedTables).toEqual(KNOWN_MISSING_USED_TABLES);
   expect(report.missingUsedRpcs).toEqual(KNOWN_MISSING_USED_RPCS);
-  expect(report.missingLiveColumns).toEqual(OBSERVED_LIVE_COLUMNS);
-  expect(report.schemaTypesReady).toBe(false);
+  expect(report.missingLiveColumns).toEqual({});
+  expect(report.schemaTypesReady).toBe(true);
 });
 
 test("schema readiness has no unallowlisted repository gaps", async () => {

@@ -58,6 +58,7 @@ export interface StagingMarkerOptions extends StagingGuardPolicy {
   readonly client?: SupabaseClient;
   readonly clientFactory?: typeof createClient;
   readonly fetchImpl?: typeof fetch;
+  readonly runnerVercelAutomationBypassSecret?: string;
 }
 
 export const STAGING_GUARD_ENV_NAMES: Readonly<{
@@ -73,6 +74,7 @@ export const STAGING_GUARD_ENV_NAMES: Readonly<{
   markerTable: "E2E_STAGING_MARKER_TABLE";
   markerId: "E2E_STAGING_MARKER_ID";
   markerIdColumn: "E2E_STAGING_MARKER_ID_COLUMN";
+  runnerVercelAutomationBypassSecret: "E2E_VERCEL_AUTOMATION_BYPASS_SECRET";
 }>;
 
 export class StagingGuardError extends Error {
@@ -95,6 +97,10 @@ export function assertSafeStagingEnvironment(
   policy?: StagingGuardPolicy,
 ): Readonly<StagingGuardConfig>;
 
+export function assertRunnerVercelAutomationBypass(
+  environment?: StagingGuardEnvironment,
+): string;
+
 export function assertStagingDatabaseMarker(
   config: Readonly<StagingGuardConfig>,
   options?: StagingMarkerOptions,
@@ -107,7 +113,10 @@ export function assertStagingEnvironment(
 
 export function assertStagingDeploymentAttestation(
   config: Readonly<VerifiedStagingGuardConfig>,
-  options?: Pick<StagingMarkerOptions, "fetchImpl">,
+  options?: Pick<
+    StagingMarkerOptions,
+    "fetchImpl" | "runnerVercelAutomationBypassSecret"
+  >,
 ): Promise<Readonly<AttestedStagingGuardConfig>>;
 
 export function assertStagingDeployment(

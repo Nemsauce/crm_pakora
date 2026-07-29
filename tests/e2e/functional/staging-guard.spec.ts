@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import {
   PRODUCTION_APP_ORIGINS,
   PRODUCTION_PROJECT_REFS,
+  assertRunnerVercelAutomationBypass,
   assertSafeStagingEnvironment,
   assertStagingDatabaseMarker,
   assertStagingDeploymentAttestation,
@@ -15,6 +16,8 @@ const safeEnvironment = {
   E2E_BASE_URL: "https://crm-v4-preview.vercel.app",
   E2E_EXPECTED_APP_ORIGIN: "https://crm-v4-preview.vercel.app",
   E2E_ATTESTATION_TOKEN: "test-only-attestation-token-1234567890",
+  E2E_VERCEL_AUTOMATION_BYPASS_SECRET:
+    "0123456789abcdefghijklmnopqrstuv",
   NEXT_PUBLIC_SUPABASE_URL: "https://stagingref123.supabase.co",
   E2E_EXPECTED_PROJECT_REF: "stagingref123",
   SUPABASE_SERVICE_ROLE_KEY: "e2e-test-service-role-key",
@@ -34,12 +37,53 @@ function assertSafe(environment: Readonly<Record<string, string>>) {
   return assertSafeStagingEnvironment(environment, testPolicy);
 }
 
+function attestationOptions(fetchImpl: typeof fetch) {
+  return {
+    fetchImpl,
+    runnerVercelAutomationBypassSecret:
+      safeEnvironment.E2E_VERCEL_AUTOMATION_BYPASS_SECRET,
+  };
+}
+
 test("mutation guard accepts only an explicitly isolated target", () => {
   const inspection = inspect(safeEnvironment);
   expect(inspection.ok).toBe(true);
   expect(assertSafe(safeEnvironment).projectRef).toBe(
     "stagingref123",
   );
+});
+
+test("runner-only Vercel bypass is validated separately from deployment identity", () => {
+  const deploymentEnvironment = Object.fromEntries(
+    Object.entries(safeEnvironment).filter(
+      ([name]) => name !== "E2E_VERCEL_AUTOMATION_BYPASS_SECRET",
+    ),
+  );
+
+  expect(inspect(deploymentEnvironment).ok).toBe(true);
+  expect(() =>
+    assertRunnerVercelAutomationBypass(deploymentEnvironment),
+  ).toThrow(/runner is missing a valid Vercel automation bypass/i);
+  expect(assertRunnerVercelAutomationBypass(safeEnvironment)).toBe(
+    safeEnvironment.E2E_VERCEL_AUTOMATION_BYPASS_SECRET,
+  );
+});
+
+test("runner-only Vercel bypass rejects placeholders and malformed capabilities", () => {
+  const invalidSecrets = [
+    "",
+    "replace-with-vercel-bypass-secret",
+    "too-short",
+    "0123456789abcdefghij\nklmnopqrst",
+  ];
+
+  for (const bypassSecret of invalidSecrets) {
+    expect(() =>
+      assertRunnerVercelAutomationBypass({
+        E2E_VERCEL_AUTOMATION_BYPASS_SECRET: bypassSecret,
+      }),
+    ).toThrow(/runner is missing a valid Vercel automation bypass/i);
+  }
 });
 
 test("mutation guard remains closed until staging is version-allowlisted", () => {
@@ -226,8 +270,20 @@ test("deployment attestation binds the preview to the same staging identity", as
     projectRef: verifiedConfig.projectRef,
     markerVerified: true,
   };
-  const fetchImpl = (async (_input: unknown, init?: RequestInit) => {
+  const fetchImpl = (async (input: unknown, init?: RequestInit) => {
+    expect(input).toBe(
+      `${verifiedConfig.appOrigin}/api/e2e/attestation`,
+    );
     expect(init?.redirect).toBe("error");
+    expect(init?.cache).toBe("no-store");
+    const headers = new Headers(init?.headers);
+    expect(headers.get("x-e2e-attestation-token")).toBe(
+      verifiedConfig.attestationToken,
+    );
+    expect(headers.get("x-vercel-protection-bypass")).toBe(
+      safeEnvironment.E2E_VERCEL_AUTOMATION_BYPASS_SECRET,
+    );
+    expect(headers.get("x-vercel-set-bypass-cookie")).toBeNull();
     return {
       ok: true,
       status: 200,
@@ -238,8 +294,32 @@ test("deployment attestation binds the preview to the same staging identity", as
   }) as unknown as typeof fetch;
 
   await expect(
+    assertStagingDeploymentAttestation(
+      verifiedConfig,
+      attestationOptions(fetchImpl),
+    ),
+  ).resolves.toEqual({ ...verifiedConfig, deploymentAttested: true });
+});
+
+test("deployment attestation refuses to fetch without the runner-only bypass", async () => {
+  const verifiedConfig = {
+    ...assertSafe(safeEnvironment),
+    markerVerified: true as const,
+  };
+  let fetchCalled = false;
+  const fetchImpl = (async () => {
+    fetchCalled = true;
+    throw new Error("must not fetch");
+  }) as unknown as typeof fetch;
+
+  await expect(
     assertStagingDeploymentAttestation(verifiedConfig, { fetchImpl }),
-  ).resolves.toMatchObject({ deploymentAttested: true });
+  ).rejects.toMatchObject({
+    issues: expect.arrayContaining([
+      expect.objectContaining({ code: "VERCEL_AUTOMATION_BYPASS_INVALID" }),
+    ]),
+  });
+  expect(fetchCalled).toBe(false);
 });
 
 test("deployment attestation rejects redirects and identity drift", async () => {
@@ -268,9 +348,11 @@ test("deployment attestation rejects redirects and identity drift", async () => 
 
   await expect(
     assertStagingDeploymentAttestation(verifiedConfig, {
-      fetchImpl: responseFor(
-        "https://crm.pakora.online/api/e2e/attestation",
-        verifiedConfig.projectRef,
+      ...attestationOptions(
+        responseFor(
+          "https://crm.pakora.online/api/e2e/attestation",
+          verifiedConfig.projectRef,
+        ),
       ),
     }),
   ).rejects.toMatchObject({
@@ -280,10 +362,12 @@ test("deployment attestation rejects redirects and identity drift", async () => 
   });
   await expect(
     assertStagingDeploymentAttestation(verifiedConfig, {
-      fetchImpl: responseFor(
-        `${verifiedConfig.appOrigin}/login`,
-        verifiedConfig.projectRef,
-        true,
+      ...attestationOptions(
+        responseFor(
+          `${verifiedConfig.appOrigin}/login`,
+          verifiedConfig.projectRef,
+          true,
+        ),
       ),
     }),
   ).rejects.toMatchObject({
@@ -293,9 +377,11 @@ test("deployment attestation rejects redirects and identity drift", async () => 
   });
   await expect(
     assertStagingDeploymentAttestation(verifiedConfig, {
-      fetchImpl: responseFor(
-        `${verifiedConfig.appOrigin}/api/e2e/attestation`,
-        "different-staging-ref",
+      ...attestationOptions(
+        responseFor(
+          `${verifiedConfig.appOrigin}/api/e2e/attestation`,
+          "different-staging-ref",
+        ),
       ),
     }),
   ).rejects.toMatchObject({

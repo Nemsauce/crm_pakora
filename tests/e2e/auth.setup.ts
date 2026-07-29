@@ -3,7 +3,10 @@ import { dirname } from "node:path";
 
 import { expect, test as setup } from "@playwright/test";
 
-import { assertSafeStagingEnvironment } from "../../scripts/e2e/staging-guard.mjs";
+import {
+  assertRunnerVercelAutomationBypass,
+  assertSafeStagingEnvironment,
+} from "../../scripts/e2e/staging-guard.mjs";
 import { installStagingBrowserOriginGuard } from "./helpers/staging-network";
 
 const authStatePath = "playwright/.auth/admin.json";
@@ -21,9 +24,12 @@ setup("authenticate the isolated staging administrator", async ({ page }) => {
   }
 
   const config = assertSafeStagingEnvironment(process.env);
+  const runnerVercelAutomationBypassSecret =
+    assertRunnerVercelAutomationBypass(process.env);
   const assertOriginIsolation = await installStagingBrowserOriginGuard(
     page,
     config,
+    runnerVercelAutomationBypassSecret,
   );
   await page.goto("/login");
   await page.getByLabel("Correo").fill(email);

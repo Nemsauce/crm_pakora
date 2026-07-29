@@ -36,6 +36,7 @@ yarn-error.log*
 
 # env files
 .env
+.env.staging
 .env*.local
 !.env.example
 

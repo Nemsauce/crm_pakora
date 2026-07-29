@@ -10,6 +10,12 @@ const TIME_ZONE = "America/Bogota";
 const CONTRACT_VERSION = "crm-pakora-v4-fixtures-v1";
 const DAY_MS = 24 * 60 * 60 * 1_000;
 const OPEN_TASK_STATES = new Set(["pendiente", "en_progreso"]);
+const STREET_MONEY_EXCLUDED_CATEGORIES = new Set([
+  "nuevo",
+  "entregado",
+  "cancelado",
+  "devolucion",
+]);
 const CRM_STATES = ["nuevo", "en_ruta", "entregado", "cancelado", "devolucion"];
 const STATUS_CATEGORIES = [
   "nuevo",
@@ -232,6 +238,60 @@ export function resolveStatusCategoryScenario(
   return activeRows.find((row) => row.transportadora === null)?.category ?? "sin_clasificar";
 }
 
+/**
+ * Mirrors the exact status/category join used by dinero_en_la_calle. Unlike
+ * the operational status resolver above, this intentionally has no generic
+ * carrier fallback: the RPC joins the order and catalog carrier exactly,
+ * including null-to-null.
+ */
+export function calculateStreetMoneyScenario(orders, catalog) {
+  const groups = new Map();
+
+  for (const order of orders) {
+    const currentStatus = order?.currentStatus;
+    const exactCatalogRow = catalog.find(
+      (row) =>
+        row?.active !== false &&
+        row?.estado === currentStatus?.estado &&
+        row?.transportadora === currentStatus?.transportadora,
+    );
+
+    if (
+      !exactCatalogRow ||
+      STREET_MONEY_EXCLUDED_CATEGORIES.has(exactCatalogRow.category)
+    ) {
+      continue;
+    }
+
+    if (!Number.isFinite(order.expectedProfit)) {
+      throw new RangeError(
+        `Street-money order ${order.key} must declare a finite expected profit.`,
+      );
+    }
+
+    const groupKey = `${order.country}\u0000${order.productKey}`;
+    const currentGroup = groups.get(groupKey) ?? {
+      country: order.country,
+      productKey: order.productKey,
+      pendingOrders: 0,
+      amount: 0,
+    };
+    currentGroup.pendingOrders += 1;
+    currentGroup.amount += order.expectedProfit;
+    groups.set(groupKey, currentGroup);
+  }
+
+  return Object.freeze(
+    [...groups.values()]
+      .sort(
+        (left, right) =>
+          left.country.localeCompare(right.country, "en") ||
+          left.productKey.localeCompare(right.productKey, "en"),
+      )
+      .map((row) => Object.freeze(row)),
+  );
+}
+
 export function calculateWalletScenarioTotals(movements, catalog, period) {
   const categoryByCode = new Map(catalog.map((row) => [row.identificationCode, row.category]));
   const from = new Date(period.from).getTime();
@@ -413,8 +473,14 @@ function orderFixtures(dayStart) {
       numeroOrden: "#1007",
       country: "CO",
       crmState: "nuevo",
+      active: true,
       expectedRisk: "alto",
       history: { totalOrders: 118, deliveredOrders: 39, returnedOrders: 78 },
+      currentStatus: {
+        estado: "E2E ESTADO CONFIRMADO",
+        transportadora: "E2E Carrier",
+        expectedCategory: "confirmado",
+      },
       customer: { name: "María", surname: "Control", phone: "3005551007" },
       logistics: {
         address: "Calle 100 # 7-18",
@@ -432,8 +498,14 @@ function orderFixtures(dayStart) {
       numeroOrden: "#E2E-CO-MEDIUM",
       country: "CO",
       crmState: "en_ruta",
+      active: true,
       expectedRisk: "medio",
       history: { totalOrders: 20, deliveredOrders: 10, returnedOrders: 6 },
+      currentStatus: {
+        estado: "E2E EN RUTA",
+        transportadora: null,
+        expectedCategory: "en_ruta",
+      },
       customer: { name: "Camilo", surname: "Riesgo", phone: "3015552001" },
       logistics: { address: "Carrera 20 # 10-40", city: "Cali", guide: null, carrier: null },
       productKey: "FX-PROD-METRICS-CO",
@@ -446,8 +518,14 @@ function orderFixtures(dayStart) {
       numeroOrden: "#E2E-MX-LOW",
       country: "MX",
       crmState: "entregado",
+      active: false,
       expectedRisk: "bajo",
       history: { totalOrders: 20, deliveredOrders: 18, returnedOrders: 1 },
+      currentStatus: {
+        estado: "E2E ENTREGADO",
+        transportadora: "E2E Carrier MX",
+        expectedCategory: "entregado",
+      },
       customer: { name: "Lucía", surname: "Entrega", phone: "3005551007" },
       logistics: { address: "Av. Reforma 100", city: "CDMX", guide: "E2E-MX-LOW", carrier: "E2E Carrier MX" },
       productKey: "FX-PROD-METRICS-MX",
@@ -455,13 +533,44 @@ function orderFixtures(dayStart) {
       orderDate: localDateKey(localDayStart(dayStart, -1)),
     },
     {
+      key: "FX-ORD-MX-STREET",
+      adapterNaturalKey: "e2e:order:mx:street",
+      numeroOrden: "#E2E-MX-STREET",
+      country: "MX",
+      crmState: "en_ruta",
+      active: true,
+      expectedRisk: "bajo",
+      history: { totalOrders: 10, deliveredOrders: 8, returnedOrders: 1 },
+      currentStatus: {
+        estado: "E2E GUIA GENERADA",
+        transportadora: null,
+        expectedCategory: "guia_generada",
+      },
+      customer: { name: "Sofía", surname: "En Ruta", phone: "5515550700" },
+      logistics: {
+        address: "Av. Insurgentes 700",
+        city: "CDMX",
+        guide: "E2E-MX-STREET",
+        carrier: null,
+      },
+      productKey: "FX-PROD-METRICS-MX",
+      expectedProfit: 700,
+      orderDate: localDateKey(dayStart),
+    },
+    {
       key: "FX-ORD-MX-HISTORY-NULL",
       adapterNaturalKey: "e2e:order:mx:null-history",
       numeroOrden: "#E2E-MX-NULL",
       country: "MX",
       crmState: "cancelado",
+      active: false,
       expectedRisk: "sin_datos",
       history: { totalOrders: null, deliveredOrders: null, returnedOrders: null },
+      currentStatus: {
+        estado: "E2E CANCELADO",
+        transportadora: null,
+        expectedCategory: "cancelado",
+      },
       customer: { name: "Cliente", surname: "Antiguo", phone: null },
       logistics: { address: null, city: null, guide: null, carrier: null },
       productKey: "FX-PROD-METRICS-MX",
@@ -474,8 +583,14 @@ function orderFixtures(dayStart) {
       numeroOrden: "#E2E-CO-ZERO",
       country: "CO",
       crmState: "devolucion",
+      active: false,
       expectedRisk: "sin_datos",
       history: { totalOrders: 0, deliveredOrders: 0, returnedOrders: 0 },
+      currentStatus: {
+        estado: "E2E DEVOLUCION",
+        transportadora: "E2E Carrier",
+        expectedCategory: "devolucion",
+      },
       customer: { name: null, surname: null, phone: "3025550000" },
       logistics: { address: null, city: "Medellín", guide: "E2E-ZERO", carrier: "E2E Carrier" },
       productKey: "FX-PROD-METRICS-CO",
@@ -488,7 +603,7 @@ function orderFixtures(dayStart) {
 function statusFixtures() {
   return [
     ["FX-STATUS-NUEVO", "E2E ESTADO NUEVO", null, "nuevo"],
-    ["FX-STATUS-CONFIRMADO", "E2E ESTADO CONFIRMADO", null, "confirmado"],
+    ["FX-STATUS-CONFIRMADO", "E2E ESTADO CONFIRMADO", "E2E Carrier", "confirmado"],
     ["FX-STATUS-GUIA-GENERADA", "E2E GUIA GENERADA", null, "guia_generada"],
     ["FX-STATUS-EN-RUTA", "E2E EN RUTA", null, "en_ruta"],
     ["FX-STATUS-EN-REPARTO", "E2E EN REPARTO", null, "en_reparto"],
@@ -496,9 +611,9 @@ function statusFixtures() {
     ["FX-STATUS-NOVEDAD-FALLBACK", "E2E INCIDENCIA", null, "novedad"],
     ["FX-STATUS-INTENTO-CARRIER", "E2E INCIDENCIA", "E2E Carrier", "intento_fallido"],
     ["FX-STATUS-PROXIMO", "E2E PROXIMO A LLEGAR", null, "proximo_a_llegar"],
-    ["FX-STATUS-ENTREGADO", "E2E ENTREGADO", null, "entregado"],
+    ["FX-STATUS-ENTREGADO", "E2E ENTREGADO", "E2E Carrier MX", "entregado"],
     ["FX-STATUS-CANCELADO", "E2E CANCELADO", null, "cancelado"],
-    ["FX-STATUS-DEVOLUCION", "E2E DEVOLUCION", null, "devolucion"],
+    ["FX-STATUS-DEVOLUCION", "E2E DEVOLUCION", "E2E Carrier", "devolucion"],
     ["FX-STATUS-SIN-CLASIFICAR", "E2E SIN CLASIFICAR", null, "sin_clasificar"],
   ].map(([key, estado, transportadora, category]) => ({
     key,
@@ -923,6 +1038,42 @@ export function inspectFixtureContract(contract) {
 
     const risks = new Set();
     for (const order of contract.orders ?? []) {
+      const exactStatus = (contract.statusCatalog ?? []).find(
+        (row) =>
+          row?.active !== false &&
+          row?.estado === order.currentStatus?.estado &&
+          row?.transportadora === order.currentStatus?.transportadora,
+      );
+      if (
+        !exactStatus ||
+        exactStatus.category !== order.currentStatus?.expectedCategory
+      ) {
+        errors.push(
+          issue(
+            "ORDER_CURRENT_STATUS_MAPPING",
+            order.key,
+            "Order current status must map to its expected category through an exact status/carrier catalog row.",
+          ),
+        );
+      }
+      if (order.logistics?.carrier !== order.currentStatus?.transportadora) {
+        errors.push(
+          issue(
+            "ORDER_CURRENT_CARRIER_MISMATCH",
+            order.key,
+            "Order logistics carrier and current-status carrier must match exactly.",
+          ),
+        );
+      }
+      if (typeof order.active !== "boolean") {
+        errors.push(
+          issue(
+            "ORDER_ACTIVE_INVALID",
+            order.key,
+            "Every order must explicitly declare whether it is active.",
+          ),
+        );
+      }
       const stats = calculateDropiHistoryScenario(order.history);
       risks.add(stats.risk);
       if (stats.risk !== order.expectedRisk) {
@@ -942,6 +1093,32 @@ export function inspectFixtureContract(contract) {
     }
     if (!(contract.orders ?? []).some(({ history }) => history.totalOrders === null) || !(contract.orders ?? []).some(({ history }) => history.totalOrders === 0)) {
       errors.push(issue("DROPI_EMPTY_ZERO_COVERAGE", "orders", "Fixtures must distinguish null history from a valid zero history."));
+    }
+
+    const declaredStreetMoney = (contract.wallet?.streetMoney ?? [])
+      .map(({ country, productKey, pendingOrders, amount }) => ({
+        country,
+        productKey,
+        pendingOrders,
+        amount,
+      }))
+      .sort(
+        (left, right) =>
+          left.country.localeCompare(right.country, "en") ||
+          left.productKey.localeCompare(right.productKey, "en"),
+      );
+    const calculatedStreetMoney = calculateStreetMoneyScenario(
+      contract.orders ?? [],
+      contract.statusCatalog ?? [],
+    );
+    if (JSON.stringify(calculatedStreetMoney) !== JSON.stringify(declaredStreetMoney)) {
+      errors.push(
+        issue(
+          "SCENARIO_STREET_MONEY",
+          "wallet.streetMoney",
+          "Street-money expectations must be derivable from exact current order statuses and expected profits.",
+        ),
+      );
     }
 
     if (!sameSet(new Set(contract.tasks?.map(({ type }) => type)), TASK_TYPES) || !sameSet(new Set(contract.tasks?.map(({ state }) => state)), TASK_STATES)) {

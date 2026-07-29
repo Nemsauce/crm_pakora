@@ -12,7 +12,7 @@ operativo, financiero o de datos.
 | Commit base | `3ffd66aad1cb0a11f4228b439f07e512b877b255` | Toda comparación de regresión parte de este commit. | `BASE-001` — verificado manualmente |
 | Rama de trabajo | `redesign/crm-v4` | Ningún commit parcial del rediseño entra directamente a `main`. | `BASE-002` — verificado; CI configurado |
 | Tag de recuperación | `pre-crm-v4-20260728` | Punto inmutable previo al primer cambio del rediseño. | `BASE-003` — verificado manualmente |
-| Producción | Fuera de alcance de pruebas mutables | Toda escritura automatizada usa exclusivamente Supabase staging y registros fixture. | `ENV-001` — bloqueado hasta conectar staging |
+| Producción | Fuera de alcance de pruebas mutables | Toda escritura automatizada usa exclusivamente Supabase staging y registros fixture. | `ENV-001` — staging `qmpcthkbrckjeedbxgkw` auditado y allowlisted; producción denylisted |
 | Zona operativa | `America/Bogota` | Fechas relativas, “Hoy” y fixtures se calculan explícitamente en esta zona. | `TIME-001` — planificado |
 
 ### 1.1 Exclusiones protegidas del usuario
@@ -27,9 +27,10 @@ para nuevos artefactos de QA:
 - `src/lib/dropi/createDropiOrderCO.ts`
 - `whatsapp-bridge/.env.staging`
 
-`whatsapp-bridge/.env.staging` se considera secreto y propiedad del usuario. La
-auditoría solo puede comprobar que la ruta sigue presente; nunca leer, copiar,
-imprimir ni inferir sus valores.
+`whatsapp-bridge/.env.staging` se considera secreto y propiedad del usuario.
+Cuando el usuario autorice staging, los procesos pueden cargar sus variables
+directamente en memoria, pero nunca imprimir, copiar a otro archivo, versionar,
+editar ni inferir sus valores. El archivo debe conservar permisos restrictivos.
 
 Protección planificada: `TREE-001` comparará únicamente la lista esperada de
 rutas sin seguimiento antes y después de cada gate. Estado: **planificado**.
@@ -49,30 +50,18 @@ rutas sin seguimiento antes y después de cada gate. Estado: **planificado**.
 | ID | Estado verificable | Invariante | Protección |
 | --- | --- | --- | --- |
 | `ENV-PUBLIC-001` | Suite pública local/read-only | Next arranca con las tres variables Supabase vacías; requests HTTP se abortan fuera del origen local y WebSockets se interceptan/cancelan antes de conectar a hosts externos; proyectos mutables ni Auth se cargan. | Playwright `102` aprobadas / `7` skips intencionales; CI ejecuta guard vacío antes de UI |
-| `ENV-MUT-001` | Ejecución mutable fail-closed | Solo `VERCEL_ENV=preview`, origen HTTPS exacto, ref Supabase en allowlist positiva versionada, marker staging read-only, habilitación literal y secretos completos. La allowlist permanece vacía hasta provisionar y auditar staging. | `staging-guard.spec.ts`; `test:e2e:guard:empty` |
-| `ENV-DEPLOY-001` | Identidad real del preview | El propio deployment debe atestiguar mismo origen, ref, entorno preview y marker mediante `/api/e2e/attestation`; redirects o drift de identidad bloquean la suite. | ramas `404/401/503/409/200` automatizadas; smoke HTTP local `404`; ejecución live bloqueada staging |
+| `ENV-MUT-001` | Ejecución mutable fail-closed | Solo `VERCEL_ENV=preview`, origen HTTPS exacto, ref Supabase en allowlist positiva versionada, marker staging read-only, habilitación literal y secretos completos. La allowlist contiene únicamente `CRM staging` (`qmpcthkbrckjeedbxgkw`). | `staging-guard.spec.ts`; `test:e2e:guard:empty`; marker real verificado con service-role y bloqueado para anon |
+| `ENV-DEPLOY-001` | Identidad real del preview | El propio deployment debe atestiguar mismo origen, ref, entorno preview y marker mediante `/api/e2e/attestation`; redirects o drift de identidad bloquean la suite. El runner exige una capacidad Vercel separada y la envía solo por header al origen Preview: nunca en URL, cookie persistida, respuesta ni requests Supabase. | ramas `404/401/503/409/200` automatizadas; bypass ausente/malformado, header limitado por origen y WebSocket solo Supabase automatizados; smoke HTTP local `404`; ejecución live bloqueada staging |
 | `ENV-AUTH-001` | Auth staging | Sin credenciales no se crea storage state vacío. Login exige `/pedidos`, navegación principal y heading real; artefactos de Auth están desactivados. | proyecto `auth` dependiente de guard; bloqueado staging real |
-| `SCHEMA-READINESS-001` | Tipos generados incompletos | El scanner AST usa fuentes rastreadas —excluye los archivos protegidos del usuario— y falla ante gaps nuevos no allowlisted dentro de llamadas literales `.from()`/`.rpc()`. Wrappers y nombres dinámicos quedan fuera de su prueba. | `schema-readiness.spec.ts`; `detectionScope=literal-supabase-from-and-rpc-calls`; `schemaTypesReady=false` |
+| `SCHEMA-READINESS-001` | Schema y tipos auditados | El scanner AST usa fuentes rastreadas —excluye los archivos protegidos del usuario— y falla ante cualquier tabla, RPC o columna live ausente dentro de llamadas literales `.from()`/`.rpc()`. Wrappers y nombres dinámicos quedan fuera de su prueba. | baseline schema-only y fingerprint versionados; `schema-readiness.spec.ts`; `schemaTypesReady=true` |
 | `FIXTURE-LOGICAL-001` | Contrato lógico determinista | Manifiesto inmutable con claves `FX-*`, sin PK hardcodeadas y anclado a Bogotá. Sus oráculos prueban coherencia de escenarios, no fórmulas privadas ni RPC. El adaptador DB está bloqueado. | paridad productiva real: historial Dropi, resultados de tareas y teléfono WhatsApp; resto marcado `scenarioOnly` |
 
-Deuda exacta de tipos que debe resolverse desde el schema auditado de staging,
-no mediante tipos inventados:
-
-- tablas usadas y ausentes: `abandonados`, `asistente_whatsapp_config`,
-  `dropi_sessions`, `dropkiller_saved_products`, `shopify_webhook_events`,
-  `task_handling_events`, `whatsapp_mensajes_entrantes` y
-  `whatsapp_mensajes_salientes`;
-- RPC usados y ausentes: `dinero_en_la_calle`, `reporte_semanal`,
-  `task_completions_by_user`, `task_handling_time_by_user` y
-  `wallet_daily_summary`;
-- columnas live observadas y ausentes del tipo: `orders.codigo_postal`,
-  `orders.colonia`, `orders.numero_interior`, `orders.monto_a_ganar`,
-  `tasks.resultado`, `tasks.snoozed_until`,
-  `dropkiller_products_daily.primary_image_url` y
-  `dropkiller_products_daily.providers_count`.
-
-Dentro de su alcance literal, la deuda conocida del scanner es exacta; no se
-interpreta como auditoría completa de wrappers, SQL dinámico o del schema live.
+La deuda conocida de tipos quedó resuelta regenerando desde el schema auditado
+de staging, no mediante tipos inventados. La paridad estructural comprobada es:
+21 tablas, 221 columnas, 9 enums/52 valores, 47 constraints, 14 funciones,
+30 índices, 34 políticas, 21 tablas con RLS, 8 triggers y una publicación
+Realtime. Dentro de su alcance literal, el scanner queda verde; no se interpreta
+como auditoría completa de wrappers o SQL dinámico.
 El contrato lógico cubre CO/MX, cinco estados CRM, las trece categorías de
 `status_catalog`, los cinco tipos de tarea, vencida/hoy/futura/pospuesta,
 notificaciones `99+`, WhatsApp, abandonados, wallet, productos y costeos. El
