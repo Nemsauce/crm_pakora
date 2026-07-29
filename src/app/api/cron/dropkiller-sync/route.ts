@@ -23,23 +23,6 @@ type SweetSpotFinalist = {
   es_sweet_spot: boolean | null;
 };
 
-type ProvidersCountUpdateFilter = PromiseLike<{
-  error: { message: string } | null;
-}> & {
-  eq: (column: string, value: string) => ProvidersCountUpdateFilter;
-};
-
-type ProvidersCountTable = {
-  update: (values: { providers_count: number }) => ProvidersCountUpdateFilter;
-};
-
-type ProductDailyUpsertTable = {
-  upsert: (
-    values: Array<Record<string, unknown>>,
-    options: { onConflict: string },
-  ) => PromiseLike<{ error: { message: string } | null }>;
-};
-
 export type DropkillerSyncResult = {
   capturedAt: string;
   summary: Array<{
@@ -123,13 +106,9 @@ export async function runDropkillerSync(): Promise<DropkillerSyncResult> {
   const rows = results.flatMap((result) => result.products);
 
   if (rows.length > 0) {
-    const table = supabase.from(
-      "dropkiller_products_daily",
-    ) as unknown as ProductDailyUpsertTable;
-    const { error: upsertError } = await table.upsert(
-      rows as unknown as Array<Record<string, unknown>>,
-      { onConflict: "external_id,captured_at" },
-    );
+    const { error: upsertError } = await supabase
+      .from("dropkiller_products_daily")
+      .upsert(rows, { onConflict: "external_id,captured_at" });
 
     if (upsertError) {
       throw new DropkillerSyncOperationError(
@@ -171,9 +150,7 @@ async function resolveFinalistProviderCounts(
     return { finalists: 0, providersCountResolved: 0 };
   }
 
-  const finalists = selectTopFinalists(
-    (data ?? []) as unknown as SweetSpotFinalist[],
-  );
+  const finalists = selectTopFinalists(data ?? []);
   let providersCountResolved = 0;
 
   for (let index = 0; index < finalists.length; index += 1) {
@@ -204,10 +181,8 @@ async function resolveFinalistProviderCounts(
         countryCode: finalist.country_code,
       });
     } else {
-      const table = supabase.from(
-        "dropkiller_products_daily",
-      ) as unknown as ProvidersCountTable;
-      const { error: updateError } = await table
+      const { error: updateError } = await supabase
+        .from("dropkiller_products_daily")
         .update({ providers_count: providersCount })
         .eq("external_id", finalist.external_id)
         .eq("captured_at", finalist.captured_at);

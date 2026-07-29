@@ -2,7 +2,6 @@ import { DateRangeSelector } from "@/components/command-center/DateRangeSelector
 import {
   ProductivityTable,
   type TaskCompletionByUserRow,
-  type TaskHandlingTimeByUserRow,
 } from "@/components/command-center/ProductivityTable";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,16 +26,6 @@ type TaskCompletionsRpcClient = {
     args: DateRangeArgs,
   ) => PromiseLike<{
     data: TaskCompletionByUserRow[] | null;
-    error: { message: string } | null;
-  }>;
-};
-
-type TaskHandlingTimeRpcClient = {
-  rpc: (
-    functionName: "task_handling_time_by_user",
-    args: DateRangeArgs,
-  ) => PromiseLike<{
-    data: TaskHandlingTimeByUserRow[] | null;
     error: { message: string } | null;
   }>;
 };
@@ -113,10 +102,7 @@ function getTaskHandlingTime(
   supabase: Awaited<ReturnType<typeof createClient>>,
   args: DateRangeArgs,
 ) {
-  return (supabase as unknown as TaskHandlingTimeRpcClient).rpc(
-    "task_handling_time_by_user",
-    args,
-  );
+  return supabase.rpc("task_handling_time_by_user", args);
 }
 
 export default async function CommandCenterProductividadPage({

@@ -12,35 +12,6 @@ export type CompleteTaskResult = {
   error: string | null;
 };
 
-type TasksCompletionClient = {
-  from(table: "tasks"): {
-    update(values: {
-      estado: "completada";
-      completado_en: string;
-      completado_por: string;
-      notas_completado: string | null;
-      resultado: string;
-      updated_at: string;
-    }): {
-      eq(column: "id", value: number): {
-        in(
-          column: "estado",
-          values: ["pendiente", "en_progreso"],
-        ): PromiseLike<{ error: { message: string } | null }>;
-      };
-    };
-  };
-};
-
-type TaskHandlingEventsClient = {
-  from(table: "task_handling_events"): {
-    insert(values: {
-      task_id: number;
-      usuario: string;
-    }): PromiseLike<{ error: { message: string } | null }>;
-  };
-};
-
 export async function logTaskHandlingOpen(taskId: number): Promise<void> {
   if (!Number.isInteger(taskId) || taskId <= 0) {
     return;
@@ -60,8 +31,7 @@ export async function logTaskHandlingOpen(taskId: number): Promise<void> {
       return;
     }
 
-    const eventsClient = supabase as unknown as TaskHandlingEventsClient;
-    const { error } = await eventsClient.from("task_handling_events").insert({
+    const { error } = await supabase.from("task_handling_events").insert({
       task_id: taskId,
       usuario: userEmail,
     });
@@ -119,8 +89,7 @@ export async function completeTask(
 
   const trimmedNotes = notes?.trim();
   const completedAt = new Date().toISOString();
-  const completionClient = supabase as unknown as TasksCompletionClient;
-  const { error } = await completionClient
+  const { error } = await supabase
     .from("tasks")
     .update({
       estado: "completada",
@@ -148,19 +117,6 @@ export type SnoozeTaskResult = {
   error: string | null;
 };
 
-type TasksSnoozeClient = {
-  from(table: "tasks"): {
-    update(values: { snoozed_until: string; updated_at: string }): {
-      eq(column: "id", value: number): {
-        in(
-          column: "estado",
-          values: ["pendiente", "en_progreso"],
-        ): PromiseLike<{ error: { message: string } | null }>;
-      };
-    };
-  };
-};
-
 export async function snoozeTask(
   taskId: number,
   snoozeUntil: Date,
@@ -177,9 +133,8 @@ export async function snoozeTask(
   }
 
   const supabase = await createClient();
-  const tasksClient = supabase as unknown as TasksSnoozeClient;
   const updatedAt = new Date().toISOString();
-  const { error } = await tasksClient
+  const { error } = await supabase
     .from("tasks")
     .update({
       snoozed_until: new Date(snoozeTimestamp).toISOString(),
@@ -243,9 +198,7 @@ async function notifyAssignee({
         throw profileError;
       }
 
-      const profile = assigneeProfile as unknown as {
-        telegram_chat_id: string | null;
-      } | null;
+      const profile = assigneeProfile;
 
       if (profile?.telegram_chat_id) {
         if (!pais) {

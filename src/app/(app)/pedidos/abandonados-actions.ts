@@ -1,6 +1,5 @@
 "use server";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 
 import { syncAbandonados } from "@/lib/abandonados/syncAbandonados";
@@ -42,7 +41,7 @@ async function getAuthenticatedClient() {
   return {
     user,
     authError: error,
-    abandonadosClient: supabase as unknown as SupabaseClient,
+    abandonadosClient: supabase,
   };
 }
 
@@ -135,7 +134,7 @@ export async function updateAbandonadoEstado(
 
   revalidatePath("/pedidos");
 
-  return { estado: data.estado as EstadoAbandonado, error: null };
+  return { estado: data.estado, error: null };
 }
 
 export async function triggerAbandonadosSync(): Promise<TriggerAbandonadosSyncResult> {
