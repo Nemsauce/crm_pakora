@@ -25,6 +25,7 @@ export type WhatsAppOrderContext = {
   codigo_postal: string | null;
   colonia: string | null;
   numero_interior: string | null;
+  punto_referencia: string | null;
   barrio_referencia: string | null;
   nombre_producto: string | null;
   cantidad: number | null;
@@ -83,6 +84,7 @@ type OrderRow = Pick<
   | "codigo_postal"
   | "colonia"
   | "numero_interior"
+  | "punto_referencia"
   | "barrio_referencia"
   | "nombre_producto"
   | "cantidad"
@@ -121,7 +123,7 @@ const PHONE_SUFFIX_LENGTH = 10;
 const PHONE_MATCH_PAGE_SIZE = 1_000;
 const MAX_CONVERSATION_MESSAGES = 20;
 const ORDER_SELECT =
-  "id,numero_orden,nombre,apellido,telefono,direccion,ciudad,departamento,codigo_postal,colonia,numero_interior,barrio_referencia,nombre_producto,cantidad,precio,total,fecha,estado_dropi,guia_envio,transportadora,fecha_entrega_real,nivel_riesgo";
+  "id,numero_orden,nombre,apellido,telefono,direccion,ciudad,departamento,codigo_postal,colonia,numero_interior,punto_referencia,barrio_referencia,nombre_producto,cantidad,precio,total,fecha,estado_dropi,guia_envio,transportadora,fecha_entrega_real,nivel_riesgo";
 
 function getWhatsAppContextClient() {
   return createAdminClient();
@@ -475,6 +477,7 @@ function toOrderContext(
     codigo_postal: order.codigo_postal,
     colonia: order.colonia,
     numero_interior: order.numero_interior,
+    punto_referencia: order.punto_referencia,
     barrio_referencia: order.barrio_referencia,
     nombre_producto: order.nombre_producto,
     cantidad: order.cantidad,
@@ -609,6 +612,7 @@ function buildOrderDetails(orderContext: WhatsAppOrderContext) {
     formatField("Código postal", orderContext.codigo_postal),
     formatField("Colonia", orderContext.colonia),
     formatField("Número interior", orderContext.numero_interior),
+    formatField("Punto de referencia", orderContext.punto_referencia),
     formatField("Barrio o referencia", orderContext.barrio_referencia),
     formatField("Producto", orderContext.nombre_producto),
     formatField("Cantidad", orderContext.cantidad),

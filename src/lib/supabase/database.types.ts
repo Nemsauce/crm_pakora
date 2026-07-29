@@ -446,6 +446,7 @@ export type Database = {
           pedidos_devueltos_cliente: number | null
           pedidos_entregados_cliente: number | null
           precio: number | null
+          punto_referencia: string | null
           tarea_generada_para_estado: string | null
           telefono: string | null
           total: number | null
@@ -491,6 +492,7 @@ export type Database = {
           pedidos_devueltos_cliente?: number | null
           pedidos_entregados_cliente?: number | null
           precio?: number | null
+          punto_referencia?: string | null
           tarea_generada_para_estado?: string | null
           telefono?: string | null
           total?: number | null
@@ -536,6 +538,7 @@ export type Database = {
           pedidos_devueltos_cliente?: number | null
           pedidos_entregados_cliente?: number | null
           precio?: number | null
+          punto_referencia?: string | null
           tarea_generada_para_estado?: string | null
           telefono?: string | null
           total?: number | null
