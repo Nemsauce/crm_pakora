@@ -3,12 +3,15 @@
 import { Loader2, MessageCircle, Send, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Dialog } from "radix-ui";
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import {
   createContext,
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
+  type UIEvent,
   useContext,
   useEffect,
   useRef,
@@ -47,7 +50,79 @@ const DEFAULT_DRAWER_WIDTH = 400;
 const MIN_DRAWER_WIDTH = 320;
 const MAX_DRAWER_WIDTH = 640;
 const DRAWER_WIDTH_STORAGE_KEY = "crm-pakora:assistant-drawer-width";
+const AUTO_SCROLL_BOTTOM_THRESHOLD = 80;
 const AssistantContext = createContext<AssistantContextValue | null>(null);
+
+const assistantMarkdownComponents: Components = {
+  p: ({ children }) => (
+    <p className="mb-3 last:mb-0">{children}</p>
+  ),
+  h1: ({ children }) => (
+    <h1
+      className="mb-2 mt-4 font-display text-base font-semibold text-text-primary first:mt-0"
+    >
+      {children}
+    </h1>
+  ),
+  h2: ({ children }) => (
+    <h2
+      className="mb-2 mt-4 font-display text-sm font-semibold text-text-primary first:mt-0"
+    >
+      {children}
+    </h2>
+  ),
+  h3: ({ children }) => (
+    <h3
+      className="mb-2 mt-4 font-body text-sm font-semibold text-text-primary first:mt-0"
+    >
+      {children}
+    </h3>
+  ),
+  strong: ({ children }) => (
+    <strong className="font-semibold text-text-primary">
+      {children}
+    </strong>
+  ),
+  ul: ({ children }) => (
+    <ul
+      className="my-3 list-disc space-y-1 pl-5 marker:text-[var(--color-accent)]"
+    >
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => (
+    <ol
+      className="my-3 list-decimal space-y-1 pl-5 marker:font-semibold marker:text-[var(--color-accent)]"
+    >
+      {children}
+    </ol>
+  ),
+  li: ({ children }) => (
+    <li className="pl-1">{children}</li>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote
+      className="my-3 border-l-2 border-[var(--color-accent)]/50 pl-3 text-text-secondary"
+    >
+      {children}
+    </blockquote>
+  ),
+  a: ({ children, href }) => (
+    <a
+      href={href}
+      className="font-medium text-[var(--color-accent)] underline decoration-[var(--color-accent)]/50 underline-offset-2 hover:opacity-80"
+    >
+      {children}
+    </a>
+  ),
+  code: ({ children }) => (
+    <code
+      className="rounded bg-bg-page px-1 py-0.5 font-mono text-[0.8125rem]"
+    >
+      {children}
+    </code>
+  ),
+};
 
 function getDrawerWidthBounds(viewportWidth: number) {
   const safeViewportWidth = Math.max(0, Math.floor(viewportWidth));
@@ -138,6 +213,13 @@ function getDetailOrderId(value: string | null) {
   return Number.isSafeInteger(orderId) && orderId > 0 ? orderId : null;
 }
 
+function isNearMessageListBottom(container: HTMLDivElement) {
+  return (
+    container.scrollHeight - container.scrollTop - container.clientHeight <=
+    AUTO_SCROLL_BOTTOM_THRESHOLD
+  );
+}
+
 export function AssistantProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(getInitialDrawerWidth);
@@ -218,6 +300,10 @@ export function AssistantDrawer() {
   const [isSending, setIsSending] = useState(false);
   const historyStartIndexRef = useRef(0);
   const resizeStateRef = useRef<ResizeState | null>(null);
+  const messageListRef = useRef<HTMLDivElement | null>(null);
+  const shouldAutoScrollRef = useRef(true);
+  const scrollOnNextMessageRef = useRef(false);
+  const previousMessageCountRef = useRef(0);
   const detailOrderId = getDetailOrderId(searchParams.get("detalle"));
   const resizeBounds =
     typeof window === "undefined"
@@ -241,6 +327,43 @@ export function AssistantDrawer() {
 
     return cleanupResizeInteraction;
   }, [isOpen]);
+
+  useEffect(() => {
+    const hasNewMessage = messages.length > previousMessageCountRef.current;
+    previousMessageCountRef.current = messages.length;
+
+    if (!hasNewMessage) {
+      return;
+    }
+
+    const shouldScroll =
+      scrollOnNextMessageRef.current || shouldAutoScrollRef.current;
+    scrollOnNextMessageRef.current = false;
+
+    if (!shouldScroll) {
+      return;
+    }
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      const container = messageListRef.current;
+
+      if (!container) {
+        return;
+      }
+
+      const prefersReducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+      });
+      shouldAutoScrollRef.current = true;
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [messages.length]);
 
   function handleResizePointerDown(event: PointerEvent<HTMLDivElement>) {
     if (event.button !== 0 || resizeStateRef.current) {
@@ -367,6 +490,7 @@ export function AssistantDrawer() {
       content,
     };
 
+    scrollOnNextMessageRef.current = true;
     setMessages((current) => [...current, userMessage]);
     setDraft("");
     setIsSending(true);
@@ -412,6 +536,10 @@ export function AssistantDrawer() {
       event.preventDefault();
       event.currentTarget.form?.requestSubmit();
     }
+  }
+
+  function handleMessageListScroll(event: UIEvent<HTMLDivElement>) {
+    shouldAutoScrollRef.current = isNearMessageListBottom(event.currentTarget);
   }
 
   return (
@@ -511,8 +639,10 @@ export function AssistantDrawer() {
         </div>
 
         <div
+          ref={messageListRef}
           className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-bg-page/60 p-5"
           aria-live="polite"
+          onScroll={handleMessageListScroll}
         >
           {messages.length === 0 ? (
             <div className="flex min-h-full flex-col items-center justify-center py-12 text-center">
@@ -535,13 +665,22 @@ export function AssistantDrawer() {
                 className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <article
-                  className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-4 py-3 font-body text-sm leading-6 shadow-sm ${
+                  className={`max-w-[88%] rounded-2xl px-4 py-3 font-body text-sm leading-6 shadow-sm ${
                     message.role === "user"
-                      ? "bg-gradient-to-r from-accent-from to-accent-to text-bg-surface"
+                      ? "whitespace-pre-wrap bg-gradient-to-r from-accent-from to-accent-to text-bg-surface"
                       : "border border-border bg-bg-surface text-text-primary"
                   }`}
                 >
-                  {message.content}
+                  {message.role === "user" ? (
+                    message.content
+                  ) : (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkBreaks]}
+                      components={assistantMarkdownComponents}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  )}
                 </article>
               </div>
             ))
