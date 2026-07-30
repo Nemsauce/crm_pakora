@@ -79,6 +79,29 @@
   --color-accent-orange: #F97316;
   --color-accent-orange-bg: #FFEDD5;
 
+  /* Extended surface hierarchy and interaction states (CRM redesign v5). */
+  --color-bg-surface-base: #F8FAFC;
+  --color-bg-surface-subtle: #FAF9FF;
+  --color-bg-surface-elevated: #FFFFFF;
+  --color-bg-hover: #F8FAFC;
+  --color-bg-selected: #FAF9FF;
+  --color-border-hover: #64748B;
+  --color-border-selected: #7C3AED;
+  --color-overlay: rgba(15, 23, 42, 0.56);
+
+  /* Accessible foregrounds for solid semantic backgrounds. */
+  --color-on-accent: #FFFFFF;
+  --color-on-success: #052E16;
+  --color-on-warning: #451A03;
+  --color-on-danger: #FFFFFF;
+
+  /* Semantic series for financial charts. */
+  --color-chart-revenue: #1D4ED8;
+  --color-chart-profit: #15803D;
+  --color-chart-cost: #B45309;
+  --color-chart-refund: #B91C1C;
+  --color-chart-net: #6D28D9;
+
   --background: var(--color-bg-page);
   --foreground: var(--color-text-primary);
   --card: var(--color-bg-surface);
@@ -111,6 +134,23 @@
   --sidebar-accent-foreground: var(--color-accent);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--color-accent);
+
+  /* Theme-independent motion, density, and stacking scales. */
+  --motion-duration-micro: 120ms;
+  --motion-duration-hover-focus: 140ms;
+  --motion-duration-drawer: 240ms;
+  --motion-duration-content: 200ms;
+  --motion-duration-task-completion: 440ms;
+  --density-row-height-compact: 2.5rem;
+  --density-row-height-comfortable: 3rem;
+  --z-index-ambient: 0;
+  --z-index-shell: 10;
+  --z-index-sticky-header: 20;
+  --z-index-dropdown-popover: 30;
+  --z-index-assistant-drawer: 40;
+  --z-index-operational-drawer: 50;
+  --z-index-dialog: 60;
+  --z-index-toast: 70;
 }
 
 .dark {
@@ -142,6 +182,29 @@
   --color-accent-pink-bg: rgba(236, 72, 153, 0.16);
   --color-accent-orange: #FB923C;
   --color-accent-orange-bg: rgba(249, 115, 22, 0.16);
+
+  /* Extended surface hierarchy and interaction states (CRM redesign v5). */
+  --color-bg-surface-base: #0A0D18;
+  --color-bg-surface-subtle: #0F1320;
+  --color-bg-surface-elevated: #171B2A;
+  --color-bg-hover: #1E2433;
+  --color-bg-selected: #251E42;
+  --color-border-hover: #64748B;
+  --color-border-selected: #A78BFA;
+  --color-overlay: rgba(2, 6, 23, 0.72);
+
+  /* Accessible foregrounds for solid semantic backgrounds. */
+  --color-on-accent: #1E1035;
+  --color-on-success: #052E16;
+  --color-on-warning: #451A03;
+  --color-on-danger: #450A0A;
+
+  /* Semantic series for financial charts. */
+  --color-chart-revenue: #60A5FA;
+  --color-chart-profit: #4ADE80;
+  --color-chart-cost: #FB923C;
+  --color-chart-refund: #F87171;
+  --color-chart-net: #C4B5FD;
 
   --background: var(--color-bg-page);
   --foreground: var(--color-text-primary);
