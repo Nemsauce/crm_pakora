@@ -292,7 +292,7 @@ function DropiIdCopyButton({
     <button
       type="button"
       onClick={handleCopy}
-      className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-bg-page px-2.5 font-mono text-xs font-semibold tabular-nums text-[var(--foreground)] outline-none transition-colors hover:bg-bg-surface focus-visible:ring-2 focus-visible:ring-ring"
+      className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-[var(--color-bg-surface-elevated)] px-2.5 font-mono text-xs font-semibold tabular-nums text-[var(--foreground)] outline-none transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] focus-visible:ring-2 focus-visible:ring-ring"
       aria-label={`Copiar ID Dropi ${idOrdenDropi}`}
     >
       <span>ID Dropi {idOrdenDropi}</span>
@@ -324,7 +324,7 @@ function WhatsAppSuggestionCopyButton({ suggestion }: { suggestion: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-bg-page px-2.5 font-mono text-xs font-semibold tabular-nums text-[var(--foreground)] outline-none transition-colors hover:bg-bg-surface focus-visible:ring-2 focus-visible:ring-ring"
+      className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-[var(--color-bg-surface-elevated)] px-2.5 font-mono text-xs font-semibold tabular-nums text-[var(--foreground)] outline-none transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] focus-visible:ring-2 focus-visible:ring-ring"
       aria-label="Copiar sugerencia de IA"
     >
       {copied ? (
@@ -410,7 +410,7 @@ function AssigneeSelect({
     <div className="flex min-w-0 flex-col gap-1">
       <Select.Root value={value} onValueChange={handleChange} disabled={isPending}>
         <Select.Trigger
-          className="inline-flex h-9 min-w-0 items-center gap-2 rounded-full border border-border bg-bg-page px-3 font-body text-xs font-semibold text-[var(--foreground)] outline-none transition-colors hover:bg-bg-surface focus:ring-2 focus:ring-ring disabled:opacity-60"
+          className="inline-flex h-9 min-w-0 items-center gap-2 rounded-full border border-border bg-[var(--color-bg-surface-elevated)] px-3 font-body text-xs font-semibold text-[var(--foreground)] outline-none transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] focus:ring-2 focus:ring-ring disabled:opacity-60"
           aria-label="Asignado a"
         >
           <User
@@ -428,12 +428,12 @@ function AssigneeSelect({
           <Select.Content
             position="popper"
             sideOffset={6}
-            className="z-50 overflow-hidden rounded-2xl border border-border bg-bg-surface text-[var(--foreground)] shadow-md"
+            className="z-[var(--z-index-dialog)] overflow-hidden rounded-2xl border border-border bg-[var(--color-bg-surface-elevated)] text-[var(--foreground)] shadow-md"
           >
             <Select.Viewport className="p-1">
               <Select.Item
                 value={UNASSIGNED_VALUE}
-                className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
+                className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-bg-selected)] data-[highlighted]:text-[var(--color-accent)]"
               >
                 <Select.ItemText>Sin asignar</Select.ItemText>
               </Select.Item>
@@ -441,7 +441,7 @@ function AssigneeSelect({
                 <Select.Item
                   key={option.id}
                   value={option.id}
-                  className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
+                  className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-bg-selected)] data-[highlighted]:text-[var(--color-accent)]"
                 >
                   <Select.ItemText>
                     {getDisplayName(assigneeOptions, option.email)}
@@ -560,7 +560,7 @@ function SnoozeTaskControl({
             variant="outline"
             size="sm"
             disabled={isBusy}
-            className="rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)] disabled:opacity-60"
+            className="rounded-full border-border bg-[var(--color-bg-surface-elevated)] text-[var(--foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)] disabled:opacity-60"
           >
             {isSnoozing ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -574,23 +574,23 @@ function SnoozeTaskControl({
         <DropdownMenuContent
           align="end"
           sideOffset={6}
-          className="min-w-40 rounded-2xl border border-border bg-bg-surface p-1 text-[var(--foreground)] shadow-md"
+          className="z-[var(--z-index-dialog)] min-w-40 rounded-2xl border border-border bg-[var(--color-bg-surface-elevated)] p-1 text-[var(--foreground)] shadow-md"
         >
           <DropdownMenuItem
             onSelect={() => handleSnooze("one_hour")}
-            className="rounded-lg font-body text-sm focus:bg-[var(--color-accent)]/10 focus:text-[var(--color-accent)]"
+            className="rounded-lg font-body text-sm focus:bg-[var(--color-bg-selected)] focus:text-[var(--color-accent)]"
           >
             1 hora
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => handleSnooze("three_hours")}
-            className="rounded-lg font-body text-sm focus:bg-[var(--color-accent)]/10 focus:text-[var(--color-accent)]"
+            className="rounded-lg font-body text-sm focus:bg-[var(--color-bg-selected)] focus:text-[var(--color-accent)]"
           >
             3 horas
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => handleSnooze("tomorrow")}
-            className="rounded-lg font-body text-sm focus:bg-[var(--color-accent)]/10 focus:text-[var(--color-accent)]"
+            className="rounded-lg font-body text-sm focus:bg-[var(--color-bg-selected)] focus:text-[var(--color-accent)]"
           >
             Mañana
           </DropdownMenuItem>
@@ -869,11 +869,32 @@ export function TaskDetailDrawer({
   >({});
   const completionNavigationTimeoutRef = useRef<number | null>(null);
   const lastLoggedTaskIdRef = useRef<number | null>(null);
+  const lastSelectedRowTaskIdRef = useRef<number | null>(null);
   const autoSuggestedTaskIdsRef = useRef(new Set<number>());
   const activeSuggestionRequestIdsRef = useRef(new Map<number, number>());
   const nextSuggestionRequestIdRef = useRef(0);
   const [, startTaskSuggestionTransition] = useTransition();
   const isOpen = Boolean(selectedOrderId);
+
+  useEffect(() => {
+    if (!selectedOrderId) {
+      return;
+    }
+
+    const visibleSelection =
+      visibleTaskOrder.find(
+        (task) =>
+          selectedTaskId !== null && String(task.taskId) === selectedTaskId,
+      ) ??
+      visibleTaskOrder.find(
+        (task) =>
+          task.orderId !== null && String(task.orderId) === selectedOrderId,
+      );
+
+    if (visibleSelection) {
+      lastSelectedRowTaskIdRef.current = visibleSelection.taskId;
+    }
+  }, [selectedOrderId, selectedTaskId, visibleTaskOrder]);
 
   const closeHref = useMemo(() => {
     const params = new URLSearchParams(searchParams);
@@ -1178,7 +1199,7 @@ export function TaskDetailDrawer({
         navigateAfterTaskLeavesView(taskId);
         router.refresh();
       },
-      prefersReducedMotion ? 0 : 400,
+      prefersReducedMotion ? 0 : 480,
     );
   }
 
@@ -1227,7 +1248,7 @@ export function TaskDetailDrawer({
           }
 
           .crm-task-detail-drawer[data-state="open"] {
-            animation: crm-task-drawer-enter 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+            animation: crm-task-drawer-enter var(--motion-duration-drawer) cubic-bezier(0.2, 0.8, 0.2, 1) both;
           }
 
           @media (prefers-reduced-motion: reduce) {
@@ -1237,11 +1258,23 @@ export function TaskDetailDrawer({
           }
         `}</style>
         <Dialog.Content
-          className="crm-task-detail-drawer fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-border bg-bg-surface text-[var(--foreground)] shadow-xl outline-none"
+          id="task-detail-drawer"
+          className="crm-task-detail-drawer fixed inset-y-0 right-0 z-[var(--z-index-operational-drawer)] flex w-full max-w-xl flex-col border-l border-border bg-[var(--color-bg-surface-base)] text-[var(--foreground)] shadow-xl outline-none"
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+
+            if (lastSelectedRowTaskIdRef.current !== null) {
+              document
+                .getElementById(
+                  `task-row-trigger-${lastSelectedRowTaskIdRef.current}`,
+                )
+                ?.focus();
+            }
+          }}
         >
-          <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+          <div className="flex min-h-[var(--density-row-height-comfortable)] items-start justify-between gap-4 border-b border-border bg-[var(--color-bg-surface-elevated)] px-5 py-4">
             <div className="min-w-0">
               <Dialog.Title className="font-display text-lg font-semibold text-[var(--foreground)]">
                 Detalle de tarea
@@ -1255,7 +1288,7 @@ export function TaskDetailDrawer({
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                className="rounded-lg border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+                className="rounded-lg border-border bg-[var(--color-bg-surface-elevated)] text-[var(--foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)]"
                 aria-label="Cerrar detalle"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
@@ -1266,20 +1299,20 @@ export function TaskDetailDrawer({
           <div className="flex-1 overflow-y-auto px-5 py-5">
             {isLoading ? (
               <div className="space-y-4">
-                <div className="h-44 rounded-2xl border border-border bg-bg-page motion-safe:animate-pulse" />
-                <div className="h-32 rounded-2xl border border-border bg-bg-page motion-safe:animate-pulse" />
-                <div className="h-24 rounded-2xl border border-border bg-bg-page motion-safe:animate-pulse" />
+                <div className="h-44 rounded-2xl border border-border bg-[var(--color-bg-surface-elevated)] motion-safe:animate-pulse" />
+                <div className="h-32 rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] motion-safe:animate-pulse" />
+                <div className="h-24 rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] motion-safe:animate-pulse" />
               </div>
             ) : null}
 
             {!isLoading && error ? (
-              <div className="rounded-2xl border border-border bg-bg-surface p-4 font-body text-sm text-[var(--muted-foreground)] shadow-lg">
+              <div className="rounded-2xl border border-border bg-[var(--color-bg-surface-elevated)] p-4 font-body text-sm text-[var(--muted-foreground)] shadow-lg">
                 {error}
               </div>
             ) : null}
 
             {!isLoading && detail && selectedTask ? (
-              <div className="space-y-5">
+              <div className="space-y-6">
                 <SelectedTaskSection
                   key={`selected-task-${selectedTask.id}`}
                   task={selectedTask}
@@ -1295,28 +1328,48 @@ export function TaskDetailDrawer({
                   onReassigned={handleTaskReassigned}
                   onSnoozed={handleTaskSnoozed}
                 />
-                <OtherTasksSection
-                  tasks={otherTasks}
-                  assigneeOptions={assigneeOptions ?? []}
-                />
-                <OrderDetailsSection
-                  key={`order-details-${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
-                  order={detail.order}
-                />
-                <NovedadDetailsSection
-                  key={`novedad-details-${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
-                  statusHistory={detail.statusHistory}
-                />
-                {detail.whatsappMessages.length > 0 ? (
-                  <WhatsAppMessagesSection
-                    key={`whatsapp-messages-${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
-                    messages={detail.whatsappMessages}
+                <div className="space-y-3 border-t border-border pt-5">
+                  <div>
+                    <p className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">
+                      Contexto del pedido
+                    </p>
+                    <p className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
+                      Consulta la operación asociada sin perder el foco de la tarea.
+                    </p>
+                  </div>
+                  <OrderDetailsSection
+                    key={`order-details-${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
+                    order={detail.order}
                   />
-                ) : null}
-                <StatusHistorySection
-                  key={`${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
-                  statusHistory={detail.statusHistory}
-                />
+                  <NovedadDetailsSection
+                    key={`novedad-details-${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
+                    statusHistory={detail.statusHistory}
+                  />
+                  <OtherTasksSection
+                    tasks={otherTasks}
+                    assigneeOptions={assigneeOptions ?? []}
+                  />
+                </div>
+                <div className="space-y-3 border-t border-border pt-5">
+                  <div>
+                    <p className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">
+                      Historial
+                    </p>
+                    <p className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
+                      Mensajes y eventos anteriores de este pedido.
+                    </p>
+                  </div>
+                  {detail.whatsappMessages.length > 0 ? (
+                    <WhatsAppMessagesSection
+                      key={`whatsapp-messages-${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
+                      messages={detail.whatsappMessages}
+                    />
+                  ) : null}
+                  <StatusHistorySection
+                    key={`${selectedOrderId ?? "closed"}-${selectedTaskId ?? "task"}`}
+                    statusHistory={detail.statusHistory}
+                  />
+                </div>
               </div>
             ) : null}
           </div>
@@ -1379,8 +1432,8 @@ function SelectedTaskSection({
   }
 
   return (
-    <section className="rounded-2xl border border-[var(--color-accent)] bg-bg-surface p-4 shadow-lg">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <section className="space-y-4" aria-label="Gestión de tarea">
+      <div className="rounded-2xl border border-[var(--color-border-selected)] bg-[var(--color-bg-surface-elevated)] p-4 shadow-lg">
         <div className="flex min-w-0 gap-3">
           <div
             className={`flex size-12 shrink-0 items-center justify-center rounded-full ${taskTone.circleClassName}`}
@@ -1389,124 +1442,131 @@ function SelectedTaskSection({
             <Icon className="h-5 w-5" />
           </div>
           <div className="min-w-0">
+            <p className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">
+              Qué hay que hacer
+            </p>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-bg-page px-3 py-1 font-body text-xs font-semibold text-[var(--foreground)]">
+              <span className="mt-2 rounded-full bg-[var(--color-bg-surface-subtle)] px-3 py-1 font-body text-xs font-semibold text-[var(--foreground)]">
                 {taskTone.label}
               </span>
               <span
-                className={`rounded-full px-3 py-1 font-body text-xs font-semibold ${taskStateClassName[task.estado]}`}
+                className={`mt-2 rounded-full px-3 py-1 font-body text-xs font-semibold ${taskStateClassName[task.estado]}`}
               >
                 {taskStateLabel[task.estado]}
               </span>
               {task.intento_numero > 1 ? (
-                <span className="rounded-full bg-risk-medium-bg px-3 py-1 font-mono text-xs font-semibold tabular-nums text-risk-medium">
+                <span className="mt-2 rounded-full bg-risk-medium-bg px-3 py-1 font-mono text-xs font-semibold tabular-nums text-risk-medium">
                   Intento {task.intento_numero}
                 </span>
               ) : null}
             </div>
-            <h2 className="mt-3 font-display text-xl font-semibold text-[var(--foreground)]">
+            <h2 className="mt-3 font-display text-xl font-semibold leading-tight text-[var(--foreground)]">
               {task.titulo}
             </h2>
-            <div className="mt-1 flex flex-wrap items-center gap-2 font-body text-sm text-[var(--muted-foreground)]">
-              <span>
-                {getCustomerName(order)} ·{" "}
-                <span className="font-mono tabular-nums">
-                  {getOrderIdentifier(order)}
-                </span>
-              </span>
-              <DropiIdCopyButton idOrdenDropi={order.id_orden_dropi} />
-            </div>
-            <div
-              className={`mt-3 inline-flex rounded-full px-3 py-1 font-mono text-xs font-semibold tabular-nums ${
-                deadline.isOverdue
-                  ? "bg-risk-high-bg text-risk-high"
-                  : "bg-bg-page text-[var(--muted-foreground)]"
-              }`}
-            >
-              {isCompleted
-                ? getCompletionLabel(task, assigneeOptions ?? [])
-                : `${deadline.isOverdue ? "Vencida " : "Vence "}${deadline.label}`}
-            </div>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 lg:min-w-64">
-          <div className="rounded-2xl border border-border bg-bg-page p-3">
+        {description ? (
+          <div className="mt-4 rounded-xl border border-border bg-[var(--color-bg-surface-subtle)] p-3">
+            <p className="font-body text-xs font-semibold text-[var(--muted-foreground)]">
+              Contexto de la tarea
+            </p>
+            <p className="mt-1 whitespace-pre-wrap font-body text-sm text-[var(--foreground)]">
+              {description}
+            </p>
+          </div>
+        ) : null}
+
+        <div
+          className={`mt-4 flex min-h-[var(--density-row-height-comfortable)] items-center gap-3 rounded-xl border px-3 py-2.5 ${
+            isCompleted
+              ? "border-[var(--color-positive)] bg-risk-low-bg text-risk-low"
+              : deadline.isOverdue
+                ? "border-[var(--color-negative)] bg-risk-high-bg text-risk-high"
+                : "border-border bg-[var(--color-bg-surface-subtle)] text-[var(--foreground)]"
+          }`}
+        >
+          {isCompleted ? (
+            <Check className="h-5 w-5 shrink-0" aria-hidden="true" />
+          ) : deadline.isOverdue ? (
+            <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" />
+          ) : (
+            <Clock3 className="h-5 w-5 shrink-0 text-[var(--muted-foreground)]" aria-hidden="true" />
+          )}
+          <div className="min-w-0">
+            <p className="font-body text-xs font-semibold uppercase tracking-wide">
+              {isCompleted ? "Finalizada" : deadline.isOverdue ? "Atención inmediata" : "Fecha límite"}
+            </p>
+            <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums">
+              {isCompleted
+                ? getCompletionLabel(task, assigneeOptions ?? [])
+                : `${deadline.isOverdue ? "Vencida " : "Vence "}${deadline.label}`}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] p-4">
+        <div>
+          <p className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">
+            Cliente y riesgo
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <p className="font-display text-base font-semibold text-[var(--foreground)]">
+              {getCustomerName(order)}
+            </p>
+            <span className="font-mono text-xs tabular-nums text-[var(--muted-foreground)]">
+              {getOrderIdentifier(order)}
+            </span>
+            <DropiIdCopyButton idOrdenDropi={order.id_orden_dropi} />
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+          <div className="min-h-[var(--density-row-height-comfortable)] rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
             <p className="font-body text-xs text-[var(--muted-foreground)]">
               Teléfono cliente
             </p>
             <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-[var(--foreground)]">
               {order.telefono?.trim() || "Sin teléfono"}
             </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {whatsappUrl ? (
-                <Button
-                  asChild
-                  className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90"
-                >
-                  <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                    <MessageCircle className="h-4 w-4" aria-hidden="true" />
-                    WhatsApp
-                  </a>
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={isSuggesting}
-                onClick={handleSuggest}
-                className="h-9 rounded-full border-border bg-bg-surface px-4 text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)] disabled:opacity-60"
-              >
-                {isSuggesting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Sparkles className="h-4 w-4" aria-hidden="true" />
-                )}
-                {isSuggesting
-                  ? "Generando…"
-                  : generatedSuggestion
-                    ? "Generar otra opción"
-                    : "Generar sugerencia"}
-              </Button>
-            </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-bg-page p-3">
+          <div className="rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
             <p className="font-body text-xs text-[var(--muted-foreground)]">
-              Historial del cliente
+              Historial del cliente en Dropi
             </p>
             {customerHistory.hasHistory ? (
-              <dl className="mt-3 grid grid-cols-2 gap-2">
+              <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div>
-                  <dt className="font-body text-xs text-[var(--muted-foreground)]">
-                    Total pedidos
+                  <dt className="font-body text-[0.6875rem] text-[var(--muted-foreground)]">
+                    Pedidos
                   </dt>
-                  <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-[var(--foreground)]">
+                  <dd className="mt-1 font-mono text-base font-semibold tabular-nums text-[var(--foreground)]">
                     {customerHistory.totalOrders}
                   </dd>
                 </div>
                 <div>
-                  <dt className="font-body text-xs text-[var(--muted-foreground)]">
+                  <dt className="font-body text-[0.6875rem] text-[var(--muted-foreground)]">
                     Entregados
                   </dt>
-                  <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-low">
+                  <dd className="mt-1 font-mono text-base font-semibold tabular-nums text-risk-low">
                     {customerHistory.deliveredOrders}
                   </dd>
                 </div>
                 <div>
-                  <dt className="font-body text-xs text-[var(--muted-foreground)]">
-                    Devoluciones
+                  <dt className="font-body text-[0.6875rem] text-[var(--muted-foreground)]">
+                    Devueltos
                   </dt>
-                  <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-high">
+                  <dd className="mt-1 font-mono text-base font-semibold tabular-nums text-risk-high">
                     {customerHistory.returnedOrders}
                   </dd>
                 </div>
                 <div>
-                  <dt className="font-body text-xs text-[var(--muted-foreground)]">
+                  <dt className="font-body text-[0.6875rem] text-[var(--muted-foreground)]">
                     Otros
                   </dt>
-                  <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-medium">
+                  <dd className="mt-1 font-mono text-base font-semibold tabular-nums text-risk-medium">
                     {customerHistory.otherOrders}
                   </dd>
                 </div>
@@ -1520,97 +1580,145 @@ function SelectedTaskSection({
         </div>
       </div>
 
-      {generatedSuggestion ? (
-        <div
-          className="mt-4 rounded-2xl border border-border bg-bg-page p-3"
-          aria-live="polite"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <p className="font-body text-xs text-[var(--muted-foreground)]">
-              Sugerencia IA
-            </p>
-            <WhatsAppSuggestionCopyButton
-              key={generatedSuggestion}
-              suggestion={generatedSuggestion}
-            />
-          </div>
-          <p className="mt-2 whitespace-pre-wrap font-body text-sm text-[var(--foreground)]">
-            {generatedSuggestion}
-          </p>
-        </div>
-      ) : null}
-
-      {suggestionError ? (
-        <p role="alert" className="mt-3 font-body text-sm text-risk-high">
-          {suggestionError}
-        </p>
-      ) : null}
-
-      {description || completionNotes ? (
-        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-          {description ? (
-            <div className="rounded-2xl border border-border bg-bg-page p-3">
-              <dt className="font-body text-xs text-[var(--muted-foreground)]">
-                Descripción
-              </dt>
-              <dd className="mt-1 whitespace-pre-wrap font-body text-sm text-[var(--foreground)]">
-                {description}
-              </dd>
-            </div>
-          ) : null}
-          {completionNotes ? (
-            <div className="rounded-2xl border border-border bg-bg-page p-3">
-              <dt className="font-body text-xs text-[var(--muted-foreground)]">
-                Nota de cierre
-              </dt>
-              <dd className="mt-1 whitespace-pre-wrap font-body text-sm text-[var(--foreground)]">
-                {completionNotes}
-              </dd>
-            </div>
-          ) : null}
-        </dl>
-      ) : null}
-
-      <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-border bg-bg-page p-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <p className="font-body text-xs text-[var(--muted-foreground)]">
-            Responsable
-          </p>
-          <div className="mt-2">
-            {assigneeOptions ? (
-              <AssigneeSelect
-                key={`drawer-assignee-${task.id}`}
-                taskId={task.id}
-                asignadoA={task.asignado_a}
-                assigneeOptions={assigneeOptions}
-                onReassigned={onReassigned}
-              />
-            ) : assigneeOptionsError ? (
-              <p className="font-body text-xs text-risk-high">
-                {assigneeOptionsError}
+      <div className="rounded-2xl border border-border bg-[var(--color-bg-surface-elevated)] p-4 shadow-md">
+        <div className="flex min-h-[var(--density-row-height-comfortable)] items-start justify-between gap-3">
+          <div className="flex min-w-0 gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-positive-bg)] text-[var(--color-positive)]">
+              <MessageCircle className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div>
+              <h3 className="font-display text-base font-semibold text-[var(--foreground)]">
+                WhatsApp y asistencia
+              </h3>
+              <p className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
+                Contacta al cliente con la sugerencia generada o la plantilla operativa.
               </p>
-            ) : (
-              <span className="inline-flex h-9 items-center gap-2 font-body text-xs text-[var(--muted-foreground)]">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Cargando responsables
-              </span>
-            )}
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {whatsappUrl ? (
+            <Button
+              asChild
+              className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-[var(--color-on-accent)] transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90"
+            >
+              <a href={whatsappUrl} target="_blank" rel="noreferrer">
+                <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                WhatsApp
+              </a>
+            </Button>
+          ) : null}
           <Button
-            asChild
             type="button"
             variant="outline"
             size="sm"
-            className="rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+            disabled={isSuggesting}
+            onClick={handleSuggest}
+            className="h-9 rounded-full border-border bg-[var(--color-bg-surface-elevated)] px-4 text-[var(--foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)] disabled:opacity-60"
           >
-            <Link href={`/pedidos?detalle=${order.id}`}>
-              <Eye className="h-4 w-4" aria-hidden="true" />
-              Ver pedido
-            </Link>
+            {isSuggesting ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+            )}
+            {isSuggesting
+              ? "Generando…"
+              : generatedSuggestion
+                ? "Generar otra opción"
+                : "Generar sugerencia"}
           </Button>
+          {!whatsappUrl ? (
+            <p className="font-body text-xs text-risk-high">
+              Agrega un teléfono válido para habilitar WhatsApp.
+            </p>
+          ) : null}
+        </div>
+
+        {generatedSuggestion ? (
+          <div
+            className="mt-4 rounded-xl border border-border bg-[var(--color-bg-surface-subtle)] p-3"
+            aria-live="polite"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-body text-xs font-semibold text-[var(--muted-foreground)]">
+                Sugerencia IA
+              </p>
+              <WhatsAppSuggestionCopyButton
+                key={generatedSuggestion}
+                suggestion={generatedSuggestion}
+              />
+            </div>
+            <p className="mt-2 whitespace-pre-wrap font-body text-sm text-[var(--foreground)]">
+              {generatedSuggestion}
+            </p>
+          </div>
+        ) : null}
+
+        {suggestionError ? (
+          <p role="alert" className="mt-3 font-body text-sm text-risk-high">
+            {suggestionError}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="rounded-2xl border border-[var(--color-border-selected)] bg-[var(--color-bg-surface-elevated)] p-4 shadow-lg">
+        <div className="min-h-[var(--density-row-height-comfortable)]">
+          <p className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">
+            Acciones operativas
+          </p>
+          <h3 className="mt-1 font-display text-base font-semibold text-[var(--foreground)]">
+            {isActionable ? "Cerrar, reasignar o posponer" : "Gestión registrada"}
+          </h3>
+        </div>
+
+        {isActionable ? (
+          <CompleteTaskForm
+            key={`completion-form-${task.id}`}
+            taskId={task.id}
+            taskType={task.tipo}
+            onCompleted={onCompleted}
+          />
+        ) : null}
+
+        {completionNotes ? (
+          <div className="mt-4 rounded-xl border border-border bg-[var(--color-bg-surface-subtle)] p-3">
+            <p className="font-body text-xs text-[var(--muted-foreground)]">
+              Nota de cierre
+            </p>
+            <p className="mt-1 whitespace-pre-wrap font-body text-sm text-[var(--foreground)]">
+              {completionNotes}
+            </p>
+          </div>
+        ) : null}
+
+        <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="font-body text-xs text-[var(--muted-foreground)]">
+              Responsable
+            </p>
+            <div className="mt-2">
+              {assigneeOptions ? (
+                <AssigneeSelect
+                  key={`drawer-assignee-${task.id}`}
+                  taskId={task.id}
+                  asignadoA={task.asignado_a}
+                  assigneeOptions={assigneeOptions}
+                  onReassigned={onReassigned}
+                />
+              ) : assigneeOptionsError ? (
+                <p className="font-body text-xs text-risk-high">
+                  {assigneeOptionsError}
+                </p>
+              ) : (
+                <span className="inline-flex h-9 items-center gap-2 font-body text-xs text-[var(--muted-foreground)]">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  Cargando responsables
+                </span>
+              )}
+            </div>
+          </div>
+
           {task.estado === "pendiente" || task.estado === "en_progreso" ? (
             <SnoozeTaskControl
               key={`drawer-snooze-${task.id}`}
@@ -1620,15 +1728,6 @@ function SelectedTaskSection({
           ) : null}
         </div>
       </div>
-
-      {isActionable ? (
-        <CompleteTaskForm
-          key={`completion-form-${task.id}`}
-          taskId={task.id}
-          taskType={task.tipo}
-          onCompleted={onCompleted}
-        />
-      ) : null}
     </section>
   );
 }
@@ -1671,13 +1770,13 @@ function CompleteTaskForm({
   }
 
   return (
-    <div className="mt-4 space-y-3 rounded-2xl border border-border bg-bg-page p-3">
+    <div className="mt-4 space-y-3 rounded-xl border border-border bg-[var(--color-bg-surface-subtle)] p-3">
       <div>
         <label
           id={`drawer-completion-result-${taskId}`}
           className="font-body text-xs text-[var(--muted-foreground)]"
         >
-          Resultado
+          Resultado (obligatorio)
         </label>
         <Select.Root
           value={resultado}
@@ -1689,7 +1788,7 @@ function CompleteTaskForm({
         >
           <Select.Trigger
             aria-labelledby={`drawer-completion-result-${taskId}`}
-            className="mt-1.5 inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-border bg-bg-surface px-2.5 font-body text-sm text-[var(--foreground)] outline-none transition-colors hover:bg-bg-page focus:ring-2 focus:ring-ring disabled:opacity-60"
+            className="mt-1.5 inline-flex min-h-[var(--density-row-height-comfortable)] w-full items-center justify-between gap-2 rounded-lg border border-border bg-[var(--color-bg-surface-elevated)] px-3 font-body text-sm text-[var(--foreground)] outline-none transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] focus:ring-2 focus:ring-ring disabled:opacity-60"
           >
             <Select.Value placeholder="Selecciona un resultado" />
             <Select.Icon>
@@ -1703,14 +1802,14 @@ function CompleteTaskForm({
             <Select.Content
               position="popper"
               sideOffset={6}
-              className="z-50 overflow-hidden rounded-2xl border border-border bg-bg-surface text-[var(--foreground)] shadow-md"
+              className="z-[var(--z-index-dialog)] overflow-hidden rounded-2xl border border-border bg-[var(--color-bg-surface-elevated)] text-[var(--foreground)] shadow-md"
             >
               <Select.Viewport className="p-1">
                 {options.map((option) => (
                   <Select.Item
                     key={option}
                     value={option}
-                    className="relative flex min-h-8 cursor-default select-none items-center rounded-lg px-2 py-1.5 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
+                    className="relative flex min-h-[var(--density-row-height-comfortable)] cursor-default select-none items-center rounded-lg px-3 py-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-bg-selected)] data-[highlighted]:text-[var(--color-accent)]"
                   >
                     <Select.ItemText>{option}</Select.ItemText>
                   </Select.Item>
@@ -1733,14 +1832,14 @@ function CompleteTaskForm({
         disabled={isCompleting}
         rows={3}
         placeholder="Ej. Cliente confirmó recepción por WhatsApp"
-        className="w-full rounded-lg border border-border bg-bg-surface px-2.5 py-1.5 font-body text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)] focus-visible:border-[var(--color-accent)] focus-visible:ring-3 focus-visible:ring-[var(--color-accent)]/20 disabled:opacity-60"
+        className="w-full rounded-lg border border-border bg-[var(--color-bg-surface-elevated)] px-3 py-2 font-body text-sm text-[var(--foreground)] outline-none transition-colors duration-[var(--motion-duration-hover-focus)] placeholder:text-[var(--muted-foreground)] focus-visible:border-[var(--color-border-selected)] focus-visible:ring-3 focus-visible:ring-[var(--color-accent)]/20 disabled:opacity-60"
       />
       {error ? <p className="font-body text-sm text-risk-high">{error}</p> : null}
       <Button
         type="button"
         disabled={isCompleting || !resultado}
         onClick={handleComplete}
-        className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90 disabled:opacity-60"
+        className="min-h-[var(--density-row-height-comfortable)] rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 text-[var(--color-on-accent)] transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90 disabled:opacity-60"
       >
         <Check className="h-4 w-4" aria-hidden="true" />
         Confirmar
@@ -1757,7 +1856,7 @@ function OtherTasksSection({
   assigneeOptions: AssigneeOption[];
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+    <section className="rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] p-4">
       <h3 className="font-display text-base font-semibold text-[var(--foreground)]">
         Otras tareas de este pedido
       </h3>
@@ -1791,7 +1890,7 @@ function TaskSummaryItem({
   const deadline = getDeadline(task.fecha_limite, task.estado);
 
   return (
-    <li className="rounded-2xl border border-border bg-bg-page p-3">
+    <li className="min-h-[var(--density-row-height-comfortable)] rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-body text-xs uppercase text-[var(--muted-foreground)]">
@@ -1827,27 +1926,41 @@ function OrderDetailsSection({ order }: { order: Order }) {
 
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
-      <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
-        <Collapsible.Trigger asChild>
-          <button
+      <section className="rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] p-4">
+        <div className="flex items-center gap-2">
+          <Collapsible.Trigger asChild>
+            <button
+              type="button"
+              className="flex min-h-[var(--density-row-height-comfortable)] min-w-0 flex-1 items-center justify-between gap-3 rounded-lg text-left outline-none transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="font-display text-base font-semibold text-[var(--foreground)]">
+                Detalles del pedido
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform duration-[var(--motion-duration-hover-focus)] ${
+                  open ? "rotate-180" : ""
+                }`}
+                aria-hidden="true"
+              />
+            </button>
+          </Collapsible.Trigger>
+          <Button
+            asChild
             type="button"
-            className="flex w-full items-center justify-between gap-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            variant="outline"
+            size="sm"
+            className="shrink-0 rounded-full border-border bg-[var(--color-bg-surface-elevated)] text-[var(--foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)]"
           >
-            <span className="font-display text-base font-semibold text-[var(--foreground)]">
-              Detalles del pedido
-            </span>
-            <ChevronDown
-              className={`h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform ${
-                open ? "rotate-180" : ""
-              }`}
-              aria-hidden="true"
-            />
-          </button>
-        </Collapsible.Trigger>
+            <Link href={`/pedidos?detalle=${order.id}`}>
+              <Eye className="h-4 w-4" aria-hidden="true" />
+              Ver pedido
+            </Link>
+          </Button>
+        </div>
 
         <Collapsible.Content>
           <dl className="mt-4 grid gap-3">
-            <div className="rounded-2xl border border-border bg-bg-page p-3">
+            <div className="rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
               <dt className="font-body text-xs text-[var(--muted-foreground)]">
                 Producto
               </dt>
@@ -1855,7 +1968,7 @@ function OrderDetailsSection({ order }: { order: Order }) {
                 {order.nombre_producto?.trim() || "Sin producto registrado"}
               </dd>
             </div>
-            <div className="rounded-2xl border border-border bg-bg-page p-3">
+            <div className="rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
               <dt className="font-body text-xs text-[var(--muted-foreground)]">
                 Ciudad / departamento
               </dt>
@@ -1863,7 +1976,7 @@ function OrderDetailsSection({ order }: { order: Order }) {
                 {location || "Sin ubicación registrada"}
               </dd>
             </div>
-            <div className="rounded-2xl border border-border bg-bg-page p-3">
+            <div className="rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
               <dt className="font-body text-xs text-[var(--muted-foreground)]">
                 País
               </dt>
@@ -1913,17 +2026,17 @@ function NovedadDetailsSection({
 
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
-      <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+      <section className="rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] p-4">
         <Collapsible.Trigger asChild>
           <button
             type="button"
-            className="flex w-full items-center justify-between gap-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex min-h-[var(--density-row-height-comfortable)] w-full items-center justify-between gap-3 rounded-lg text-left outline-none transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="font-display text-base font-semibold text-[var(--foreground)]">
               Detalles de novedad
             </span>
             <ChevronDown
-              className={`h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform ${
+              className={`h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform duration-[var(--motion-duration-hover-focus)] ${
                 open ? "rotate-180" : ""
               }`}
               aria-hidden="true"
@@ -1933,7 +2046,7 @@ function NovedadDetailsSection({
 
         <Collapsible.Content>
           {latestNovedadStatus ? (
-            <div className="mt-4 rounded-2xl border border-border bg-bg-page p-3">
+            <div className="mt-4 rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
               <p className="font-body text-sm text-[var(--foreground)]">
                 {latestNovedadStatus.novedad?.trim()}
               </p>
@@ -1962,17 +2075,17 @@ function WhatsAppMessagesSection({
 
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
-      <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+      <section className="rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] p-4">
         <Collapsible.Trigger asChild>
           <button
             type="button"
-            className="flex w-full items-center justify-between gap-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex min-h-[var(--density-row-height-comfortable)] w-full items-center justify-between gap-3 rounded-lg text-left outline-none transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="font-display text-base font-semibold text-[var(--foreground)]">
               Mensajes de WhatsApp ({messages.length})
             </span>
             <ChevronDown
-              className={`h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform ${
+              className={`h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform duration-[var(--motion-duration-hover-focus)] ${
                 open ? "rotate-180" : ""
               }`}
               aria-hidden="true"
@@ -1988,7 +2101,7 @@ function WhatsAppMessagesSection({
               return (
                 <li
                   key={message.id}
-                  className="rounded-2xl border border-border bg-bg-page p-3"
+                  className="rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -2042,17 +2155,17 @@ function StatusHistorySection({
 
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
-      <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+      <section className="rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] p-4">
         <Collapsible.Trigger asChild>
           <button
             type="button"
-            className="flex w-full items-center justify-between gap-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex min-h-[var(--density-row-height-comfortable)] w-full items-center justify-between gap-3 rounded-lg text-left outline-none transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="font-display text-base font-semibold text-[var(--foreground)]">
               Historial de estados ({statusHistory.length} eventos)
             </span>
             <ChevronDown
-              className={`h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform ${
+              className={`h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform duration-[var(--motion-duration-hover-focus)] ${
                 open ? "rotate-180" : ""
               }`}
               aria-hidden="true"
@@ -2066,7 +2179,7 @@ function StatusHistorySection({
               {statusHistory.map((historyItem) => (
                 <li
                   key={historyItem.id}
-                  className="rounded-2xl border border-border bg-bg-page p-3"
+                  className="rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

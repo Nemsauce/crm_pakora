@@ -1,9 +1,9 @@
-import {
-  TaskDetailDrawer,
-  TaskDetailRow,
-  type TaskWithOrderContext,
-} from "@/components/tasks/TaskDetailDrawer";
+import { TaskDetailDrawer } from "@/components/tasks/TaskDetailDrawer";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
+import {
+  TaskRow,
+  type TaskWithOrderContext,
+} from "@/components/tasks/TaskRow";
 import { TaskSummaryBar } from "@/components/tasks/TaskSummaryBar";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
@@ -134,43 +134,19 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
       : tasks.filter((task) => isOverdue(task)).length;
 
   return (
-    <section className="min-h-screen px-6 py-6 sm:px-8">
-      <style>{`
-        @keyframes crm-fade-slide-in {
-          from {
-            opacity: 0;
-            transform: translateY(12px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .crm-list-entrance {
-          opacity: 0;
-          animation: crm-fade-slide-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .crm-list-entrance {
-            opacity: 1;
-            transform: none;
-            animation: none;
-          }
-        }
-      `}</style>
-
-      <div className="border-b border-border pb-4">
-        <p className="font-body text-xs uppercase text-text-secondary">
-          Operación
-        </p>
-        <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
-          Tareas
-        </h1>
-        <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
-          Gestión activa ordenada por urgencia. Lo vencido y más próximo aparece
-          primero.
+    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-2 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
+            Operación · cola de trabajo
+          </p>
+          <h1 className="mt-1 font-display text-2xl font-semibold text-text-primary">
+            Tareas
+          </h1>
+        </div>
+        <p className="max-w-xl font-body text-sm text-text-secondary sm:text-right">
+          Prioridad operativa ordenada por vencimiento. Abre una tarea para
+          gestionarla sin perder tu posición en la lista.
         </p>
       </div>
 
@@ -187,22 +163,22 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
       </div>
 
       {tasks.length > 0 ? (
-        <div className="mt-5 space-y-3">
-          {tasks.map((task, index) => (
-            <div
+        <div
+          role="list"
+          className="mt-4 space-y-2"
+          aria-label="Lista de tareas"
+        >
+          {tasks.map((task) => (
+            <TaskRow
               key={task.id}
-              className="crm-list-entrance"
-              style={{
-                animationDelay: `${Math.min(index * 40, 480)}ms`,
-              }}
-            >
-              <TaskDetailRow task={task} assigneeOptions={assigneeOptions} />
-            </div>
+              task={task}
+              assigneeOptions={assigneeOptions}
+            />
           ))}
         </div>
       ) : (
-        <div className="mt-5 rounded-2xl border border-border bg-bg-surface p-6 font-body text-sm text-text-secondary shadow-lg">
-          No hay tareas que coincidan con estos filtros.
+        <div className="mt-4 rounded-xl border border-border bg-[var(--color-bg-surface-subtle)] p-6 font-body text-sm text-text-secondary">
+          No hay tareas que coincidan con la vista y los filtros actuales.
         </div>
       )}
 

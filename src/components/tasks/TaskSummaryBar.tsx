@@ -1,4 +1,4 @@
-import { AlertTriangle, ListChecks } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ListChecks } from "lucide-react";
 
 type TaskSummaryBarProps = {
   total: number;
@@ -15,25 +15,83 @@ const totalLabelByView: Record<TaskSummaryBarProps["view"], [string, string]> = 
 
 export function TaskSummaryBar({ total, vencidas, view }: TaskSummaryBarProps) {
   const [singular, plural] = totalLabelByView[view];
+  const hasOverdueTasks = vencidas !== null && vencidas > 0;
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-bg-surface px-4 py-3 shadow-sm">
-      <span className="inline-flex items-center gap-2 font-body text-sm text-[var(--foreground)]">
-        <ListChecks
-          className="h-4 w-4 text-[var(--muted-foreground)]"
-          aria-hidden="true"
-        />
-        <span className="font-mono font-semibold tabular-nums">{total}</span>
-        {total === 1 ? singular : plural}
-      </span>
-
-      {vencidas !== null && vencidas > 0 ? (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-risk-high-bg px-3 py-1 font-body text-xs font-semibold text-risk-high">
-          <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
-          <span className="font-mono tabular-nums">{vencidas}</span>
-          {vencidas === 1 ? "vencida" : "vencidas"}
+    <section
+      aria-label="Resumen de tareas"
+      aria-live="polite"
+      className="grid gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface-subtle)] p-2 sm:grid-cols-2"
+    >
+      <div className="flex min-h-[var(--density-row-height-comfortable)] items-center gap-3 rounded-xl bg-[var(--color-bg-surface-elevated)] px-3 py-2">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--color-bg-selected)] text-[var(--color-accent)]">
+          <ListChecks className="h-4 w-4" aria-hidden="true" />
         </span>
-      ) : null}
-    </div>
+        <p className="min-w-0 font-body text-sm text-[var(--color-text-secondary)]">
+          <span className="mr-1.5 font-mono text-lg font-bold tabular-nums text-[var(--color-text-primary)]">
+            {total}
+          </span>
+          {total === 1 ? singular : plural}
+        </p>
+      </div>
+
+      {vencidas !== null ? (
+        <div
+          className={`flex min-h-[var(--density-row-height-comfortable)] items-center gap-3 rounded-xl border-l-4 px-3 py-2 ${
+            hasOverdueTasks
+              ? "border-l-[var(--color-risk-high)] bg-[var(--color-risk-high-bg)]"
+              : "border-l-[var(--color-positive)] bg-[var(--color-positive-bg)]"
+          }`}
+        >
+          <span
+            className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${
+              hasOverdueTasks
+                ? "text-[var(--color-risk-high)]"
+                : "text-[var(--color-positive)]"
+            }`}
+          >
+            {hasOverdueTasks ? (
+              <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+            )}
+          </span>
+          <div className="min-w-0">
+            <p
+              className={`font-body text-sm font-semibold ${
+                hasOverdueTasks
+                  ? "text-[var(--color-risk-high)]"
+                  : "text-[var(--color-positive)]"
+              }`}
+            >
+              <span className="mr-1.5 font-mono text-lg font-bold tabular-nums">
+                {vencidas}
+              </span>
+              {vencidas === 1 ? "tarea vencida" : "tareas vencidas"}
+            </p>
+            <p
+              className={`font-body text-xs ${
+                hasOverdueTasks
+                  ? "text-[var(--color-risk-high)]"
+                  : "text-[var(--color-positive)]"
+              }`}
+            >
+              {hasOverdueTasks
+                ? "Requieren atención inmediata"
+                : "Sin atrasos en esta vista"}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex min-h-[var(--density-row-height-comfortable)] items-center gap-3 rounded-xl bg-[var(--color-bg-surface-elevated)] px-3 py-2">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--color-positive-bg)] text-[var(--color-positive)]">
+            <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <p className="font-body text-sm text-[var(--color-text-secondary)]">
+            Vista histórica de tareas completadas
+          </p>
+        </div>
+      )}
+    </section>
   );
 }
