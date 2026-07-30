@@ -16,6 +16,7 @@ type GranularAddress = {
   numeroInterior?: string;
   departamento?: string;
   puntoReferencia?: string;
+  codigoPostal?: string;
 };
 
 type ExistingOrder = {
@@ -25,6 +26,7 @@ type ExistingOrder = {
   numero_interior: string | null;
   departamento: string | null;
   punto_referencia: string | null;
+  codigo_postal: string | null;
 };
 
 type MatchedOrder = ExistingOrder & {
@@ -38,6 +40,7 @@ type PendingUpdate = {
     numero_interior?: string;
     departamento?: string;
     punto_referencia?: string;
+    codigo_postal?: string;
   };
 };
 
@@ -52,6 +55,7 @@ export type DireccionGranularCountrySyncResult = {
   updatedNumeroInterior: number;
   updatedDepartamento: number;
   updatedPuntoReferencia: number;
+  updatedCodigoPostal: number;
   unchangedOrders: number;
   unmatchedOrderNumbers: number;
   skippedWithoutOrderNumber: number;
@@ -83,6 +87,7 @@ const COLONIA_HEADER = "Colonia";
 const NUMERO_INTERIOR_HEADER = "Número Interior";
 const PUNTO_REFERENCIA_HEADER = "Punto de Referencia";
 const PROVINCE_HEADER = "Province";
+const ZIP_CODE_HEADER = "Zip Code";
 const ALL_DETAILS_HEADER = "All Details";
 const MX_STATE_NAMES = new Set([
   "AGUASCALIENTES",
@@ -288,6 +293,7 @@ function emptyCountryResult(
     updatedNumeroInterior: 0,
     updatedDepartamento: 0,
     updatedPuntoReferencia: 0,
+    updatedCodigoPostal: 0,
     unchangedOrders: 0,
     unmatchedOrderNumbers: 0,
     skippedWithoutOrderNumber: 0,
@@ -309,12 +315,14 @@ function mapRows(
     PUNTO_REFERENCIA_HEADER,
   );
   const provinceIndex = getHeaderIndex(headers, PROVINCE_HEADER);
+  const codigoPostalIndex = getHeaderIndex(headers, ZIP_CODE_HEADER);
   const allDetailsIndex = getHeaderIndex(headers, ALL_DETAILS_HEADER);
   const missingMxHeaders = [
     { header: COLONIA_HEADER, index: coloniaIndex },
     { header: NUMERO_INTERIOR_HEADER, index: numeroInteriorIndex },
     { header: PUNTO_REFERENCIA_HEADER, index: puntoReferenciaIndex },
     { header: PROVINCE_HEADER, index: provinceIndex },
+    { header: ZIP_CODE_HEADER, index: codigoPostalIndex },
   ]
     .filter(({ index }) => index < 0)
     .map(({ header }) => header);
@@ -330,6 +338,7 @@ function mapRows(
     numeroInteriorIndex,
     puntoReferenciaIndex,
     provinceIndex,
+    codigoPostalIndex,
   ].some((index) => index >= 0);
 
   if (!hasAddressColumns) {
@@ -353,12 +362,19 @@ function mapRows(
     const numeroInterior = getOptionalCell(row, numeroInteriorIndex);
     const puntoReferencia = getOptionalCell(row, puntoReferenciaIndex);
     const province = getOptionalCell(row, provinceIndex);
+    const codigoPostal = getOptionalCell(row, codigoPostalIndex);
     const departamento =
       config.pais === "MX"
         ? getMxDepartamento(getOptionalCell(row, allDetailsIndex), province)
         : province;
 
-    if (!colonia && !numeroInterior && !departamento && !puntoReferencia) {
+    if (
+      !colonia &&
+      !numeroInterior &&
+      !departamento &&
+      !puntoReferencia &&
+      !codigoPostal
+    ) {
       skippedWithoutGranularAddress += 1;
       continue;
     }
@@ -375,6 +391,7 @@ function mapRows(
       numeroInterior: numeroInterior ?? existing?.numeroInterior,
       departamento: departamento ?? existing?.departamento,
       puntoReferencia: puntoReferencia ?? existing?.puntoReferencia,
+      codigoPostal: codigoPostal ?? existing?.codigoPostal,
     });
   }
 
@@ -395,7 +412,7 @@ async function findExistingOrders(pais: Pais, orderNumbers: string[]) {
     const { data, error } = await supabase
       .from("orders")
       .select(
-        "id,numero_orden,colonia,numero_interior,departamento,punto_referencia",
+        "id,numero_orden,colonia,numero_interior,departamento,punto_referencia,codigo_postal",
       )
       .eq("pais", pais)
       .in("numero_orden", batch);
@@ -459,6 +476,10 @@ function getPendingUpdates(
       patch.punto_referencia = address.puntoReferencia;
     }
 
+    if (address.codigoPostal && !cleanCell(matchedOrder.codigo_postal)) {
+      patch.codigo_postal = address.codigoPostal;
+    }
+
     if (Object.keys(patch).length === 0) {
       unchangedOrders += 1;
     } else {
@@ -476,6 +497,7 @@ async function updateOrders(pais: Pais, updates: PendingUpdate[]) {
   let updatedNumeroInterior = 0;
   let updatedDepartamento = 0;
   let updatedPuntoReferencia = 0;
+  let updatedCodigoPostal = 0;
 
   for (let offset = 0; offset < updates.length; offset += UPDATE_BATCH_SIZE) {
     const batch = updates.slice(offset, offset + UPDATE_BATCH_SIZE);
@@ -495,6 +517,13 @@ async function updateOrders(pais: Pais, updates: PendingUpdate[]) {
               : updateQuery.eq("departamento", order.departamento);
         }
 
+        if (patch.codigo_postal) {
+          updateQuery =
+            order.codigo_postal === null
+              ? updateQuery.is("codigo_postal", null)
+              : updateQuery.eq("codigo_postal", order.codigo_postal);
+        }
+
         const { data, error } = await updateQuery.select("id");
 
         if (error) {
@@ -509,6 +538,7 @@ async function updateOrders(pais: Pais, updates: PendingUpdate[]) {
           updatedNumeroInterior: Boolean(patch.numero_interior),
           updatedDepartamento: Boolean(patch.departamento),
           updatedPuntoReferencia: Boolean(patch.punto_referencia),
+          updatedCodigoPostal: Boolean(patch.codigo_postal),
         };
       }),
     );
@@ -531,6 +561,10 @@ async function updateOrders(pais: Pais, updates: PendingUpdate[]) {
       if (result.updatedPuntoReferencia) {
         updatedPuntoReferencia += result.updatedRows;
       }
+
+      if (result.updatedCodigoPostal) {
+        updatedCodigoPostal += result.updatedRows;
+      }
     }
   }
 
@@ -540,6 +574,7 @@ async function updateOrders(pais: Pais, updates: PendingUpdate[]) {
     updatedNumeroInterior,
     updatedDepartamento,
     updatedPuntoReferencia,
+    updatedCodigoPostal,
   };
 }
 
