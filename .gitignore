@@ -41,3 +41,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+playwright-report/
+playwright/.auth/
+test-results/
+whatsapp-bridge/.env.staging
