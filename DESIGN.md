@@ -6,28 +6,34 @@ SaaS profesional, cálido y vibrante — evolución del sistema anterior con may
 ## Color — modo claro
 - `--color-bg-page: #FFFFFF` con líneas de ruta punteadas muy sutiles en los bordes, usando el acento violeta a baja opacidad (decorativas, nunca compiten con contenido)
 - `--color-bg-surface: #FFFFFF` (cards), con sombra suave (`shadow-md`) para separarse del fondo
-- `--color-accent: #7C3AED`, degradado `--color-accent-from: #8B5CF6` → `--color-accent-to: #A78BFA` para pills/botones primarios
+- `--color-accent: #7C3AED`, degradado accesible `--color-accent-from: #6D28D9` → `--color-accent-to: #7C3AED` para pills/botones primarios
 - `--color-text-primary: #0F172A`
-- `--color-text-secondary: #64748B`
-- `--color-border: #E5E7EB` (mínimo, la sombra separa más que el borde)
-- `--color-positive: #16A34A` con `--color-positive-bg: #DCFCE7` (ganancias, entradas, deltas positivos)
-- `--color-negative: #DC2626` con `--color-negative-bg: #FEE2E2` (salidas, deltas negativos, riesgo alto)
-- `--color-risk-medium: #F59E0B` con `--color-risk-medium-bg: #FEF3C7`
+- `--color-text-secondary: #617187`
+- `--color-border: #87919F` (frontera operativa con contraste no textual AA; separadores puramente decorativos pueden reducir su opacidad si no son la única señal)
+- `--color-positive: #15803D` con `--color-positive-bg: #DCFCE7` (ganancias, entradas, deltas positivos)
+- `--color-negative: #B91C1C` con `--color-negative-bg: #FEE2E2` (salidas, deltas negativos, riesgo alto)
+- `--color-risk-medium: #B45309` con `--color-risk-medium-bg: #FEF3C7`
 - `--color-badge-nuevo: #7C3AED` con `--color-badge-nuevo-bg: #EDE9FE`
 - `--color-badge-en-ruta: #C2410C` con `--color-badge-en-ruta-bg: #FFEDD5`
+- `--color-accent-blue: #1D4ED8` con `--color-accent-blue-bg: #DBEAFE`
+- `--color-accent-pink: #BE185D` con `--color-accent-pink-bg: #FCE7F3`
+- `--color-accent-orange: #C2410C` con `--color-accent-orange-bg: #FFEDD5`
 
 ## Color — modo oscuro
 - `--color-bg-page: #0A0D18` con el mismo motivo de ruta punteada, usando el acento del tema oscuro a baja opacidad
 - `--color-bg-surface: #12151F` (cards), borde sutil `1px` en vez de solo sombra (la sombra se nota menos en fondo oscuro)
-- `--color-accent: #A78BFA` (más claro que en modo claro, para contraste sobre fondo oscuro), degradado `--color-accent-from: #8B5CF6` → `--color-accent-to: #C4B5FD`
+- `--color-accent: #A78BFA` (más claro que en modo claro, para contraste sobre fondo oscuro), degradado accesible `--color-accent-from: #A78BFA` → `--color-accent-to: #C4B5FD`
 - `--color-text-primary: #F8FAFC`
 - `--color-text-secondary: #94A3B8`
-- `--color-border: #1E2433`
+- `--color-border: #627085` (frontera operativa con contraste no textual AA en las superficies oscuras declaradas)
 - `--color-positive: #4ADE80` con `--color-positive-bg: rgba(34,197,94,0.12)`
 - `--color-negative: #F87171` con `--color-negative-bg: rgba(239,68,68,0.12)`
 - `--color-risk-medium: #FBBF24` con `--color-risk-medium-bg: rgba(245,158,11,0.14)`
 - `--color-badge-nuevo: #C4B5FD` con `--color-badge-nuevo-bg: rgba(139,92,246,0.18)`
 - `--color-badge-en-ruta: #FBBF24` con `--color-badge-en-ruta-bg: rgba(217,119,6,0.16)`
+- `--color-accent-blue: #60A5FA` con `--color-accent-blue-bg: rgba(59,130,246,0.16)`
+- `--color-accent-pink: #F472B6` con `--color-accent-pink-bg: rgba(236,72,153,0.16)`
+- `--color-accent-orange: #FB923C` con `--color-accent-orange-bg: rgba(249,115,22,0.16)`
 
 Regla de contraste (ambos temas, no negociable): fondo pastel + texto SATURADO/SÓLIDO del mismo color semántico — nunca una versión clara como texto. Debe leerse sin esfuerzo a tamaño pequeño.
 
@@ -48,8 +54,8 @@ Esta fase solo declara infraestructura. Ningún alias consumido por las pantalla
 | `--color-border-selected` | `#7C3AED` | Contorno o indicador de selección con contraste no textual AA. |
 | `--color-overlay` | `rgba(15, 23, 42, 0.56)` | Scrim detrás de drawers y diálogos; no es una superficie para texto. |
 | `--color-on-accent` | `#FFFFFF` | Texto e íconos sobre `--color-accent`. |
-| `--color-on-success` | `#052E16` | Texto e íconos sobre el sólido `--color-positive`. |
-| `--color-on-warning` | `#451A03` | Texto e íconos sobre el sólido `--color-risk-medium`. |
+| `--color-on-success` | `#FFFFFF` | Texto e íconos sobre el sólido `--color-positive`. |
+| `--color-on-warning` | `#FFFFFF` | Texto e íconos sobre el sólido `--color-risk-medium`. |
 | `--color-on-danger` | `#FFFFFF` | Texto e íconos sobre el sólido `--color-negative`. |
 | `--color-chart-revenue` | `#1D4ED8` | Serie de ingresos brutos. |
 | `--color-chart-profit` | `#15803D` | Serie de utilidad o ganancia. |
@@ -88,15 +94,15 @@ Ratios calculados con luminancia relativa WCAG 2.x en sRGB. El mínimo es `4.5:1
 | Pareja prevista | Claro | Oscuro | Resultado |
 |---|---:|---:|---|
 | `--color-text-primary` sobre los tres niveles de superficie (peor caso) | `17.05:1` | `16.36:1` | AA normal |
-| `--color-text-secondary` sobre los tres niveles de superficie (peor caso) | `4.55:1` | `6.68:1` | AA normal |
-| `--color-text-secondary` sobre `--color-bg-hover` | `4.55:1` | `6.04:1` | AA normal |
-| `--color-text-secondary` sobre `--color-bg-selected` | `4.55:1` | `6.10:1` | AA normal |
+| `--color-text-secondary` sobre los tres niveles de superficie (peor caso) | `4.75:1` | `6.68:1` | AA normal |
+| `--color-text-secondary` sobre `--color-bg-hover` | `4.76:1` | `6.04:1` | AA normal |
+| `--color-text-secondary` sobre `--color-bg-selected` | `4.75:1` | `6.10:1` | AA normal |
 | `--color-accent` / `--color-border-selected` sobre `--color-bg-selected` | `5.44:1` | `5.75:1` | AA normal y no textual |
 | `--color-border-hover` sobre `--color-bg-hover` | `4.55:1` | `3.26:1` | AA no textual |
 | `--color-on-accent` sobre `--color-accent` | `5.70:1` | `6.54:1` | AA normal |
-| `--color-on-success` sobre `--color-positive` | `4.52:1` | `8.55:1` | AA normal |
-| `--color-on-warning` sobre `--color-risk-medium` | `6.97:1` | `8.97:1` | AA normal |
-| `--color-on-danger` sobre `--color-negative` | `4.83:1` | `5.84:1` | AA normal |
+| `--color-on-success` sobre `--color-positive` | `5.02:1` | `8.55:1` | AA normal |
+| `--color-on-warning` sobre `--color-risk-medium` | `5.02:1` | `8.97:1` | AA normal |
+| `--color-on-danger` sobre `--color-negative` | `6.47:1` | `5.84:1` | AA normal |
 | `--color-chart-revenue` sobre los tres niveles de superficie (peor caso) | `6.40:1` | `6.73:1` | AA no textual y normal |
 | `--color-chart-profit` sobre los tres niveles de superficie (peor caso) | `4.79:1` | `9.82:1` | AA no textual y normal |
 | `--color-chart-cost` sobre los tres niveles de superficie (peor caso) | `4.80:1` | `7.56:1` | AA no textual y normal |
@@ -105,24 +111,36 @@ Ratios calculados con luminancia relativa WCAG 2.x en sRGB. El mínimo es `4.5:1
 
 `--color-overlay` es exclusivamente un fondo de atenuación: el contenido legible se coloca sobre `--color-bg-surface-elevated`, no directamente sobre el overlay.
 
-### Deuda de contraste preexistente — registrar, no corregir en esta fase
+### Remediación de contraste WCAG AA — fase 2.1
 
-| Pareja actual | Ratio | Observación para fases posteriores |
-|---|---:|---|
-| `--color-positive` sobre `--color-positive-bg` (claro) | `3.00:1` | No cumple texto normal. |
-| `--color-positive` directamente sobre blanco (claro) | `3.30:1` | No cumple texto normal en montos o labels pequeños. |
-| `--color-negative` sobre `--color-negative-bg` (claro) | `3.95:1` | No cumple texto normal. |
-| `--color-risk-medium` sobre `--color-risk-medium-bg` (claro) | `1.93:1` | No cumple texto normal ni grande. |
-| `--color-accent-blue` sobre su fondo (claro) | `3.01:1` | Solo alcanza el umbral de texto grande/no textual. |
-| `--color-accent-pink` sobre su fondo (claro) | `3.00:1` | Solo alcanza el umbral de texto grande/no textual. |
-| `--color-accent-orange` sobre su fondo (claro) | `2.45:1` | No cumple texto normal ni grande. |
-| `--muted-foreground` sobre el `--muted` calculado (claro) | `≈4.38:1` | Queda por debajo de AA para texto normal. |
-| Texto claro sobre el degradado primario actual (claro) | `4.23:1` → `2.72:1` | El degradado no mantiene AA en toda su extensión. |
-| Texto `--color-bg-surface` sobre el inicio del degradado actual (oscuro) | `4.30:1` | Queda apenas por debajo de AA normal. |
-| `--chart-2` y `--chart-4` actuales sobre blanco | `2.72:1` y `2.15:1` | No alcanzan `3:1` como marcas gráficas esenciales. |
-| `--color-border` sobre la superficie actual | `1.24:1` claro / `1.18:1` oscuro | Solo es válido como decoración; no como única frontera de un control. |
+Esta corrección sí actualiza tokens existentes y consumidos. Cambia únicamente sus valores cromáticos: no altera layout, espaciado, tipografía, estructura ni comportamiento de componentes. Los tonos se mantienen dentro de la misma familia semántica.
 
-Los pares semánticos equivalentes del modo oscuro sí superan `4.5:1`. `--color-badge-nuevo` y `--color-badge-en-ruta` también pasan en modo claro (`4.80:1` y `4.52:1`). Ninguna deuda listada se modifica en esta fase.
+| Token o pareja corregida | Valor anterior → nuevo | Ratio anterior → nuevo | Criterio |
+|---|---|---:|---|
+| `--color-positive` sobre `--color-positive-bg` (claro) | `#16A34A` → `#15803D` | `3.00:1` → `4.57:1` | AA texto normal |
+| `--color-positive` directamente sobre blanco (claro) | mismo ajuste | `3.30:1` → `5.02:1` | AA texto normal |
+| `--color-negative` sobre `--color-negative-bg` (claro) | `#DC2626` → `#B91C1C` | `3.95:1` → `5.30:1` | AA texto normal |
+| `--color-risk-medium` sobre `--color-risk-medium-bg` (claro) | `#F59E0B` → `#B45309` | `1.93:1` → `4.51:1` | AA texto normal |
+| `--color-accent-blue` sobre su fondo (claro) | `#3B82F6` → `#1D4ED8` | `3.01:1` → `5.49:1` | AA texto normal |
+| `--color-accent-pink` sobre su fondo (claro) | `#EC4899` → `#BE185D` | `3.00:1` → `5.14:1` | AA texto normal |
+| `--color-accent-orange` sobre su fondo (claro) | `#F97316` → `#C2410C` | `2.45:1` → `4.52:1` | AA texto normal |
+| `--muted-foreground` sobre el `--muted` calculado (claro) | `--color-text-secondary: #64748B` → `#617187` | `4.38:1` → `4.58:1` | AA texto normal |
+| Degradado primario con texto blanco (claro) | `#8B5CF6 → #A78BFA` pasa a `#6D28D9 → #7C3AED` | extremos `4.23:1 → 2.72:1` pasan a `7.10:1 → 5.70:1` | AA normal en todo el rango |
+| Degradado primario con texto `#12151F` (oscuro) | inicio `#8B5CF6` → `#A78BFA`; final `#C4B5FD` sin cambio | extremos `4.30:1 → 9.87:1` pasan a `6.69:1 → 9.87:1` | AA normal en todo el rango |
+| `--chart-2` sobre blanco (claro) | hereda el nuevo `--color-accent-to` | `2.72:1` → `5.70:1` | Supera AA no textual (`3:1`) |
+| `--chart-4` sobre blanco (claro) | hereda el nuevo `--color-risk-medium` | `2.15:1` → `5.02:1` | Supera AA no textual (`3:1`) |
+| `--color-border` sobre la superficie actual (claro) | `#E5E7EB` → `#87919F` | `1.24:1` → `3.19:1` | AA no textual |
+| `--color-border` sobre la superficie actual (oscuro) | `#1E2433` → `#627085` | `1.18:1` → `3.62:1` | AA no textual |
+
+Los bordes se verificaron también contra todas las superficies extendidas: el peor caso es `3.05:1` en claro y `3.08:1` en oscuro. `--color-border` se considera una frontera operativa porque hoy sirve tanto a inputs y controles como a separadores. Un borde con opacidad reducida solo puede usarse como decoración cuando otra señal —fondo, forma, espaciado o estado— comunica el límite.
+
+Los cambios semánticos exigieron dos ajustes dependientes: `--color-on-success` cambia de `#052E16` a `#FFFFFF` (`4.52:1` → `5.02:1`) y `--color-on-warning` de `#451A03` a `#FFFFFF` (`6.97:1` → `5.02:1`). `--color-on-danger` no cambia, pero mejora de `4.83:1` a `6.47:1` por el nuevo rojo. Los aliases `--color-risk-low`, `--color-risk-high`, `--destructive`, `--chart-3`, `--chart-4` y `--chart-5` heredan las correcciones sin duplicar valores.
+
+Los degradados se muestrearon en `100001` puntos tanto con interpolación sRGB como Oklab; el peor caso ocurre en un extremo. Incluso con el `opacity: 0.9` usado en hover, sus mínimos son `4.78:1` en claro y `5.64:1` en oscuro. La pareja oficial es texto blanco en claro y `--color-bg-surface` (`#12151F`) en oscuro.
+
+Excepción preexistente y fuera del alcance de esta fase: los tabs activos de `costeos/co/page.tsx` y `costeos/mx/page.tsx` usan `text-white` fijo también en oscuro. Ningún fondo puede alcanzar `4.5:1` simultáneamente contra blanco y contra `#12151F`; esos dos consumidores deberán adoptar el foreground semántico en una fase de componentes. No se modifican aquí por la restricción explícita de trabajar solo en tokens.
+
+Los semánticos oscuros no necesitaron cambio y fueron revalidados con composición alpha a precisión completa sobre sus fondos translúcidos: positive `8.66:1`, negative `5.90:1`, warning `8.63:1`, blue `5.90:1`, pink `5.77:1` y orange `6.47:1`. `--muted-foreground` oscuro conserva `6.64:1`; `--chart-2` y `--chart-4` oscuros conservan `9.87:1` y `10.91:1` sobre la superficie esperada.
 
 ### Duraciones de motion
 

@@ -53,18 +53,18 @@
   --color-bg-page: #FFFFFF;
   --color-bg-surface: #FFFFFF;
   --color-accent: #7C3AED;
-  --color-accent-from: #8B5CF6;
-  --color-accent-to: #A78BFA;
+  --color-accent-from: #6D28D9;
+  --color-accent-to: #7C3AED;
   --color-text-primary: #0F172A;
-  --color-text-secondary: #64748B;
-  --color-border: #E5E7EB;
-  --color-positive: #16A34A;
+  --color-text-secondary: #617187;
+  --color-border: #87919F;
+  --color-positive: #15803D;
   --color-positive-bg: #DCFCE7;
-  --color-negative: #DC2626;
+  --color-negative: #B91C1C;
   --color-negative-bg: #FEE2E2;
   --color-risk-high: var(--color-negative);
   --color-risk-high-bg: var(--color-negative-bg);
-  --color-risk-medium: #F59E0B;
+  --color-risk-medium: #B45309;
   --color-risk-medium-bg: #FEF3C7;
   --color-risk-low: var(--color-positive);
   --color-risk-low-bg: var(--color-positive-bg);
@@ -72,11 +72,11 @@
   --color-badge-nuevo-bg: #EDE9FE;
   --color-badge-en-ruta: #C2410C;
   --color-badge-en-ruta-bg: #FFEDD5;
-  --color-accent-blue: #3B82F6;
+  --color-accent-blue: #1D4ED8;
   --color-accent-blue-bg: #DBEAFE;
-  --color-accent-pink: #EC4899;
+  --color-accent-pink: #BE185D;
   --color-accent-pink-bg: #FCE7F3;
-  --color-accent-orange: #F97316;
+  --color-accent-orange: #C2410C;
   --color-accent-orange-bg: #FFEDD5;
 
   /* Extended surface hierarchy and interaction states (CRM redesign v5). */
@@ -91,8 +91,8 @@
 
   /* Accessible foregrounds for solid semantic backgrounds. */
   --color-on-accent: #FFFFFF;
-  --color-on-success: #052E16;
-  --color-on-warning: #451A03;
+  --color-on-success: #FFFFFF;
+  --color-on-warning: #FFFFFF;
   --color-on-danger: #FFFFFF;
 
   /* Semantic series for financial charts. */
@@ -157,11 +157,11 @@
   --color-bg-page: #0A0D18;
   --color-bg-surface: #12151F;
   --color-accent: #A78BFA;
-  --color-accent-from: #8B5CF6;
+  --color-accent-from: #A78BFA;
   --color-accent-to: #C4B5FD;
   --color-text-primary: #F8FAFC;
   --color-text-secondary: #94A3B8;
-  --color-border: #1E2433;
+  --color-border: #627085;
   --color-positive: #4ADE80;
   --color-positive-bg: rgba(34, 197, 94, 0.12);
   --color-negative: #F87171;
