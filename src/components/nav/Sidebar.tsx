@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ListTodo,
   Settings,
+  UsersRound,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -15,6 +16,11 @@ const navItems = [
     label: "Pedidos",
     href: "/pedidos",
     icon: ClipboardList,
+  },
+  {
+    label: "Clientes",
+    href: "/clientes",
+    icon: UsersRound,
   },
   {
     label: "Tareas",
@@ -34,11 +40,7 @@ const navItems = [
 ] as const;
 
 function isCurrentPath(pathname: string, href: string) {
-  return (
-    pathname === href ||
-    pathname.startsWith(`${href}/`) ||
-    (href === "/pedidos" && pathname.startsWith("/clientes/"))
-  );
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function PakoraLogoMark() {
