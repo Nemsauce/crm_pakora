@@ -2,6 +2,7 @@
 
 import {
   Calculator,
+  Bell,
   ClipboardList,
   LayoutDashboard,
   ListTodo,
@@ -26,6 +27,11 @@ const navItems = [
     label: "Tareas",
     href: "/tareas",
     icon: ListTodo,
+  },
+  {
+    label: "Alertas",
+    href: "/alertas",
+    icon: Bell,
   },
   {
     label: "Costeos",

@@ -292,3 +292,9 @@ Pendiente cuando se retome 'notis':
 - Se hizo un A/B controlado con la misma sesión vacía y `Browsers.macOS("Chrome")`, manteniendo `syncFullHistory: true`: WhatsApp emitió el QR correctamente.
 - La configuración final usa `Browsers.macOS("Chrome")`. El logger de Baileys volvió a `silent`; la instrumentación diagnóstica fue temporal y no quedó en el código.
 - Verificación: `npm run build` en `whatsapp-bridge` completó sin errores.
+
+### [UX] Bandeja de alertas — COMPLETADO
+- Se agregó `/alertas` como inbox operativo paginado de notificaciones del usuario activo: 20 por página, tabs de Acción requerida / Actividad / Todas, filtros de lectura y tipo, y agrupación por día operativo de Bogotá y categoría de presentación.
+- Las categorías no agregan estado ni cambian el schema: Críticas agrupa `tarea_vencida` y `pedido_devolucion`; Acción requerida agrupa `tarea_urgente_asignada`, `novedad` y `pedido_en_reparto`; Actividad agrupa `pedido_nuevo` y `pedido_entregado`.
+- La página reutiliza las Server Actions existentes para marcar individualmente como leída/no leída y para marcar todas como leídas; abrir una alerta conserva la navegación a la tarea o pedido y marca como leída primero cuando corresponde.
+- La campanita sigue siendo el vistazo rápido en tiempo real con su límite de 20, contador y badge de título sin cambios; su enlace final ahora lleva a `/alertas`. Sidebar incorpora Alertas como sección propia.

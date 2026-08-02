@@ -626,11 +626,11 @@ export function NotificationBell() {
           className="p-0 focus:bg-[var(--color-accent)]/10"
         >
           <Link
-            href="/notificaciones"
+            href="/alertas"
             onClick={() => setIsOpen(false)}
             className="flex min-h-10 items-center justify-center rounded-xl px-3 py-2 font-body text-sm font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent)]/10 focus-visible:outline-none"
           >
-            Ver todas las notificaciones
+            Ver todas
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
