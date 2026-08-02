@@ -35,6 +35,8 @@ type PedidosPageProps = {
 type Pais = Database["public"]["Enums"]["pais_enum"];
 type EstadoCrm = Database["public"]["Enums"]["estado_crm_enum"];
 type EstadoAbandonado = Database["public"]["Enums"]["estado_abandonado_enum"];
+type CategoriaEstado =
+  Database["public"]["Enums"]["categoria_estado_enum"];
 type PedidosView = "pedidos" | "abandonados";
 
 const validCountries = new Set<string>(["CO", "MX"]);
@@ -55,6 +57,10 @@ const validAbandonadoStates = new Set<string>([
 
 function escapeIlikeTerm(term: string) {
   return term.replace(/[%,]/g, "");
+}
+
+function getStatusKey(estado: string, transportadora: string | null) {
+  return `${estado}\u0000${transportadora ?? ""}`;
 }
 
 function getPage(value: string | undefined) {
@@ -160,7 +166,7 @@ function PedidosViewSwitcher({ view }: { view: PedidosView }) {
 
   return (
     <nav
-      className="inline-flex flex-wrap rounded-full border border-border bg-bg-surface p-1 shadow-lg"
+      className="inline-flex flex-wrap rounded-xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-1 shadow-sm"
       aria-label="Vista de pedidos"
     >
       {options.map((option) => {
@@ -171,10 +177,10 @@ function PedidosViewSwitcher({ view }: { view: PedidosView }) {
             key={option.value}
             href={option.href}
             aria-current={isActive ? "page" : undefined}
-            className={`inline-flex h-9 items-center rounded-full px-4 font-body text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`inline-flex min-h-[var(--density-row-height-compact)] items-center rounded-lg border px-4 font-body text-sm font-semibold outline-none transition-[color,background-color,border-color] duration-[var(--motion-duration-hover-focus)] focus-visible:ring-2 focus-visible:ring-ring ${
               isActive
-                ? "bg-[var(--color-badge-nuevo-bg)] text-[var(--color-badge-nuevo)]"
-                : "text-text-secondary hover:bg-bg-page hover:text-text-primary"
+                ? "border-[var(--color-border-selected)] bg-[var(--color-bg-selected)] text-[var(--color-accent)]"
+                : "border-transparent text-text-secondary hover:bg-[var(--color-bg-hover)] hover:text-text-primary"
             }`}
           >
             {option.label}
@@ -191,7 +197,7 @@ function ListEntranceStyles() {
       @keyframes crm-fade-slide-in {
         from {
           opacity: 0;
-          transform: translateY(12px);
+          transform: translateY(4px);
         }
         to {
           opacity: 1;
@@ -201,7 +207,7 @@ function ListEntranceStyles() {
 
       .crm-list-entrance {
         opacity: 0;
-        animation: crm-fade-slide-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        animation: crm-fade-slide-in var(--motion-duration-content) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -220,7 +226,7 @@ function PedidosPageHeader({ view }: { view: PedidosView }) {
 
   return (
     <>
-      <div className="flex flex-col gap-4 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-4 border-b border-border/30 pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
             Pedidos
@@ -291,7 +297,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
     const totalCount = count ?? abandonados.length;
 
     return (
-      <section className="min-h-screen px-6 py-6 sm:px-8">
+      <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 lg:px-8">
         <ListEntranceStyles />
         <PedidosPageHeader view={view} />
         <AbandonadosList
@@ -351,6 +357,82 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
   }
 
   const orderList = orders ?? [];
+  const orderIds = orderList.map((order) => order.id);
+  const dropiStates = Array.from(
+    new Set(
+      orderList
+        .map((order) => order.estado_dropi)
+        .filter((estado): estado is string => Boolean(estado)),
+    ),
+  );
+  const [statusCatalogResult, openTasksResult] = await Promise.all([
+    dropiStates.length > 0
+      ? supabase
+          .from("status_catalog")
+          .select("estado,transportadora,categoria")
+          .in("estado", dropiStates)
+      : Promise.resolve({ data: [], error: null }),
+    orderIds.length > 0
+      ? supabase
+          .from("tasks")
+          .select("order_id")
+          .in("order_id", orderIds)
+          .in("estado", ["pendiente", "en_progreso"])
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (statusCatalogResult.error) {
+    throw new Error(
+      `No se pudieron clasificar los estados de los pedidos: ${statusCatalogResult.error.message}`,
+    );
+  }
+
+  if (openTasksResult.error) {
+    throw new Error(
+      `No se pudieron cargar las tareas abiertas de los pedidos: ${openTasksResult.error.message}`,
+    );
+  }
+
+  const categoryByStatus = new Map<string, CategoriaEstado>();
+
+  for (const status of statusCatalogResult.data ?? []) {
+    categoryByStatus.set(
+      getStatusKey(status.estado, status.transportadora),
+      status.categoria,
+    );
+  }
+
+  function getOrderCategory(
+    order: (typeof orderList)[number],
+  ): CategoriaEstado {
+    if (!order.estado_dropi) {
+      return "sin_clasificar";
+    }
+
+    if (order.transportadora) {
+      const exactCategory = categoryByStatus.get(
+        getStatusKey(order.estado_dropi, order.transportadora),
+      );
+
+      if (exactCategory) {
+        return exactCategory;
+      }
+    }
+
+    return (
+      categoryByStatus.get(getStatusKey(order.estado_dropi, null)) ??
+      "sin_clasificar"
+    );
+  }
+
+  const openTaskOrderIds = new Set(
+    (openTasksResult.data ?? []).map((task) => task.order_id),
+  );
+  const displayOrders = orderList.map((order) => ({
+    ...order,
+    categoria_estado: getOrderCategory(order),
+    has_open_task: openTaskOrderIds.has(order.id),
+  }));
   const totalCount = count ?? orderList.length;
   const selectedOrderId = params.detalle ?? null;
   const hasPreviousPage = page > 1;
@@ -358,8 +440,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
   const dateCountDescription = getDateCountDescription(selectedDateRange);
 
   return (
-    <section className="min-h-screen px-6 py-6 sm:px-8">
-      <ListEntranceStyles />
+    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 lg:px-8">
       <PedidosPageHeader view={view} />
 
       <div className="mt-5">
@@ -375,29 +456,45 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
       </p>
 
       {orderList.length > 0 ? (
-        <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {orderList.map((order, index) => (
-            <div
-              key={order.id}
-              className="crm-list-entrance"
-              style={{
-                animationDelay: `${Math.min(index * 40, 480)}ms`,
-              }}
-            >
+        <div className="mt-3 overflow-hidden rounded-xl bg-[var(--color-bg-surface-subtle)] p-1 shadow-sm">
+          <div
+            aria-hidden="true"
+            className="hidden min-h-[var(--density-row-height-compact)] grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,1.1fr)_minmax(0,0.75fr)_minmax(0,0.85fr)] items-center gap-2 px-3 font-body text-[11px] font-semibold uppercase tracking-wide text-text-secondary lg:grid xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,0.62fr)_minmax(0,1.05fr)_minmax(0,0.42fr)_minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,0.78fr)_minmax(0,0.32fr)]"
+          >
+            <span>Pedido / cliente</span>
+            <span>Estado / categoría</span>
+            <span>Riesgo</span>
+            <span>
+              <span className="xl:hidden">Producto / logística</span>
+              <span className="hidden xl:inline">Producto</span>
+            </span>
+            <span className="hidden xl:block">País</span>
+            <span className="hidden xl:block">Transportadora / guía</span>
+            <span>Total</span>
+            <span>
+              <span className="xl:hidden">Actualización / tarea</span>
+              <span className="hidden xl:inline">Última actualización</span>
+            </span>
+            <span className="hidden text-center xl:block">Tarea</span>
+          </div>
+
+          <div className="grid gap-1" aria-label="Lista de pedidos">
+            {displayOrders.map((order) => (
               <OrderCardLink
+                key={order.id}
                 order={order}
                 selected={String(order.id) === selectedOrderId}
               />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       ) : (
-        <div className="mt-3 rounded-lg border border-border bg-bg-base p-6 font-body text-sm text-text-secondary">
+        <div className="mt-3 rounded-xl bg-[var(--color-bg-surface-elevated)] p-6 font-body text-sm text-text-secondary shadow-sm">
           No hay pedidos que coincidan con estos filtros.
         </div>
       )}
 
-      <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
+      <div className="mt-6 flex items-center justify-between border-t border-border/30 pt-4">
         <Button
           asChild={hasPreviousPage}
           type="button"

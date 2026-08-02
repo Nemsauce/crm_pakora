@@ -55,7 +55,7 @@ function FilterPills({
       <legend className="mr-1 font-body text-xs font-semibold uppercase text-text-secondary">
         {label}
       </legend>
-      <div className="inline-flex flex-wrap rounded-full border border-border bg-bg-surface p-1">
+      <div className="inline-flex flex-wrap rounded-full border border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] p-1">
         {options.map((option) => {
           const isActive = option.value === value;
 
@@ -65,10 +65,10 @@ function FilterPills({
               type="button"
               aria-pressed={isActive}
               onClick={() => onChange(option.value)}
-              className={`h-8 rounded-full px-3 font-body text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+              className={`h-8 rounded-full px-3 font-body text-xs font-medium outline-none transition-colors duration-[var(--motion-duration-hover-focus)] focus-visible:ring-2 focus-visible:ring-ring ${
                 isActive
-                  ? "bg-[var(--color-badge-nuevo-bg)] text-[var(--color-badge-nuevo)]"
-                  : "text-text-secondary hover:bg-bg-page hover:text-text-primary"
+                  ? "bg-[var(--color-bg-selected)] text-[var(--color-accent)]"
+                  : "text-text-secondary hover:bg-[var(--color-bg-hover)] hover:text-text-primary"
               }`}
             >
               {option.label}
@@ -160,7 +160,7 @@ export function AbandonadosList({
 
   return (
     <div className="mt-5">
-      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-bg-surface p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-col gap-3">
           <FilterPills
             label="País"
@@ -181,7 +181,7 @@ export function AbandonadosList({
             type="button"
             onClick={handleSync}
             disabled={isSyncing}
-            className="h-10 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-bg-surface shadow-md shadow-[var(--color-accent)]/20 hover:opacity-90 disabled:opacity-60"
+            className="h-10 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-[var(--color-on-accent)] shadow-md shadow-[var(--color-accent)]/20 transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90 disabled:opacity-60"
           >
             {isSyncing ? (
               <Loader2 className="animate-spin" aria-hidden="true" />
@@ -219,19 +219,19 @@ export function AbandonadosList({
             <div
               key={`${row.id}-${row.sincronizado_en}`}
               className="crm-list-entrance"
-              style={{ animationDelay: `${Math.min(index * 40, 480)}ms` }}
+              style={{ animationDelay: `${Math.min(index * 10, 120)}ms` }}
             >
               <AbandonadoRow row={row} />
             </div>
           ))}
         </div>
       ) : (
-        <div className="mt-3 rounded-2xl border border-border bg-bg-surface p-6 font-body text-sm text-text-secondary shadow-md">
+        <div className="mt-3 rounded-xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-6 font-body text-sm text-text-secondary shadow-sm">
           No hay pedidos abandonados que coincidan con estos filtros.
         </div>
       )}
 
-      <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
+      <div className="mt-6 flex items-center justify-between border-t border-border/30 pt-4">
         <Button
           asChild={hasPreviousPage}
           type="button"

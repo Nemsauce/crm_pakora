@@ -175,42 +175,45 @@ function FilterSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="grid gap-1.5">
+    <label className="min-w-0">
       <Select.Root value={value} onValueChange={onChange}>
         <Select.Trigger
-          className="inline-flex h-14 min-w-44 items-center justify-between gap-3 rounded-2xl border border-border bg-bg-surface px-3 font-body text-sm text-[var(--foreground)] shadow-sm outline-none transition-colors hover:bg-bg-page focus:ring-2 focus:ring-ring"
+          className="inline-flex min-h-[var(--density-row-height-compact)] w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] px-3 font-body text-sm text-[var(--color-text-primary)] outline-none transition-[color,background-color,border-color] duration-[var(--motion-duration-hover-focus)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
           aria-label={label}
         >
-          <span className="flex min-w-0 items-center gap-3">
+          <span className="flex min-w-0 items-center gap-2">
             <Icon
-              className="h-4 w-4 shrink-0 text-[var(--muted-foreground)]"
+              className="h-4 w-4 shrink-0 text-[var(--color-text-secondary)] xl:hidden 2xl:block"
               aria-hidden="true"
             />
-            <span className="grid min-w-0 text-left leading-tight">
-              <span className="font-body text-xs text-[var(--muted-foreground)]">
-                {label}
+            <span className="min-w-0 truncate text-left">
+              <span className="text-[var(--color-text-secondary)]">
+                {label}:{" "}
               </span>
-              <span className="truncate font-body text-sm text-[var(--foreground)]">
+              <span className="font-semibold text-[var(--color-text-primary)]">
                 <Select.Value />
               </span>
             </span>
           </span>
           <Select.Icon>
-            <ChevronDown className="h-4 w-4 text-[var(--muted-foreground)]" />
+            <ChevronDown
+              className="h-4 w-4 text-[var(--color-text-secondary)]"
+              aria-hidden="true"
+            />
           </Select.Icon>
         </Select.Trigger>
         <Select.Portal>
           <Select.Content
             position="popper"
             sideOffset={6}
-            className="z-50 overflow-hidden rounded-2xl border border-border bg-bg-surface text-[var(--foreground)] shadow-md"
+            className="z-[var(--z-index-dropdown-popover)] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] text-[var(--color-text-primary)] shadow-md"
           >
             <Select.Viewport className="p-1">
               {options.map((option) => (
                 <Select.Item
                   key={option.value}
                   value={option.value}
-                  className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-[var(--foreground)] outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
+                  className="relative flex min-h-[var(--density-row-height-compact)] cursor-default select-none items-center rounded-lg px-3 font-body text-sm text-[var(--color-text-primary)] outline-none data-[highlighted]:bg-[var(--color-bg-hover)] data-[state=checked]:bg-[var(--color-bg-selected)] data-[state=checked]:font-semibold data-[state=checked]:text-[var(--color-accent)]"
                 >
                   <Select.ItemText>{option.label}</Select.ItemText>
                 </Select.Item>
@@ -407,8 +410,8 @@ export function OrderFilters() {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-bg-surface p-3 shadow-sm md:flex-row md:items-end md:justify-between">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+    <div className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-2.5 shadow-sm">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(0,0.75fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1.15fr)_minmax(17rem,1.6fr)_auto]">
         <FilterSelect
           label="País"
           icon={Globe}
@@ -435,28 +438,31 @@ export function OrderFilters() {
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="inline-flex h-14 min-w-44 items-center justify-between gap-3 rounded-2xl border border-border bg-bg-surface px-3 font-body text-sm text-[var(--foreground)] shadow-sm outline-none transition-colors hover:bg-bg-page focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex min-h-[var(--density-row-height-compact)] w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] px-3 font-body text-sm text-[var(--color-text-primary)] outline-none transition-[color,background-color,border-color] duration-[var(--motion-duration-hover-focus)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
             >
-              <span className="flex min-w-0 items-center gap-3">
+              <span className="flex min-w-0 items-center gap-2">
                 <CalendarDays
-                  className="h-4 w-4 shrink-0 text-[var(--muted-foreground)]"
+                  className="h-4 w-4 shrink-0 text-[var(--color-text-secondary)] xl:hidden 2xl:block"
                   aria-hidden="true"
                 />
-                <span className="grid min-w-0 text-left leading-tight">
-                  <span className="font-body text-xs text-[var(--muted-foreground)]">
-                    Fecha
+                <span className="min-w-0 truncate text-left">
+                  <span className="text-[var(--color-text-secondary)]">
+                    Fecha:{" "}
                   </span>
-                  <span className="truncate font-body text-sm text-[var(--foreground)]">
+                  <span className="font-semibold text-[var(--color-text-primary)]">
                     {formatDateFilterLabel(fechaDesde, fechaHasta)}
                   </span>
                 </span>
               </span>
-              <ChevronDown className="h-4 w-4 text-[var(--muted-foreground)]" />
+              <ChevronDown
+                className="h-4 w-4 text-[var(--color-text-secondary)]"
+                aria-hidden="true"
+              />
             </button>
           </PopoverTrigger>
           <PopoverContent
             align="start"
-            className="max-w-[calc(100vw-2rem)] overflow-x-auto rounded-2xl border border-border bg-bg-surface p-0 text-text-primary shadow-xl"
+            className="z-[var(--z-index-dropdown-popover)] max-w-[calc(100vw-2rem)] overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] p-0 text-[var(--color-text-primary)] shadow-xl"
           >
             <div className="flex items-center gap-1 border-b border-border p-3">
               {(["single", "range"] as const).map((mode) => (
@@ -467,8 +473,8 @@ export function OrderFilters() {
                   onClick={() => changeDateMode(mode)}
                   className={`h-9 rounded-full px-4 font-body text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
                     dateMode === mode
-                      ? "bg-[var(--color-badge-nuevo-bg)] text-[var(--color-badge-nuevo)]"
-                      : "text-text-secondary hover:bg-bg-page hover:text-text-primary"
+                      ? "bg-[var(--color-bg-selected)] text-[var(--color-accent)]"
+                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]"
                   }`}
                 >
                   {mode === "single" ? "Un día" : "Rango"}
@@ -484,7 +490,7 @@ export function OrderFilters() {
                 defaultMonth={draftSingleDate}
                 disabled={{ after: new Date() }}
                 locale={es}
-                className="rounded-2xl bg-bg-surface"
+                className="rounded-2xl bg-[var(--color-bg-surface-elevated)]"
               />
             ) : (
               <Calendar
@@ -495,7 +501,7 @@ export function OrderFilters() {
                 numberOfMonths={2}
                 disabled={{ after: new Date() }}
                 locale={es}
-                className="rounded-2xl bg-bg-surface"
+                className="rounded-2xl bg-[var(--color-bg-surface-elevated)]"
               />
             )}
 
@@ -504,7 +510,7 @@ export function OrderFilters() {
                 type="button"
                 onClick={clearDateFilter}
                 disabled={!hasDateFilter}
-                className="h-9 rounded-full px-3 font-body text-sm text-text-secondary outline-none transition-colors hover:bg-bg-page hover:text-text-primary focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-9 rounded-full px-3 font-body text-sm text-[var(--color-text-secondary)] outline-none transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Quitar fecha
               </button>
@@ -516,7 +522,7 @@ export function OrderFilters() {
                     ? !draftSingleDate
                     : !draftRange?.from || !draftRange.to
                 }
-                className="rounded-full bg-gradient-to-r from-accent-from to-accent-to text-bg-surface hover:opacity-90"
+                className="rounded-full bg-gradient-to-r from-accent-from to-accent-to text-[var(--color-on-accent)] transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90"
               >
                 Aplicar
               </Button>
@@ -524,46 +530,46 @@ export function OrderFilters() {
           </PopoverContent>
         </Popover>
 
-        <form onSubmit={submitSearch} className="grid gap-1.5">
-          <div className="flex h-14 min-w-44 items-center gap-3 rounded-2xl border border-border bg-bg-surface px-3 shadow-sm outline-none transition-colors focus-within:ring-2 focus-within:ring-ring hover:bg-bg-page">
-            <span className="grid min-w-0 flex-1 text-left leading-tight">
+        <form onSubmit={submitSearch} role="search" className="min-w-0">
+          <div className="flex min-h-[var(--density-row-height-compact)] min-w-0 items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] px-3 outline-none transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-within:ring-2 focus-within:ring-[var(--ring)]">
+            <span className="min-w-0 flex-1 text-left">
               <label
                 htmlFor="order-search"
-                className="font-body text-xs text-[var(--muted-foreground)]"
+                className="sr-only"
               >
-                Buscar
+                Buscar cliente o número de orden
               </label>
               <Input
                 id="order-search"
-                type="text"
+                type="search"
                 placeholder="Cliente o número de orden"
                 value={searchDraft}
                 onChange={(event) => setSearchDraft(event.target.value)}
-                className="h-8 min-w-0 border-0 bg-transparent p-0 font-body text-sm text-[var(--foreground)] shadow-none focus-visible:ring-0"
+                className="h-auto min-w-0 border-0 bg-transparent p-0 font-body text-sm text-[var(--color-text-primary)] shadow-none focus-visible:ring-0 dark:bg-transparent"
               />
             </span>
             <Button
               type="submit"
               size="icon-sm"
-              className="shrink-0 rounded-xl bg-gradient-to-r from-accent-from to-accent-to text-bg-surface hover:opacity-90"
+              className="shrink-0 rounded-lg bg-gradient-to-r from-accent-from to-accent-to text-[var(--color-on-accent)] transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90"
               aria-label="Buscar pedidos"
             >
               <Search className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
         </form>
-      </div>
 
-      {hasActiveFilters ? (
-        <Button
-          type="button"
-          variant="outline"
-          className="rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
-          onClick={clearFilters}
-        >
-          Limpiar filtros
-        </Button>
-      ) : null}
+        {hasActiveFilters ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-[var(--density-row-height-compact)] rounded-xl border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] px-3 text-[var(--color-text-secondary)] transition-[color,background-color,border-color] duration-[var(--motion-duration-hover-focus)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)] sm:col-span-2 lg:col-span-1"
+            onClick={clearFilters}
+          >
+            Limpiar filtros
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }

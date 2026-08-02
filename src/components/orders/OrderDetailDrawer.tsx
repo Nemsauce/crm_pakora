@@ -295,7 +295,7 @@ export function OrderDetailDrawer() {
           }
 
           .crm-order-detail-drawer[data-state="open"] {
-            animation: crm-drawer-enter 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+            animation: crm-drawer-enter var(--motion-duration-drawer) cubic-bezier(0.2, 0.8, 0.2, 1) both;
           }
 
           @media (prefers-reduced-motion: reduce) {
@@ -305,17 +305,20 @@ export function OrderDetailDrawer() {
           }
         `}</style>
         <Dialog.Content
-          className="crm-order-detail-drawer fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-border bg-bg-surface text-[var(--foreground)] shadow-xl outline-none"
+          id="order-detail-drawer"
+          className="crm-order-detail-drawer fixed inset-y-0 right-0 z-[var(--z-index-operational-drawer)] flex w-full max-w-xl flex-col border-l border-border bg-[var(--color-bg-surface-base)] text-[var(--foreground)] shadow-xl outline-none"
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
-          <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+          <div className="flex min-h-[var(--density-row-height-comfortable)] items-start justify-between gap-4 border-b border-border bg-[var(--color-bg-surface-elevated)] px-5 py-4">
             <div className="min-w-0">
               <Dialog.Title className="font-display text-lg font-semibold text-[var(--foreground)]">
                 Detalle de pedido
               </Dialog.Title>
               <Dialog.Description className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
-                Historial y tareas asociadas
+                {detail
+                  ? `${getCustomerName(detail.order)} · ${getOrderIdentifier(detail.order)}`
+                  : "Información operativa y seguimiento"}
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -323,7 +326,7 @@ export function OrderDetailDrawer() {
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                className="rounded-lg border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+                className="rounded-lg border-border bg-[var(--color-bg-surface-elevated)] text-[var(--foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)]"
                 aria-label="Cerrar detalle"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
@@ -331,17 +334,26 @@ export function OrderDetailDrawer() {
             </Dialog.Close>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-5">
+          <div
+            className="flex-1 overflow-y-auto px-5 py-5"
+            aria-busy={isLoading}
+          >
             {isLoading ? (
-              <div className="space-y-4">
-                <div className="h-20 rounded-2xl border border-border bg-bg-page motion-safe:animate-pulse" />
-                <div className="h-40 rounded-2xl border border-border bg-bg-page motion-safe:animate-pulse" />
-                <div className="h-40 rounded-2xl border border-border bg-bg-page motion-safe:animate-pulse" />
+              <div className="space-y-3">
+                <span className="sr-only" role="status">
+                  Cargando detalle del pedido
+                </span>
+                <div className="h-40 rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] shadow-sm motion-safe:animate-pulse" />
+                <div className="h-32 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] shadow-sm motion-safe:animate-pulse" />
+                <div className="h-28 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] shadow-sm motion-safe:animate-pulse" />
               </div>
             ) : null}
 
             {!isLoading && error ? (
-              <div className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+              <div
+                role="alert"
+                className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-sm"
+              >
                 <p className="font-body text-sm text-[var(--muted-foreground)]">
                   {error}
                 </p>
@@ -350,7 +362,7 @@ export function OrderDetailDrawer() {
                   variant="outline"
                   size="sm"
                   onClick={() => setRetryCount((current) => current + 1)}
-                  className="mt-3 rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+                  className="mt-3 rounded-full border-border bg-[var(--color-bg-surface-elevated)] text-[var(--foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)]"
                 >
                   <RefreshCw className="h-4 w-4" aria-hidden="true" />
                   Reintentar
@@ -359,14 +371,16 @@ export function OrderDetailDrawer() {
             ) : null}
 
             {!isLoading && detail ? (
-              <div className="space-y-5">
-                <OrderHeader
+              <div className="space-y-3">
+                <OrderSummarySection order={detail.order} />
+                <ContactSection
                   order={detail.order}
                   onPhoneUpdated={handlePhoneUpdated}
                 />
                 <CustomerRiskProfileSection order={detail.order} />
-                <StatusHistorySection statusHistory={detail.statusHistory} />
+                <LogisticsSection order={detail.order} />
                 <TasksSection tasks={detail.tasks} />
+                <StatusHistorySection statusHistory={detail.statusHistory} />
                 <ComentariosSection comentarios={detail.comentarios} />
               </div>
             ) : null}
@@ -374,6 +388,124 @@ export function OrderDetailDrawer() {
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+function OrderSummarySection({ order }: { order: Order }) {
+  const badgeTone = estadoCrmTone[order.estado_crm];
+  const risk = normalizeRisk(order.nivel_riesgo);
+
+  return (
+    <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">
+            Pedido
+          </h3>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="font-mono text-sm font-semibold tabular-nums text-[var(--foreground)]">
+              {getOrderIdentifier(order)}
+            </span>
+            <span className="rounded-full bg-[var(--color-bg-surface-subtle)] px-2 py-0.5 font-body text-xs font-semibold text-[var(--muted-foreground)]">
+              {order.pais}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex items-center gap-1.5">
+            <RiskOrb nivelRiesgo={order.nivel_riesgo} />
+            <span
+              aria-hidden="true"
+              className="font-body text-xs font-semibold text-[var(--muted-foreground)]"
+            >
+              {riskLabel[risk]}
+            </span>
+          </div>
+          <span
+            className={`rounded-full px-3 py-1 font-body text-xs font-semibold ${badgeClassName[badgeTone]}`}
+          >
+            {estadoCrmLabel[order.estado_crm]}
+          </span>
+        </div>
+      </div>
+
+      <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-border/40 pt-4">
+        <div className="col-span-2 min-h-[var(--density-row-height-comfortable)] rounded-xl bg-[var(--color-bg-surface-subtle)] p-3">
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">
+            Producto
+          </dt>
+          <dd className="mt-1 font-body text-sm font-semibold text-[var(--foreground)]">
+            {order.nombre_producto ?? "Producto sin nombre"}
+          </dd>
+        </div>
+        <div className="min-h-[var(--density-row-height-comfortable)] rounded-xl bg-[var(--color-bg-surface-subtle)] p-3">
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">
+            Total
+          </dt>
+          <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-[var(--foreground)]">
+            {formatOrderTotal(order)}
+          </dd>
+        </div>
+        <div className="min-h-[var(--density-row-height-comfortable)] rounded-xl bg-[var(--color-bg-surface-subtle)] p-3">
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">
+            Fecha
+          </dt>
+          <dd className="mt-1 font-mono text-sm tabular-nums text-[var(--foreground)]">
+            {formatOrderDate(order.fecha)}
+          </dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+function ContactSection({
+  order,
+  onPhoneUpdated,
+}: {
+  order: Order;
+  onPhoneUpdated: (telefono: string | null) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-sm">
+      <h3 className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">
+        Contacto
+      </h3>
+      <p className="mt-2 truncate font-display text-lg font-semibold text-[var(--foreground)]">
+        {getCustomerName(order)}
+      </p>
+
+      <dl className="mt-3">
+        <div>
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">
+            Teléfono
+          </dt>
+          <dd className="mt-1">
+            <EditablePhoneField
+              key={order.id}
+              orderId={order.id}
+              telefono={order.telefono}
+              onPhoneUpdated={onPhoneUpdated}
+            />
+          </dd>
+        </div>
+      </dl>
+
+      {order.telefono?.trim() ? (
+        <Button
+          asChild
+          type="button"
+          variant="outline"
+          className="mt-4 rounded-full border-border bg-[var(--color-bg-surface-elevated)] text-[var(--foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)]"
+        >
+          <Link href={`/clientes/${encodeURIComponent(order.telefono)}`}>
+            <UserRound className="h-4 w-4" aria-hidden="true" />
+            Ver perfil del cliente
+          </Link>
+        </Button>
+      ) : null}
+    </section>
   );
 }
 
@@ -388,14 +520,14 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
   } = getCustomerHistoryStats(order);
 
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+    <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-display text-base font-semibold text-[var(--foreground)]">
-            Perfil de riesgo del cliente
+            Historial del cliente
           </h3>
           <p className="mt-1 font-body text-sm text-[var(--muted-foreground)]">
-            Historial capturado desde Dropi
+            Comportamiento registrado en Dropi
           </p>
         </div>
         <span
@@ -406,16 +538,16 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
       </div>
 
       {hasHistory ? (
-        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-border bg-bg-page p-3">
+        <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm">
             <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              Total de pedidos
+              Pedidos
             </dt>
             <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-[var(--foreground)]">
               {totalOrders}
             </dd>
           </div>
-          <div className="rounded-2xl border border-border bg-bg-page p-3">
+          <div className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm">
             <dt className="font-body text-xs text-[var(--muted-foreground)]">
               Entregados
             </dt>
@@ -423,15 +555,15 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
               {deliveredOrders}
             </dd>
           </div>
-          <div className="rounded-2xl border border-border bg-bg-page p-3">
+          <div className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm">
             <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              Devoluciones
+              Devueltos
             </dt>
             <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-risk-high">
               {returnedOrders}
             </dd>
           </div>
-          <div className="rounded-2xl border border-border bg-bg-page p-3">
+          <div className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm">
             <dt className="font-body text-xs text-[var(--muted-foreground)]">
               Otros
             </dt>
@@ -439,173 +571,73 @@ function CustomerRiskProfileSection({ order }: { order: Order }) {
               {otherOrders}
             </dd>
           </div>
-          <div className="rounded-2xl border border-border bg-bg-page p-3 sm:col-span-2">
+          <div className="col-span-2 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm sm:col-span-4">
             <dt className="font-body text-xs text-[var(--muted-foreground)]">
               Tasa de devolución
             </dt>
-            <dd className="mt-1 font-mono text-lg font-semibold tabular-nums text-[var(--foreground)]">
+            <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-[var(--foreground)]">
               {formatReturnRate(returnedOrders, totalOrders)}
             </dd>
           </div>
         </dl>
       ) : (
-        <p className="mt-4 rounded-2xl border border-border bg-bg-page p-3 font-body text-sm text-[var(--muted-foreground)]">
+        <p className="mt-4 rounded-xl bg-[var(--color-bg-surface-elevated)] p-3 font-body text-sm text-[var(--muted-foreground)] shadow-sm">
           Cliente sin historial en Dropi
         </p>
       )}
-
-      {order.telefono?.trim() ? (
-        <Button
-          asChild
-          type="button"
-          variant="outline"
-          className="mt-4 rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
-        >
-          <Link href={`/clientes/${encodeURIComponent(order.telefono)}`}>
-            <UserRound className="h-4 w-4" aria-hidden="true" />
-            Ver perfil del cliente
-          </Link>
-        </Button>
-      ) : null}
     </section>
   );
 }
 
-function OrderHeader({
-  order,
-  onPhoneUpdated,
-}: {
-  order: Order;
-  onPhoneUpdated: (telefono: string | null) => void;
-}) {
-  const badgeTone = estadoCrmTone[order.estado_crm];
-
+function LogisticsSection({ order }: { order: Order }) {
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
-      <div>
-        <p className="font-body text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
-          Contacto
-        </p>
-        <div className="mt-3 flex items-start gap-3">
-          <div className="pt-1">
-            <RiskOrb nivelRiesgo={order.nivel_riesgo} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-body text-xs text-[var(--muted-foreground)]">
-              Cliente
-            </p>
-            <h2 className="mt-1 truncate font-display text-xl font-semibold text-[var(--foreground)]">
-              {getCustomerName(order)}
-            </h2>
-          </div>
-          <span
-            className={`rounded-full px-3 py-1 font-body text-xs font-semibold ${badgeClassName[badgeTone]}`}
-          >
-            {estadoCrmLabel[order.estado_crm]}
-          </span>
+    <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm">
+      <h3 className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">
+        Logística
+      </h3>
+
+      <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div>
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">
+            Ubicación
+          </dt>
+          <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
+            {getLocation(order)}
+          </dd>
         </div>
-
-        <dl className="mt-4">
-          <div>
-            <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              Teléfono
-            </dt>
-            <dd className="mt-1">
-              <EditablePhoneField
-                key={order.id}
-                orderId={order.id}
-                telefono={order.telefono}
-                onPhoneUpdated={onPhoneUpdated}
-              />
-            </dd>
-          </div>
-        </dl>
-      </div>
-
-      <div className="mt-5 border-t border-border pt-4">
-        <p className="font-body text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
-          Pedido
-        </p>
-        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-          <div>
-            <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              Producto
-            </dt>
-            <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
-              {order.nombre_producto ?? "Producto sin nombre"}
-            </dd>
-          </div>
-          <div>
-            <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              Total
-            </dt>
-            <dd className="mt-1 font-mono text-sm font-semibold tabular-nums text-[var(--foreground)]">
-              {formatOrderTotal(order)}
-            </dd>
-          </div>
-          <div>
-            <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              Fecha
-            </dt>
-            <dd className="mt-1 font-mono text-sm tabular-nums text-[var(--foreground)]">
-              {formatOrderDate(order.fecha)}
-            </dd>
-          </div>
-          <div>
-            <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              Número de orden / ID
-            </dt>
-            <dd className="mt-1 flex flex-wrap items-center gap-2">
-              <span className="font-mono text-sm tabular-nums text-[var(--foreground)]">
-                {getOrderIdentifier(order)}
-              </span>
-              <span className="rounded-full bg-bg-page px-2 py-0.5 font-body text-[10px] font-semibold text-[var(--muted-foreground)]">
-                {order.pais}
-              </span>
-            </dd>
-          </div>
-        </dl>
-      </div>
-
-      <div className="mt-5 border-t border-border pt-4">
-        <p className="font-body text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
-          Logística
-        </p>
-        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-          <div>
-            <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              Ubicación
-            </dt>
-            <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
-              {getLocation(order)}
-            </dd>
-          </div>
-          <div>
-            <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              País
-            </dt>
-            <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
-              {order.pais}
-            </dd>
-          </div>
-          <div>
-            <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              Estado Dropi
-            </dt>
-            <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
-              {order.estado_dropi ?? "Sin estado"}
-            </dd>
-          </div>
-          <div>
-            <dt className="font-body text-xs text-[var(--muted-foreground)]">
-              Guía
-            </dt>
-            <dd className="mt-1 font-mono text-sm text-[var(--foreground)]">
-              {order.guia_envio ?? "Sin guía"}
-            </dd>
-          </div>
-        </dl>
-      </div>
+        <div>
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">
+            País
+          </dt>
+          <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
+            {order.pais}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">
+            Transportadora
+          </dt>
+          <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
+            {order.transportadora ?? "Sin transportadora"}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">
+            Guía
+          </dt>
+          <dd className="mt-1 font-mono text-sm text-[var(--foreground)]">
+            {order.guia_envio ?? "Sin guía"}
+          </dd>
+        </div>
+        <div className="sm:col-span-2">
+          <dt className="font-body text-xs text-[var(--muted-foreground)]">
+            Estado Dropi
+          </dt>
+          <dd className="mt-1 font-body text-sm text-[var(--foreground)]">
+            {order.estado_dropi ?? "Sin estado"}
+          </dd>
+        </div>
+      </dl>
     </section>
   );
 }
@@ -764,7 +796,7 @@ function EditablePhoneField({
               size="icon-sm"
               onClick={cancelEditing}
               disabled={isPending}
-              className="rounded-full border-border bg-bg-surface text-[var(--foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+              className="rounded-full border-border bg-[var(--color-bg-surface-elevated)] text-[var(--foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)]"
               aria-label="Cancelar edición del teléfono"
             >
               <X className="h-4 w-4" aria-hidden="true" />
@@ -785,7 +817,7 @@ function EditablePhoneField({
             variant="ghost"
             size="icon-sm"
             onClick={startEditing}
-            className="rounded-full text-[var(--muted-foreground)] hover:bg-bg-page hover:text-[var(--foreground)]"
+            className="rounded-full text-[var(--muted-foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)]"
             aria-label="Editar teléfono"
           >
             <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
@@ -825,7 +857,7 @@ function StatusHistorySection({
   statusHistory: StatusHistory[];
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+    <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm">
       <h3 className="font-display text-base font-semibold text-[var(--foreground)]">
         Historial de estados
       </h3>
@@ -835,7 +867,7 @@ function StatusHistorySection({
           {statusHistory.map((historyItem) => (
             <li
               key={historyItem.id}
-              className="rounded-2xl border border-border bg-bg-page p-3"
+              className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -846,7 +878,10 @@ function StatusHistorySection({
                     {historyItem.transportadora ?? "Sin transportadora"}
                   </p>
                 </div>
-                <time className="shrink-0 font-mono text-xs text-[var(--muted-foreground)]">
+                <time
+                  dateTime={historyItem.registrado_en}
+                  className="shrink-0 font-mono text-xs text-[var(--muted-foreground)]"
+                >
                   {formatDateTime(historyItem.registrado_en)}
                 </time>
               </div>
@@ -869,9 +904,9 @@ function StatusHistorySection({
 
 function TasksSection({ tasks }: { tasks: Task[] }) {
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+    <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-sm">
       <h3 className="font-display text-base font-semibold text-[var(--foreground)]">
-        Tareas
+        Tareas del pedido
       </h3>
 
       {tasks.length > 0 ? (
@@ -879,7 +914,7 @@ function TasksSection({ tasks }: { tasks: Task[] }) {
           {tasks.map((task) => (
             <li
               key={task.id}
-              className="rounded-2xl border border-border bg-bg-page p-3"
+              className="rounded-xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-3"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -924,7 +959,7 @@ function TasksSection({ tasks }: { tasks: Task[] }) {
 
 function ComentariosSection({ comentarios }: { comentarios: Comentario[] }) {
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface p-4 shadow-lg">
+    <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm">
       <h3 className="font-display text-base font-semibold text-[var(--foreground)]">
         Comentarios
       </h3>
@@ -934,13 +969,16 @@ function ComentariosSection({ comentarios }: { comentarios: Comentario[] }) {
           {comentarios.map((comentario) => (
             <li
               key={comentario.id}
-              className="rounded-2xl border border-border bg-bg-page p-3"
+              className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm"
             >
               <div className="flex items-start justify-between gap-3">
                 <p className="font-body text-xs uppercase text-[var(--muted-foreground)]">
                   {comentario.origen}
                 </p>
-                <time className="shrink-0 font-mono text-xs text-[var(--muted-foreground)]">
+                <time
+                  dateTime={comentario.created_at}
+                  className="shrink-0 font-mono text-xs text-[var(--muted-foreground)]"
+                >
                   {formatDateTime(comentario.created_at)}
                 </time>
               </div>

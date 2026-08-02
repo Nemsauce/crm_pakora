@@ -123,7 +123,7 @@ function SuggestionCopyButton({ suggestion }: { suggestion: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-bg-page px-2.5 font-mono text-xs font-semibold tabular-nums text-text-primary outline-none transition-colors hover:bg-bg-surface focus-visible:ring-2 focus-visible:ring-ring"
+      className="inline-flex h-7 items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] px-2.5 font-mono text-xs font-semibold tabular-nums text-text-primary outline-none transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] focus-visible:ring-2 focus-visible:ring-ring"
       aria-label="Copiar sugerencia de IA"
     >
       {copied ? (
@@ -244,11 +244,11 @@ export function AbandonadoRow({ row }: { row: AbandonadoListItem }) {
   }
 
   return (
-    <article className="rounded-2xl border border-border bg-bg-surface p-4 shadow-md">
+    <article className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-bg-page px-3 py-1 font-mono text-xs font-semibold tabular-nums text-text-secondary">
+            <span className="rounded-full bg-[var(--color-bg-surface-subtle)] px-3 py-1 font-mono text-xs font-semibold tabular-nums text-text-secondary">
               {row.codigo_externo}
             </span>
             <span className="rounded-full bg-[var(--color-badge-nuevo-bg)] px-3 py-1 font-mono text-xs font-semibold text-[var(--color-badge-nuevo)]">
@@ -267,7 +267,7 @@ export function AbandonadoRow({ row }: { row: AbandonadoListItem }) {
             disabled={isUpdatingState}
           >
             <Select.Trigger
-              className={`inline-flex h-9 items-center gap-2 rounded-full px-3 font-body text-xs font-semibold outline-none transition-colors focus:ring-2 focus:ring-ring disabled:opacity-60 ${STATUS_TONE[selectedState]}`}
+              className={`inline-flex h-9 items-center gap-2 rounded-full px-3 font-body text-xs font-semibold outline-none transition-colors duration-[var(--motion-duration-hover-focus)] focus:ring-2 focus:ring-ring disabled:opacity-60 ${STATUS_TONE[selectedState]}`}
               aria-label={`Estado de ${customerName}`}
             >
               {isUpdatingState ? (
@@ -282,14 +282,14 @@ export function AbandonadoRow({ row }: { row: AbandonadoListItem }) {
               <Select.Content
                 position="popper"
                 sideOffset={6}
-                className="z-50 overflow-hidden rounded-2xl border border-border bg-bg-surface text-text-primary shadow-md"
+                className="z-[var(--z-index-dropdown-popover)] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] text-text-primary shadow-md"
               >
                 <Select.Viewport className="p-1">
                   {STATUS_OPTIONS.map((option) => (
                     <Select.Item
                       key={option.value}
                       value={option.value}
-                      className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-text-primary outline-none data-[highlighted]:bg-[var(--color-accent)]/10 data-[highlighted]:text-[var(--color-accent)]"
+                      className="relative flex h-8 cursor-default select-none items-center rounded-lg px-2 font-body text-sm text-text-primary outline-none data-[highlighted]:bg-[var(--color-bg-hover)] data-[state=checked]:bg-[var(--color-bg-selected)] data-[state=checked]:font-semibold data-[state=checked]:text-[var(--color-accent)]"
                     >
                       <Select.ItemText>{option.label}</Select.ItemText>
                     </Select.Item>
@@ -314,7 +314,7 @@ export function AbandonadoRow({ row }: { row: AbandonadoListItem }) {
         </div>
       </div>
 
-      <dl className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2 xl:grid-cols-4">
+      <dl className="mt-4 grid gap-3 border-t border-[var(--color-border)]/30 pt-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="flex min-w-0 gap-2">
           <Phone className="mt-0.5 h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
           <div className="min-w-0">
@@ -361,13 +361,13 @@ export function AbandonadoRow({ row }: { row: AbandonadoListItem }) {
         </div>
       </dl>
 
-      <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--color-border)]/30 pt-4">
         <Button
           type="button"
           variant="outline"
           onClick={handleSuggest}
           disabled={isSuggesting}
-          className="h-9 rounded-full border-border bg-bg-surface px-4 text-text-primary hover:bg-bg-page hover:text-text-primary"
+          className="h-9 rounded-full border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] px-4 text-text-primary transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-text-primary"
         >
           {isSuggesting ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -384,7 +384,7 @@ export function AbandonadoRow({ row }: { row: AbandonadoListItem }) {
         {whatsappUrl ? (
           <Button
             asChild
-            className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90"
+            className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-[var(--color-on-accent)] transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90"
           >
             <a href={whatsappUrl} target="_blank" rel="noreferrer">
               <MessageCircle className="h-4 w-4" aria-hidden="true" />
@@ -401,7 +401,7 @@ export function AbandonadoRow({ row }: { row: AbandonadoListItem }) {
 
       <div className="mt-3" aria-live="polite" aria-busy={isSuggesting}>
         {suggestion ? (
-          <div className="rounded-2xl border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5 p-3">
+          <div className="rounded-xl border border-[var(--color-accent)]/30 bg-[var(--color-bg-surface-subtle)] p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-body text-xs font-semibold uppercase text-[var(--color-accent)]">
                 Sugerencia de IA
