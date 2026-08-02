@@ -17,7 +17,9 @@ import {
 } from "@/lib/tasks/processOrderEvent";
 
 const ACTIVE_ORDERS_SELECT =
-  "id,numero_orden,id_orden_shopify,id_orden_dropi,estado_dropi,tarea_generada_para_estado,status_history(registrado_en)";
+  "id,numero_orden,id_orden_shopify,id_orden_dropi,telefono,fecha,total,estado_dropi,tarea_generada_para_estado,status_history(registrado_en)";
+const PHONE_SUFFIX_LENGTH = 10;
+const PHONE_MATCH_MAX_DATE_DIFFERENCE_MS = 3 * 24 * 60 * 60 * 1_000;
 
 type LatestStatusHistory = {
   registrado_en: string | null;
@@ -28,9 +30,20 @@ type SupabaseActiveOrder = {
   numero_orden: string | null;
   id_orden_shopify: string | null;
   id_orden_dropi: number | null;
+  telefono: string | null;
+  fecha: string | null;
+  total: number | null;
   estado_dropi: string | null;
   tarea_generada_para_estado: string | null;
   status_history: LatestStatusHistory[] | LatestStatusHistory | null;
+};
+
+type MatchMethod = "shop_order_id" | "id_orden_dropi" | "phone";
+
+type OrderMatch = {
+  dropiOrder: DropiOrderMX;
+  matchMethod: MatchMethod;
+  supabaseOrder: SupabaseActiveOrder;
 };
 
 type OrderUpdateWithExpectedProfit =
@@ -49,6 +62,221 @@ function normalizeId(value: unknown) {
   return value === null || value === undefined || value === ""
     ? null
     : String(value);
+}
+
+function getPhoneSuffix(value: unknown) {
+  const digits = value === null || value === undefined
+    ? ""
+    : String(value).replace(/\D/g, "");
+
+  return digits.length >= PHONE_SUFFIX_LENGTH
+    ? digits.slice(-PHONE_SUFFIX_LENGTH)
+    : null;
+}
+
+function getDropiInteger(value: unknown) {
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === "string" && value.trim() === "")
+  ) {
+    return null;
+  }
+
+  const number = Number(value);
+
+  return Number.isSafeInteger(number) && number >= 0 ? number : null;
+}
+
+function getFiniteNumber(value: unknown) {
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === "string" && value.trim() === "")
+  ) {
+    return null;
+  }
+
+  const number = Number(value);
+
+  return Number.isFinite(number) ? number : null;
+}
+
+function getCalendarDateEpoch(value: unknown) {
+  if (typeof value !== "string") return null;
+
+  const date = value.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+
+  if (!date) return null;
+
+  const epoch = Date.parse(`${date}T00:00:00.000Z`);
+
+  return Number.isFinite(epoch) ? epoch : null;
+}
+
+function isCorroboratedPhoneMatch(
+  dropiOrder: DropiOrderMX,
+  supabaseOrder: SupabaseActiveOrder,
+) {
+  const dropiTotal = getFiniteNumber(dropiOrder.total_order);
+  const supabaseTotal = getFiniteNumber(supabaseOrder.total);
+  const dropiDate = getCalendarDateEpoch(dropiOrder.created_at);
+  const supabaseDate = getCalendarDateEpoch(supabaseOrder.fecha);
+
+  return (
+    dropiTotal !== null &&
+    supabaseTotal !== null &&
+    Math.abs(dropiTotal - supabaseTotal) < 0.005 &&
+    dropiDate !== null &&
+    supabaseDate !== null &&
+    Math.abs(dropiDate - supabaseDate) <=
+      PHONE_MATCH_MAX_DATE_DIFFERENCE_MS
+  );
+}
+
+function addGroupedValue<T>(
+  groups: Map<string, T[]>,
+  key: string,
+  value: T,
+) {
+  const values = groups.get(key);
+
+  if (values) {
+    values.push(value);
+  } else {
+    groups.set(key, [value]);
+  }
+}
+
+function matchDropiOrders(
+  dropiOrders: DropiOrderMX[],
+  supabaseOrders: SupabaseActiveOrder[],
+) {
+  const matchesByDropiIndex = new Map<number, OrderMatch>();
+  const matchedSupabaseOrderIds = new Set<number>();
+
+  function addMatch(
+    index: number,
+    dropiOrder: DropiOrderMX,
+    supabaseOrder: SupabaseActiveOrder,
+    matchMethod: MatchMethod,
+  ) {
+    matchesByDropiIndex.set(index, {
+      dropiOrder,
+      matchMethod,
+      supabaseOrder,
+    });
+    matchedSupabaseOrderIds.add(supabaseOrder.id);
+  }
+
+  function matchRemainingById(
+    matchMethod: Exclude<MatchMethod, "phone">,
+    getDropiKey: (order: DropiOrderMX) => string | null,
+    getSupabaseKey: (order: SupabaseActiveOrder) => string | null,
+  ) {
+    for (const [index, dropiOrder] of dropiOrders.entries()) {
+      if (matchesByDropiIndex.has(index)) continue;
+
+      const key = getDropiKey(dropiOrder);
+
+      if (!key) continue;
+
+      const supabaseOrder = supabaseOrders.find(
+        (candidate) =>
+          !matchedSupabaseOrderIds.has(candidate.id) &&
+          getSupabaseKey(candidate) === key,
+      );
+
+      if (supabaseOrder) {
+        addMatch(index, dropiOrder, supabaseOrder, matchMethod);
+      }
+    }
+  }
+
+  matchRemainingById(
+    "shop_order_id",
+    (order) => normalizeId(order.shop_order_id),
+    (order) => normalizeId(order.id_orden_shopify),
+  );
+  matchRemainingById(
+    "id_orden_dropi",
+    (order) => normalizeId(order.id),
+    (order) => normalizeId(order.id_orden_dropi),
+  );
+
+  const dropiGroups = new Map<
+    string,
+    Array<{ index: number; order: DropiOrderMX }>
+  >();
+  const supabaseGroups = new Map<string, SupabaseActiveOrder[]>();
+
+  for (const [index, order] of dropiOrders.entries()) {
+    if (
+      matchesByDropiIndex.has(index) ||
+      normalizeId(order.shop_order_id) !== null ||
+      (getDropiInteger(order.id) ?? 0) <= 0
+    ) {
+      continue;
+    }
+
+    const phoneSuffix = getPhoneSuffix(order.phone);
+
+    if (phoneSuffix) {
+      addGroupedValue(dropiGroups, phoneSuffix, { index, order });
+    }
+  }
+
+  for (const order of supabaseOrders) {
+    if (
+      matchedSupabaseOrderIds.has(order.id) ||
+      order.id_orden_dropi !== null ||
+      normalizeId(order.id_orden_shopify) === null
+    ) {
+      continue;
+    }
+
+    const phoneSuffix = getPhoneSuffix(order.telefono);
+
+    if (phoneSuffix) {
+      addGroupedValue(supabaseGroups, phoneSuffix, order);
+    }
+  }
+
+  for (const [phoneSuffix, dropiCandidates] of dropiGroups) {
+    const supabaseCandidates = supabaseGroups.get(phoneSuffix) ?? [];
+
+    if (supabaseCandidates.length === 0) continue;
+
+    if (dropiCandidates.length !== 1 || supabaseCandidates.length !== 1) {
+      console.warn("Skipping ambiguous Dropi phone fallback", {
+        country: "MX",
+        phone_suffix: `***${phoneSuffix.slice(-4)}`,
+        dropi_order_ids: dropiCandidates.map(({ order }) =>
+          normalizeId(order.id),
+        ),
+        supabase_order_ids: supabaseCandidates.map((order) => order.id),
+      });
+      continue;
+    }
+
+    const [{ index, order: dropiOrder }] = dropiCandidates;
+    const [supabaseOrder] = supabaseCandidates;
+
+    if (!isCorroboratedPhoneMatch(dropiOrder, supabaseOrder)) {
+      console.warn("Skipping uncorroborated Dropi phone fallback", {
+        country: "MX",
+        dropi_order_id: normalizeId(dropiOrder.id),
+        supabase_order_id: supabaseOrder.id,
+      });
+      continue;
+    }
+
+    addMatch(index, dropiOrder, supabaseOrder, "phone");
+  }
+
+  return [...matchesByDropiIndex.entries()]
+    .sort(([leftIndex], [rightIndex]) => leftIndex - rightIndex)
+    .map(([, match]) => match);
 }
 
 function getLatestKnownRegisteredAt(supabaseOrder: SupabaseActiveOrder) {
@@ -271,6 +499,31 @@ async function updateDenormalizedFields(
     fecha_entrega_real: estadoNuevo === "ENTREGADO" ? registradoEn : null,
     activo: !isClosedCategory(categoria),
   };
+  const dropiOrderId = getDropiInteger(dropiOrder.id);
+  const totalPedidos = getDropiInteger(dropiOrder.client_total_orders);
+  const pedidosEntregados = getDropiInteger(
+    dropiOrder.client_total_orders_delivered,
+  );
+  const pedidosDevueltos = getDropiInteger(
+    dropiOrder.client_total_orders_returneds,
+  );
+
+  if (dropiOrderId !== null && dropiOrderId > 0) {
+    orderUpdate.id_orden_dropi = dropiOrderId;
+  }
+
+  if (totalPedidos !== null) {
+    orderUpdate.total_pedidos_cliente = totalPedidos;
+  }
+
+  if (pedidosEntregados !== null) {
+    orderUpdate.pedidos_entregados_cliente = pedidosEntregados;
+  }
+
+  if (pedidosDevueltos !== null) {
+    orderUpdate.pedidos_devueltos_cliente = pedidosDevueltos;
+  }
+
   const { error } = await supabase
     .from("orders")
     .update(
@@ -283,34 +536,44 @@ async function updateDenormalizedFields(
   }
 }
 
+async function updateCurrentDropiState(
+  supabaseOrder: SupabaseActiveOrder,
+  estadoDropi: string | null,
+) {
+  if (estadoDropi === null) return;
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("orders")
+    .update({ estado_dropi: estadoDropi })
+    .eq("id", supabaseOrder.id);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function syncDropiOrdersMX(
   dropiOrders: DropiOrderMX[],
 ): Promise<SyncDropiOrdersMXResult> {
   const supabaseOrders = await loadActiveMXOrders();
+  const orderMatches = matchDropiOrders(dropiOrders, supabaseOrders);
+  const phoneFallbackMatches = orderMatches.filter(
+    (match) => match.matchMethod === "phone",
+  ).length;
   const orderUpdateErrors: string[] = [];
-  let ordersMatched = 0;
   let ordersWithMissingHistory = 0;
 
-  for (const dropiOrder of dropiOrders) {
-    const dropiShopOrderId = normalizeId(dropiOrder.shop_order_id);
-    const dropiId = normalizeId(dropiOrder.id);
-    const supabaseOrder = supabaseOrders.find(
-      (candidate) =>
-        (dropiShopOrderId &&
-          normalizeId(candidate.id_orden_shopify) === dropiShopOrderId) ||
-        (dropiId && normalizeId(candidate.id_orden_dropi) === dropiId),
-    );
+  if (phoneFallbackMatches > 0) {
+    console.info("Selected Dropi orders by unique phone fallback", {
+      country: "MX",
+      orders_matched: phoneFallbackMatches,
+    });
+  }
 
-    if (!supabaseOrder) {
-      continue;
-    }
-
-    ordersMatched += 1;
-
+  for (const { dropiOrder, supabaseOrder } of orderMatches) {
     try {
       const estadoNuevo = dropiOrder.status ?? null;
-      const yaProcesado =
-        supabaseOrder.tarea_generada_para_estado === estadoNuevo;
       const history = Array.isArray(dropiOrder.history)
         ? dropiOrder.history
         : [];
@@ -330,9 +593,6 @@ export async function syncDropiOrdersMX(
         transportadora,
         novedad,
       );
-      const debeActualizarEstado = !(
-        supabaseOrder.estado_dropi === estadoNuevo && yaProcesado
-      );
 
       try {
         await updateDenormalizedFields(
@@ -349,10 +609,6 @@ export async function syncDropiOrdersMX(
           "denormalized_fields",
           error,
         );
-      }
-
-      if (!debeActualizarEstado && missingHistory.length === 0) {
-        continue;
       }
 
       if (missingHistory.length > 0) {
@@ -383,6 +639,22 @@ export async function syncDropiOrdersMX(
           );
         }
       }
+
+      if (
+        estadoNuevo !== null &&
+        (missingHistory.length > 0 || supabaseOrder.estado_dropi !== estadoNuevo)
+      ) {
+        try {
+          await updateCurrentDropiState(supabaseOrder, estadoNuevo);
+        } catch (error) {
+          recordOrderError(
+            orderUpdateErrors,
+            supabaseOrder,
+            "current_state",
+            error,
+          );
+        }
+      }
     } catch (error) {
       recordOrderError(
         orderUpdateErrors,
@@ -395,7 +667,7 @@ export async function syncDropiOrdersMX(
 
   return {
     ordersFromDropi: dropiOrders.length,
-    ordersMatched,
+    ordersMatched: orderMatches.length,
     ordersWithMissingHistory,
     orderUpdateErrors,
   };
