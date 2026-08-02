@@ -572,7 +572,7 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
       }`}
     >
       <div
-        className={`relative min-h-[var(--density-row-height-compact)] rounded-xl border bg-[var(--color-bg-surface-elevated)] p-3 transition-[background-color,border-color,box-shadow] duration-[var(--motion-duration-hover-focus)] motion-reduce:transition-none ${
+        className={`relative min-h-[var(--density-row-height-compact)] rounded-xl border bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm transition-[background-color,border-color,box-shadow] duration-[var(--motion-duration-hover-focus)] motion-reduce:transition-none ${
           deadline.isOverdue
             ? "border-l-4 border-l-[var(--color-negative)]"
             : isCompleted
@@ -581,7 +581,7 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
         } ${
           selected
             ? "border-[var(--color-border-selected)] bg-[var(--color-bg-selected)] ring-2 ring-[var(--color-border-selected)] ring-offset-1 ring-offset-[var(--color-bg-surface-base)]"
-            : "border-border"
+            : "border-transparent"
         }`}
       >
         {orderId !== null && !isLeaving ? (
