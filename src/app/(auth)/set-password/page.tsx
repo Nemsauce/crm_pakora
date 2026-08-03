@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { createClient } from "@/lib/supabase/server";
 
 import { setPassword } from "./actions";
@@ -45,20 +46,23 @@ export default async function SetPasswordPage({
 
   if (!hasSession) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-6 py-12 text-[var(--foreground)]">
-        <Card className="w-full max-w-sm rounded-2xl border-border bg-bg-surface shadow-sm">
-          <CardHeader>
-            <CardTitle className="font-display text-2xl text-[var(--foreground)]">
+      <main className="relative flex min-h-screen items-center justify-center bg-[var(--color-bg-surface-base)] px-6 py-12 text-text-primary">
+        <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+          <ThemeToggle />
+        </div>
+        <Card className="w-full max-w-sm rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] shadow-sm ring-0">
+          <CardHeader className="gap-2">
+            <CardTitle className="font-display text-2xl font-semibold text-text-primary">
               Enlace no válido
             </CardTitle>
-            <CardDescription className="font-body text-[var(--muted-foreground)]">
+            <CardDescription className="font-body text-text-secondary">
               El enlace de invitación es inválido o ya expiró.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button
               asChild
-              className="w-full rounded-full bg-gradient-to-r from-accent-from to-accent-to text-bg-surface shadow-sm hover:opacity-90"
+              className="min-h-[var(--density-row-height-compact)] w-full rounded-full bg-gradient-to-r from-accent-from to-accent-to text-[var(--color-on-accent)] shadow-sm transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90"
             >
               <Link href="/login">Ir al login</Link>
             </Button>
@@ -69,25 +73,31 @@ export default async function SetPasswordPage({
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-12 text-[var(--foreground)]">
-      <Card className="w-full max-w-sm rounded-2xl border-border bg-bg-surface shadow-sm">
-        <CardHeader>
-          <CardTitle className="font-display text-2xl text-[var(--foreground)]">
+    <main className="relative flex min-h-screen items-center justify-center bg-[var(--color-bg-surface-base)] px-6 py-12 text-text-primary">
+      <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+        <ThemeToggle />
+      </div>
+      <Card className="w-full max-w-sm rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] shadow-sm ring-0">
+        <CardHeader className="gap-2">
+          <CardTitle className="font-display text-2xl font-semibold text-text-primary">
             Define tu contraseña
           </CardTitle>
-          <CardDescription className="font-body text-[var(--muted-foreground)]">
+          <CardDescription className="font-body text-text-secondary">
             Completa la invitación para entrar al CRM.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form action={setPassword} className="space-y-4">
             {error ? (
-              <p className="rounded-full bg-risk-high-bg px-4 py-2 font-body text-sm text-risk-high">
+              <p className="rounded-xl border border-transparent bg-risk-high-bg px-4 py-3 font-body text-sm text-risk-high">
                 {error}
               </p>
             ) : null}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-[var(--foreground)]">
+              <Label
+                htmlFor="password"
+                className="font-body text-sm font-semibold text-text-primary"
+              >
                 Nueva contraseña
               </Label>
               <Input
@@ -95,7 +105,7 @@ export default async function SetPasswordPage({
                 name="password"
                 type="password"
                 autoComplete="new-password"
-                className="rounded-lg border-border bg-bg-surface text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20"
+                className="h-[var(--density-row-height-compact)] rounded-xl border-border bg-[var(--color-bg-surface-subtle)] px-3 text-text-primary transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] placeholder:text-text-secondary hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20"
                 minLength={8}
                 required
               />
@@ -103,7 +113,7 @@ export default async function SetPasswordPage({
             <div className="space-y-2">
               <Label
                 htmlFor="passwordConfirmation"
-                className="text-[var(--foreground)]"
+                className="font-body text-sm font-semibold text-text-primary"
               >
                 Confirmar contraseña
               </Label>
@@ -112,13 +122,13 @@ export default async function SetPasswordPage({
                 name="passwordConfirmation"
                 type="password"
                 autoComplete="new-password"
-                className="rounded-lg border-border bg-bg-surface text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20"
+                className="h-[var(--density-row-height-compact)] rounded-xl border-border bg-[var(--color-bg-surface-subtle)] px-3 text-text-primary transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] placeholder:text-text-secondary hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20"
                 minLength={8}
                 required
               />
             </div>
             <Button
-              className="w-full rounded-full bg-gradient-to-r from-accent-from to-accent-to text-bg-surface shadow-sm hover:opacity-90"
+              className="min-h-[var(--density-row-height-compact)] w-full rounded-full bg-gradient-to-r from-accent-from to-accent-to text-[var(--color-on-accent)] shadow-sm transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90"
               type="submit"
             >
               Guardar contraseña

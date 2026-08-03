@@ -78,7 +78,7 @@ function ProjectionRow({
         : "text-text-primary";
 
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-border py-3 last:border-b-0">
+    <div className="flex min-h-[var(--density-row-height-compact)] items-center justify-between gap-4 border-b border-border/40 py-2 last:border-b-0">
       <span className="font-body text-sm text-text-secondary">{label}</span>
       <span className={`font-mono text-sm font-semibold tabular-nums ${valueClass}`}>
         {value}
@@ -94,7 +94,7 @@ function SaveImporteButton() {
     <Button
       type="submit"
       disabled={pending}
-      className="h-10 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-bg-surface shadow-md shadow-[var(--color-accent)]/20 hover:opacity-90"
+      className="min-h-[var(--density-row-height-compact)] rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-[var(--color-on-accent)] shadow-md shadow-[var(--color-accent)]/20 transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90 motion-reduce:transition-none"
     >
       {pending ? (
         <>
@@ -146,8 +146,8 @@ export function CampaignProjection({
   }, [importeGastado, values]);
 
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface p-6 shadow-lg">
-      <div className="border-b border-border pb-4">
+    <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-5 shadow-sm sm:p-6">
+      <div>
         <p className="font-body text-xs uppercase text-text-secondary">
           Etapa 2
         </p>
@@ -161,13 +161,16 @@ export function CampaignProjection({
       </div>
 
       {saved ? (
-        <div className="mt-4 rounded-2xl border border-positive/20 bg-positive-bg px-4 py-3 font-body text-sm text-positive">
+        <div className="mt-4 rounded-xl border border-positive/30 bg-positive-bg px-4 py-3 font-body text-sm text-positive shadow-sm">
           Importe gastado guardado correctamente.
         </div>
       ) : null}
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(280px,0.7fr)_minmax(0,1fr)]">
-        <form action={action} className="rounded-2xl border border-border bg-bg-page p-4">
+        <form
+          action={action}
+          className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-sm"
+        >
           <div className="space-y-2">
             <Label
               htmlFor="importe_gastado"
@@ -188,7 +191,7 @@ export function CampaignProjection({
                 step="0.01"
                 value={importeGastado}
                 onChange={(event) => setImporteGastado(event.target.value)}
-                className="h-10 rounded-lg border-border bg-bg-surface pl-8 font-mono tabular-nums text-text-primary placeholder:text-text-secondary focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20"
+                className="min-h-[var(--density-row-height-compact)] rounded-lg border-border bg-[var(--color-bg-surface-elevated)] pl-8 font-mono tabular-nums text-text-primary transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] placeholder:text-text-secondary hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:border-[var(--color-border-selected)] focus-visible:ring-[var(--color-accent)]/20 motion-reduce:transition-none"
                 required
               />
             </div>
@@ -199,7 +202,7 @@ export function CampaignProjection({
           </div>
         </form>
 
-        <div className="rounded-2xl border border-border bg-bg-page px-4">
+        <div className="rounded-xl border border-transparent bg-[var(--color-bg-surface-base)] px-4 shadow-sm">
           <ProjectionRow
             label="Pedidos totales"
             value={formatNumber(projection.pedidosTotales)}

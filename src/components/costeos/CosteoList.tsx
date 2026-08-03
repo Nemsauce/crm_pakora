@@ -146,8 +146,8 @@ export function CosteoList({ costeos, selectedId, pais }: CosteoListProps) {
   }
 
   return (
-    <section className="mt-5 rounded-2xl border border-border bg-bg-surface p-5 shadow-lg">
-      <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
+    <section className="mt-5 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-5 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
             Costeos guardados
@@ -159,10 +159,10 @@ export function CosteoList({ costeos, selectedId, pais }: CosteoListProps) {
         <Link
           href={buildHref(null)}
           onClick={(event) => handleLinkClick(event, selectedId === null)}
-          className={`inline-flex h-9 items-center justify-center rounded-full px-4 font-body text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+          className={`inline-flex min-h-[var(--density-row-height-compact)] items-center justify-center rounded-full px-4 font-body text-sm font-semibold transition-[background-color,border-color,color,opacity,box-shadow] duration-[var(--motion-duration-hover-focus)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none ${
             selectedId
-              ? "border border-border bg-bg-surface text-text-secondary hover:text-text-primary"
-              : "bg-gradient-to-r from-accent-from to-accent-to text-bg-surface shadow-md shadow-[var(--color-accent)]/20 hover:opacity-90"
+              ? "border border-border bg-[var(--color-bg-surface-elevated)] text-text-secondary hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] hover:text-text-primary"
+              : "bg-gradient-to-r from-accent-from to-accent-to text-[var(--color-on-accent)] shadow-md shadow-[var(--color-accent)]/20 hover:opacity-90"
           }`}
         >
           Nuevo costeo
@@ -177,10 +177,10 @@ export function CosteoList({ costeos, selectedId, pais }: CosteoListProps) {
             return (
               <article
                 key={costeo.id}
-                className={`overflow-hidden rounded-2xl border transition-all ${
+                className={`min-h-[var(--density-row-height-comfortable)] overflow-hidden rounded-xl border shadow-sm transition-[background-color,border-color,box-shadow] duration-[var(--motion-duration-hover-focus)] motion-reduce:transition-none ${
                   selected
-                    ? "border-[var(--color-accent)] bg-bg-page shadow-md shadow-[var(--color-accent)]/15"
-                    : "border-border bg-bg-surface shadow-sm hover:bg-bg-page"
+                    ? "border-[var(--color-border-selected)] bg-[var(--color-bg-selected)] ring-1 ring-[var(--color-border-selected)]"
+                    : "border-transparent bg-[var(--color-bg-surface-elevated)] hover:bg-[var(--color-bg-hover)]"
                 }`}
               >
                 <Link
@@ -192,7 +192,7 @@ export function CosteoList({ costeos, selectedId, pais }: CosteoListProps) {
                   <p className="line-clamp-2 font-body text-sm font-semibold text-text-primary">
                     {costeo.nombre_producto || "Producto sin nombre"}
                   </p>
-                  <div className="mt-4 flex items-end justify-between gap-3">
+                  <div className="mt-3 flex items-end justify-between gap-3">
                     <p className="font-mono text-lg font-semibold tabular-nums text-text-primary">
                       {formatMoney(costeo.precio_venta)}
                     </p>
@@ -202,7 +202,7 @@ export function CosteoList({ costeos, selectedId, pais }: CosteoListProps) {
                   </div>
                 </Link>
 
-                <div className="flex flex-wrap gap-2 border-t border-border px-3 py-2">
+                <div className="flex min-h-[var(--density-row-height-compact)] flex-wrap items-center gap-2 border-t border-border/30 bg-[var(--color-bg-surface-subtle)] px-3 py-1.5">
                   <form
                     action={duplicateCosteo.bind(null, costeo.id)}
                     onSubmit={handleDuplicateSubmit}
@@ -223,7 +223,7 @@ export function CosteoList({ costeos, selectedId, pais }: CosteoListProps) {
           })}
         </div>
       ) : (
-        <div className="mt-4 rounded-2xl border border-border bg-bg-page p-4 font-body text-sm text-text-secondary">
+        <div className="mt-4 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 font-body text-sm text-text-secondary shadow-sm">
           {copy.emptyState}
         </div>
       )}
@@ -246,10 +246,10 @@ function CosteoActionButton({
       variant="ghost"
       size="sm"
       disabled={pending}
-      className={`h-8 rounded-full px-3 font-body text-xs disabled:opacity-60 ${
+      className={`h-8 rounded-full px-3 font-body text-xs transition-colors duration-[var(--motion-duration-hover-focus)] motion-reduce:transition-none disabled:opacity-60 ${
         isDelete
           ? "text-risk-high hover:bg-risk-high-bg hover:text-risk-high"
-          : "text-text-secondary hover:bg-bg-page hover:text-text-primary"
+          : "text-text-secondary hover:bg-[var(--color-bg-hover)] hover:text-text-primary"
       }`}
     >
       {pending ? (

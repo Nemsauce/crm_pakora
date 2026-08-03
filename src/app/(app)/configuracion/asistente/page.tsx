@@ -31,8 +31,8 @@ export default async function AssistantSettingsPage({
   const reglas = typeof data?.reglas === "string" ? data.reglas : "";
 
   return (
-    <section className="min-h-screen px-6 py-6 sm:px-8">
-      <div className="border-b border-border pb-4">
+    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-6 py-6 sm:px-8">
+      <div className="border-b border-border/30 pb-4">
         <p className="font-body text-xs uppercase text-text-secondary">
           CONFIGURACIÓN
         </p>
@@ -48,21 +48,21 @@ export default async function AssistantSettingsPage({
       {saved ? (
         <p
           role="status"
-          className="mt-5 rounded-2xl border border-[var(--color-positive)]/30 bg-positive-bg px-4 py-3 font-body text-sm text-positive"
+          className="mt-5 max-w-3xl rounded-xl border border-transparent bg-positive-bg px-4 py-3 font-body text-sm text-positive shadow-sm"
         >
           Reglas guardadas.
         </p>
       ) : null}
 
       <form action={saveAssistantRules} className="mt-6 max-w-3xl">
-        <section className="rounded-2xl border border-border bg-bg-surface p-5 shadow-lg">
+        <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-5 shadow-sm">
           <label
             htmlFor="asistente-whatsapp-reglas"
-            className="font-display text-base font-semibold text-[var(--foreground)]"
+            className="font-display text-base font-semibold text-text-primary"
           >
             Reglas adicionales del negocio
           </label>
-          <p className="mt-2 font-body text-sm text-[var(--muted-foreground)]">
+          <p className="mt-2 font-body text-sm text-text-secondary">
             Escribe instrucciones claras y permanentes para las respuestas.
             Déjalo vacío si no necesitas reglas adicionales.
           </p>
@@ -72,12 +72,12 @@ export default async function AssistantSettingsPage({
             defaultValue={reglas}
             rows={14}
             placeholder="Ej. Si el cliente pregunta por cambios de dirección, indica que revisaremos el caso antes de confirmarlo."
-            className="mt-4 w-full rounded-lg border border-border bg-bg-page px-3 py-2 font-body text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)] focus-visible:border-[var(--color-accent)] focus-visible:ring-3 focus-visible:ring-[var(--color-accent)]/20"
+            className="mt-4 min-h-[var(--density-row-height-comfortable)] w-full rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] px-3 py-3 font-body text-sm text-text-primary outline-none transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] placeholder:text-text-secondary hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:border-[var(--color-accent)] focus-visible:ring-3 focus-visible:ring-[var(--color-accent)]/20"
           />
           <div className="mt-4 flex justify-end">
             <Button
               type="submit"
-              className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90"
+              className="min-h-[var(--density-row-height-compact)] rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 text-[var(--color-on-accent)] transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90"
             >
               Guardar
             </Button>

@@ -178,7 +178,7 @@ function NumericField({
           step={step}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className={`h-10 rounded-lg border-border bg-bg-surface font-mono tabular-nums text-text-primary placeholder:text-text-secondary focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20 ${
+          className={`min-h-[var(--density-row-height-compact)] rounded-xl border-border bg-[var(--color-bg-surface-elevated)] font-mono tabular-nums text-text-primary transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] placeholder:text-text-secondary hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:border-[var(--color-border-selected)] focus-visible:ring-[var(--color-accent)]/20 motion-reduce:transition-none ${
             prefix ? "pl-8" : ""
           } ${suffix ? "pr-10" : ""}`}
           required={required}
@@ -210,7 +210,7 @@ function ResultRow({
         : "text-text-primary";
 
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-border py-3 last:border-b-0">
+    <div className="flex min-h-[var(--density-row-height-comfortable)] items-center justify-between gap-4 border-b border-border/30 py-2.5 last:border-b-0">
       <span className="font-body text-sm text-text-secondary">{label}</span>
       <span className={`font-mono text-sm font-semibold tabular-nums ${valueClass}`}>
         {value}
@@ -227,7 +227,7 @@ function BreakdownRow({
   value: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg bg-bg-page px-3 py-2">
+    <div className="flex min-h-[var(--density-row-height-compact)] items-center justify-between gap-4 rounded-lg bg-[var(--color-bg-surface-subtle)] px-3 py-2">
       <span className="font-body text-xs text-text-secondary">{label}</span>
       <span className="font-mono text-xs font-semibold tabular-nums text-text-primary">
         {value}
@@ -243,7 +243,7 @@ function SubmitButton({ label }: { label: string }) {
     <Button
       type="submit"
       disabled={pending}
-      className="h-10 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-bg-surface shadow-md shadow-[var(--color-accent)]/20 hover:opacity-90"
+      className="min-h-[var(--density-row-height-compact)] rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-[var(--color-on-accent)] shadow-sm transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90 motion-reduce:transition-none"
     >
       {pending ? (
         <>
@@ -618,8 +618,8 @@ export function CosteoCalculator({
       >
         <input type="hidden" name="pais" value={pais} />
         <input type="hidden" name="cpa_manual" value={String(cpaManual)} />
-        <div className="rounded-2xl border border-border bg-bg-surface p-6 shadow-lg">
-          <div className="flex flex-col gap-2 border-b border-border pb-4">
+        <div className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-2 border-b border-border/30 pb-4">
             <p className="font-display text-lg font-semibold text-text-primary">
               {isEditing ? "Editar costeo" : "Calculadora de costeos"}
             </p>
@@ -630,13 +630,13 @@ export function CosteoCalculator({
           </div>
 
           {saved ? (
-            <div className="mt-4 rounded-2xl border border-positive/20 bg-positive-bg px-4 py-3 font-body text-sm text-positive">
+            <div className="mt-4 rounded-xl border border-positive/20 bg-positive-bg px-4 py-3 font-body text-sm text-positive">
               Costeo guardado correctamente.
             </div>
           ) : null}
 
           {showFxToggle ? (
-            <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-border bg-bg-page px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-4 flex min-h-[var(--density-row-height-comfortable)] flex-col gap-3 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-body text-sm font-semibold text-text-primary">
                   Ver importes en COP
@@ -659,14 +659,14 @@ export function CosteoCalculator({
                 aria-checked={fxDisplayEnabled}
                 disabled={fxLoading || Boolean(fxError)}
                 onClick={handleFxToggle}
-                className={`relative h-7 w-12 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`relative h-7 w-12 rounded-full border transition-colors duration-[var(--motion-duration-hover-focus)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none ${
                   fxDisplayEnabled
                     ? "border-[var(--color-accent)] bg-[var(--color-accent)]"
-                    : "border-border bg-bg-surface"
+                    : "border-border bg-[var(--color-bg-surface-subtle)]"
                 }`}
               >
                 <span
-                  className={`absolute top-1/2 size-5 -translate-y-1/2 rounded-full bg-bg-surface shadow-md transition-transform ${
+                  className={`absolute top-1/2 size-5 -translate-y-1/2 rounded-full bg-[var(--color-bg-surface-elevated)] shadow-sm transition-transform duration-[var(--motion-duration-hover-focus)] motion-reduce:transition-none ${
                     fxDisplayEnabled ? "translate-x-5" : "translate-x-1"
                   }`}
                 />
@@ -688,7 +688,7 @@ export function CosteoCalculator({
                 value={nombreProducto}
                 onChange={(event) => setNombreProducto(event.target.value)}
                 placeholder="Nombre del producto"
-                className="h-10 rounded-lg border-border bg-bg-surface font-body text-text-primary placeholder:text-text-secondary focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20"
+                className="min-h-[var(--density-row-height-compact)] rounded-xl border-border bg-[var(--color-bg-surface-elevated)] font-body text-text-primary transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] placeholder:text-text-secondary hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:border-[var(--color-border-selected)] focus-visible:ring-[var(--color-accent)]/20 motion-reduce:transition-none"
                 required
               />
             </div>
@@ -781,7 +781,7 @@ export function CosteoCalculator({
                 <button
                   type="button"
                   onClick={resetCpaAuto}
-                  className="font-body text-xs font-semibold text-[var(--color-accent)] underline-offset-4 hover:underline"
+                  className="rounded-md font-body text-xs font-semibold text-[var(--color-accent)] underline-offset-4 transition-colors duration-[var(--motion-duration-hover-focus)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
                 >
                   Restablecer a objetivo
                 </button>
@@ -804,7 +804,7 @@ export function CosteoCalculator({
                   onChange={(event) =>
                     handleCpaChange(getStoredMoneyInput(event.target.value))
                   }
-                  className="h-10 rounded-lg border-border bg-bg-surface pl-8 font-mono tabular-nums text-text-primary placeholder:text-text-secondary focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20"
+                  className="min-h-[var(--density-row-height-compact)] rounded-xl border-border bg-[var(--color-bg-surface-elevated)] pl-8 font-mono tabular-nums text-text-primary transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] placeholder:text-text-secondary hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:border-[var(--color-border-selected)] focus-visible:ring-[var(--color-accent)]/20 motion-reduce:transition-none"
                   required
                 />
               </div>
@@ -838,8 +838,8 @@ export function CosteoCalculator({
           </div>
         </div>
 
-        <aside className="rounded-2xl border border-border bg-bg-surface p-6 shadow-lg">
-          <div className="border-b border-border pb-4">
+        <aside className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-md sm:p-5">
+          <div className="border-b border-border/30 pb-4">
             <p className="font-display text-lg font-semibold text-text-primary">
               Resultados
             </p>

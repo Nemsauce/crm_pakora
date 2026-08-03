@@ -312,3 +312,10 @@ Pendiente cuando se retome 'notis':
 - Investigación aplicó el mismo lenguaje a consulta puntual, tabs, sugeridos, guardados, `SweetSpotCard` y `SavedProductCard`; búsqueda on-demand, acciones, paginación `Ver más` y tooltip de momentum permanecen intactos.
 - No cambiaron RPCs, argumentos, fórmulas ni las invariantes financieras: recargas/retiros no forman parte de utilidad, dinero en la calle ignora el rango y CO/MX solo se combinan mediante FX explícito.
 - Build de producción, TypeScript y lint completados. Los snapshots live antes/después coincidieron en las cuatro pantallas; lint conserva dos warnings preexistentes fuera de este cambio.
+
+### [Rediseño CRM v5] Costeos, Configuración y Auth — COMPLETADO
+- Costeos CO/MX, calculadora, resultados, proyección, promociones y guardados adoptaron superficies `base/subtle/elevated`, densidad operativa, bordes suavizados y motion básico sin cambiar fórmulas, actions ni estado.
+- Los tabs activos CO/MX reemplazaron `text-white` por `--color-on-accent`: el peor contraste oscuro del gradiente pasó de `1.85:1` a `6.54:1`, superando WCAG AA para texto normal.
+- Se conservaron selección URL, cálculo en vivo, CPA automático/manual, restablecimiento, conversión MXN→COP, guardado de importe, packs 2–10, duplicar/eliminar y las dos protecciones de cambios sin guardar.
+- Configuración conserva la misma query/action de reglas; login y set-password conservan sesión, acciones, errores y restricciones, y ahora exponen el `ThemeToggle` compartido sin añadir registro público ni tocar PKCE/middleware.
+- Build de producción, TypeScript y lint completados. Los costeos reales `NeoCell` (CO) y `Laser` (MX) reprodujeron exactamente el snapshot previo; lint conserva dos warnings preexistentes fuera de este cambio.

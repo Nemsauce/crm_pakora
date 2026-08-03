@@ -190,8 +190,8 @@ export function PromotionsPanel({
   const canAddTier = (quantityTiers.at(-1) ?? 0) < MAX_TIERS;
 
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface p-6 shadow-lg">
-      <div className="border-b border-border pb-4">
+    <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-5 shadow-sm sm:p-6">
+      <div>
         <p className="font-body text-xs uppercase text-text-secondary">
           Promociones
         </p>
@@ -204,7 +204,7 @@ export function PromotionsPanel({
         </p>
       </div>
 
-      <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="mt-5 flex flex-col gap-4 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-sm lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-xs space-y-2">
           <Label
             htmlFor="promocion_ganancia_extra"
@@ -221,7 +221,7 @@ export function PromotionsPanel({
               step="0.01"
               value={gananciaExtraPct}
               onChange={(event) => setGananciaExtraPct(event.target.value)}
-              className="h-10 rounded-lg border-border bg-bg-surface pr-10 font-mono tabular-nums text-text-primary placeholder:text-text-secondary focus-visible:border-[var(--color-accent)] focus-visible:ring-[var(--color-accent)]/20"
+              className="min-h-[var(--density-row-height-compact)] rounded-lg border-border bg-[var(--color-bg-surface-elevated)] pr-10 font-mono tabular-nums text-text-primary transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] placeholder:text-text-secondary hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:border-[var(--color-border-selected)] focus-visible:ring-[var(--color-accent)]/20 motion-reduce:transition-none"
             />
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-body text-sm text-text-secondary">
               %
@@ -234,56 +234,59 @@ export function PromotionsPanel({
           variant="outline"
           onClick={addQuantityTier}
           disabled={!canAddTier}
-          className="h-10 rounded-full border-border bg-bg-surface px-4 font-body font-semibold text-text-primary hover:text-[var(--color-accent)]"
+          className="min-h-[var(--density-row-height-compact)] rounded-full border-border bg-[var(--color-bg-surface-elevated)] px-4 font-body font-semibold text-text-primary transition-[background-color,border-color,color] duration-[var(--motion-duration-hover-focus)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-accent)] motion-reduce:transition-none"
         >
           <Plus className="size-4" aria-hidden="true" />
           Agregar cantidad
         </Button>
       </div>
 
-      <div className="mt-5 overflow-x-auto rounded-2xl border border-border bg-bg-page">
+      <div className="mt-5 overflow-x-auto rounded-xl border border-transparent bg-[var(--color-bg-surface-base)] shadow-sm">
         <table className="min-w-[900px] w-full border-collapse">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="px-4 py-3 text-left font-body text-xs uppercase text-text-secondary">
+          <thead className="bg-[var(--color-bg-surface-subtle)]">
+            <tr className="border-b border-border/40">
+              <th className="h-[var(--density-row-height-compact)] px-4 text-left font-body text-xs uppercase text-text-secondary">
                 Cantidad
               </th>
-              <th className="px-4 py-3 text-left font-body text-xs uppercase text-text-secondary">
+              <th className="h-[var(--density-row-height-compact)] px-4 text-left font-body text-xs uppercase text-text-secondary">
                 Precio total
               </th>
-              <th className="px-4 py-3 text-left font-body text-xs uppercase text-text-secondary">
+              <th className="h-[var(--density-row-height-compact)] px-4 text-left font-body text-xs uppercase text-text-secondary">
                 Precio por unidad
               </th>
-              <th className="px-4 py-3 text-left font-body text-xs uppercase text-text-secondary">
+              <th className="h-[var(--density-row-height-compact)] px-4 text-left font-body text-xs uppercase text-text-secondary">
                 Tu ganancia total
               </th>
-              <th className="px-4 py-3 text-left font-body text-xs uppercase text-text-secondary">
+              <th className="h-[var(--density-row-height-compact)] px-4 text-left font-body text-xs uppercase text-text-secondary">
                 Ahorro del cliente
               </th>
-              <th className="px-4 py-3 text-left font-body text-xs uppercase text-text-secondary">
+              <th className="h-[var(--density-row-height-compact)] px-4 text-left font-body text-xs uppercase text-text-secondary">
                 Ahorro %
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="bg-[var(--color-bg-surface-elevated)]">
             {rows.map((row) => (
-              <tr key={row.cantidad} className="border-b border-border last:border-b-0">
-                <td className="px-4 py-4 font-mono text-sm font-semibold tabular-nums text-text-primary">
+              <tr
+                key={row.cantidad}
+                className="h-[var(--density-row-height-comfortable)] border-b border-border/30 transition-colors duration-[var(--motion-duration-hover-focus)] last:border-b-0 hover:bg-[var(--color-bg-hover)] motion-reduce:transition-none"
+              >
+                <td className="px-4 py-2 font-mono text-sm font-semibold tabular-nums text-text-primary">
                   {row.cantidad}
                 </td>
-                <td className="px-4 py-4 font-mono text-sm font-semibold tabular-nums text-text-primary">
+                <td className="px-4 py-2 font-mono text-sm font-semibold tabular-nums text-text-primary">
                   {formatMoney(moneyFormatter, row.precioTotalPromo)}
                 </td>
-                <td className="px-4 py-4 font-mono text-sm font-semibold tabular-nums text-text-primary">
+                <td className="px-4 py-2 font-mono text-sm font-semibold tabular-nums text-text-primary">
                   {formatMoney(moneyFormatter, row.precioPorUnidad)}
                 </td>
-                <td className="px-4 py-4 font-mono text-sm font-semibold tabular-nums text-positive">
+                <td className="px-4 py-2 font-mono text-sm font-semibold tabular-nums text-positive">
                   {formatMoney(moneyFormatter, row.utilidadTotal)}
                 </td>
-                <td className="px-4 py-4 font-mono text-sm font-semibold tabular-nums text-text-primary">
+                <td className="px-4 py-2 font-mono text-sm font-semibold tabular-nums text-text-primary">
                   {formatMoney(moneyFormatter, row.ahorroCliente)}
                 </td>
-                <td className="px-4 py-4 font-mono text-sm font-semibold tabular-nums text-text-primary">
+                <td className="px-4 py-2 font-mono text-sm font-semibold tabular-nums text-text-primary">
                   {formatSavingsPercent(row.ahorroClientePct)}
                 </td>
               </tr>

@@ -114,8 +114,8 @@ export default async function CosteosColombiaPage({
   }));
 
   return (
-    <section className="min-h-screen px-6 py-6 sm:px-8">
-      <div className="border-b border-border pb-4">
+    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+      <div className="border-b border-border/30 pb-4">
         <p className="font-body text-xs uppercase text-text-secondary">
           COSTEOS
         </p>
@@ -127,16 +127,19 @@ export default async function CosteosColombiaPage({
         </p>
       </div>
 
-      <nav className="mt-5 flex gap-2" aria-label="Países de costeos">
+      <nav
+        className="mt-5 inline-flex gap-1 rounded-xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-1 shadow-sm"
+        aria-label="Países de costeos"
+      >
         {tabs.map((tab) => (
           <Link
             key={tab.href}
             href={tab.href}
             aria-current={tab.active ? "page" : undefined}
-            className={`rounded-full px-4 py-2 font-body text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`inline-flex min-h-[var(--density-row-height-compact)] items-center rounded-lg px-4 py-2 font-body text-sm transition-[background-color,color,box-shadow] duration-[var(--motion-duration-hover-focus)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none ${
               tab.active
-                ? "bg-gradient-to-r from-accent-from to-accent-to font-semibold text-white shadow-md shadow-[var(--color-accent)]/20"
-                : "border border-border bg-bg-surface font-medium text-text-secondary hover:text-text-primary"
+                ? "bg-gradient-to-r from-accent-from to-accent-to font-semibold text-[var(--color-on-accent)] shadow-sm"
+                : "font-medium text-text-secondary hover:bg-[var(--color-bg-hover)] hover:text-text-primary"
             }`}
           >
             {tab.label}
