@@ -1,18 +1,40 @@
 "use client";
 
 import {
+  BarChart3,
   Calculator,
   Bell,
+  CalendarDays,
+  ChevronDown,
   ClipboardList,
-  LayoutDashboard,
+  DollarSign,
   ListTodo,
+  Search,
   Settings,
+  Users,
   UsersRound,
+  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const navItems = [
+type NavigationItem = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+};
+
+const primaryNavItems = [
+  {
+    label: "Hoy",
+    href: "/hoy",
+    icon: CalendarDays,
+  },
+  {
+    label: "Tareas",
+    href: "/tareas",
+    icon: ListTodo,
+  },
   {
     label: "Pedidos",
     href: "/pedidos",
@@ -24,9 +46,9 @@ const navItems = [
     icon: UsersRound,
   },
   {
-    label: "Tareas",
-    href: "/tareas",
-    icon: ListTodo,
+    label: "Finanzas",
+    href: "/command-center/finanzas",
+    icon: DollarSign,
   },
   {
     label: "Alertas",
@@ -34,16 +56,34 @@ const navItems = [
     icon: Bell,
   },
   {
+    label: "Configuración",
+    href: "/configuracion/asistente",
+    icon: Settings,
+  },
+] as const satisfies readonly NavigationItem[];
+
+const toolNavItems = [
+  {
     label: "Costeos",
     href: "/costeos",
     icon: Calculator,
   },
   {
-    label: "Torre de control",
-    href: "/command-center",
-    icon: LayoutDashboard,
+    label: "Métricas",
+    href: "/command-center/metricas",
+    icon: BarChart3,
   },
-] as const;
+  {
+    label: "Investigación",
+    href: "/command-center/investigacion",
+    icon: Search,
+  },
+  {
+    label: "Productividad",
+    href: "/command-center/productividad",
+    icon: Users,
+  },
+] as const satisfies readonly NavigationItem[];
 
 function isCurrentPath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -95,8 +135,37 @@ function PakoraLogoMark() {
   );
 }
 
+function SidebarLink({
+  item,
+  pathname,
+}: {
+  item: NavigationItem;
+  pathname: string;
+}) {
+  const Icon = item.icon;
+  const isActive = isCurrentPath(pathname, item.href);
+
+  return (
+    <Link
+      href={item.href}
+      aria-current={isActive ? "page" : undefined}
+      className={`flex h-10 items-center gap-3 rounded-2xl px-3 font-body text-sm outline-none transition-all focus-visible:ring-2 focus-visible:ring-ring ${
+        isActive
+          ? "border border-[var(--color-accent)]/15 bg-gradient-to-r from-accent-from/15 to-accent-to/25 font-semibold text-[var(--color-accent)] shadow-md shadow-[var(--color-accent)]/10 hover:from-accent-from/20 hover:to-accent-to/30 dark:border-[var(--color-accent)]/40 dark:from-accent-from/20 dark:to-accent-to/10 dark:shadow-lg dark:shadow-[var(--color-accent)]/25 dark:hover:from-accent-from/25 dark:hover:to-accent-to/15"
+          : "font-medium text-[var(--muted-foreground)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)]"
+      }`}
+    >
+      <Icon className="h-4 w-4" aria-hidden="true" />
+      <span>{item.label}</span>
+    </Link>
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
+  const hasActiveTool = toolNavItems.some((item) =>
+    isCurrentPath(pathname, item.href),
+  );
 
   return (
     <aside className="flex h-full w-full border-b border-border bg-bg-surface text-[var(--foreground)] lg:w-72 lg:border-b-0 lg:border-r">
@@ -115,48 +184,59 @@ export function Sidebar() {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-4" aria-label="Principal">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = isCurrentPath(pathname, item.href);
+        <nav
+          className="flex-1 overflow-y-auto px-3 py-4"
+          aria-label="Principal"
+        >
+          <div className="space-y-1">
+            {primaryNavItems.map((item) => (
+              <SidebarLink key={item.href} item={item} pathname={pathname} />
+            ))}
+          </div>
 
-            return (
+          <div className="mt-5 hidden border-t border-border/40 pt-4 lg:block">
+            <div className="mb-2 flex items-center justify-between gap-2 px-3">
+              <p className="font-body text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+                Más / Herramientas
+              </p>
               <Link
-                key={item.href}
-                href={item.href}
-                aria-current={isActive ? "page" : undefined}
-                className={`flex h-10 items-center gap-3 rounded-2xl px-3 font-body text-sm outline-none transition-all focus-visible:ring-2 focus-visible:ring-ring ${
-                  isActive
-                    ? "border border-[var(--color-accent)]/15 bg-gradient-to-r from-accent-from/15 to-accent-to/25 font-semibold text-[var(--color-accent)] shadow-md shadow-[var(--color-accent)]/10 hover:from-accent-from/20 hover:to-accent-to/30 dark:border-[var(--color-accent)]/40 dark:from-accent-from/20 dark:to-accent-to/10 dark:shadow-lg dark:shadow-[var(--color-accent)]/25 dark:hover:from-accent-from/25 dark:hover:to-accent-to/15"
-                    : "font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                }`}
+                href="/command-center"
+                className="font-body text-[11px] font-semibold text-[var(--color-accent)] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <Icon className="h-4 w-4" aria-hidden="true" />
-                <span>{item.label}</span>
+                Ver todas
               </Link>
-            );
-          })}
+            </div>
+            <div className="space-y-1">
+              {toolNavItems.map((item) => (
+                <SidebarLink key={item.href} item={item} pathname={pathname} />
+              ))}
+            </div>
+          </div>
 
-        </nav>
-
-        <div className="border-t border-border px-3 py-4">
-          <Link
-            href="/configuracion/asistente"
-            aria-current={
-              isCurrentPath(pathname, "/configuracion/asistente")
-                ? "page"
-                : undefined
-            }
-            className={`flex h-10 items-center gap-3 rounded-2xl px-3 font-body text-sm outline-none transition-all focus-visible:ring-2 focus-visible:ring-ring ${
-              isCurrentPath(pathname, "/configuracion/asistente")
-                ? "border border-[var(--color-accent)]/15 bg-gradient-to-r from-accent-from/15 to-accent-to/25 font-semibold text-[var(--color-accent)] shadow-md shadow-[var(--color-accent)]/10 hover:from-accent-from/20 hover:to-accent-to/30 dark:border-[var(--color-accent)]/40 dark:from-accent-from/20 dark:to-accent-to/10 dark:shadow-lg dark:shadow-[var(--color-accent)]/25 dark:hover:from-accent-from/25 dark:hover:to-accent-to/15"
-                : "font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-            }`}
+          <details
+            className="group mt-5 border-t border-border/40 pt-3 lg:hidden"
+            open={hasActiveTool}
           >
-            <Settings className="h-4 w-4" aria-hidden="true" />
-            <span>Configuración</span>
-          </Link>
-        </div>
+            <summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-2xl px-3 font-body text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted-foreground)] outline-none hover:bg-[var(--color-bg-hover)] focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+              Más / Herramientas
+              <ChevronDown
+                className="size-4 transition-transform duration-[var(--motion-duration-hover-focus)] group-open:rotate-180 motion-reduce:transition-none"
+                aria-hidden="true"
+              />
+            </summary>
+            <div className="mt-1 space-y-1">
+              {toolNavItems.map((item) => (
+                <SidebarLink key={item.href} item={item} pathname={pathname} />
+              ))}
+              <Link
+                href="/command-center"
+                className="flex h-9 items-center px-3 font-body text-xs font-semibold text-[var(--color-accent)] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Ver todas las herramientas
+              </Link>
+            </div>
+          </details>
+        </nav>
       </div>
     </aside>
   );

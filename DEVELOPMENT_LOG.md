@@ -298,3 +298,10 @@ Pendiente cuando se retome 'notis':
 - Las categorías no agregan estado ni cambian el schema: Críticas agrupa `tarea_vencida` y `pedido_devolucion`; Acción requerida agrupa `tarea_urgente_asignada`, `novedad` y `pedido_en_reparto`; Actividad agrupa `pedido_nuevo` y `pedido_entregado`.
 - La página reutiliza las Server Actions existentes para marcar individualmente como leída/no leída y para marcar todas como leídas; abrir una alerta conserva la navegación a la tarea o pedido y marca como leída primero cuando corresponde.
 - La campanita sigue siendo el vistazo rápido en tiempo real con su límite de 20, contador y badge de título sin cambios; su enlace final ahora lleva a `/alertas`. Sidebar incorpora Alertas como sección propia.
+
+### [Rediseño CRM v5] Hoy y navegación final — COMPLETADO
+- Se agregó `/hoy` como briefing operativo diario calculado en `America/Bogota`: vencidas, tareas con fecha de hoy, pedidos recibidos, riesgo alto activo/no final, alertas no leídas del usuario, dinero en la calle por país y la próxima cola con el orden existente de `/tareas`.
+- El CTA `Resolver siguiente` reutiliza exactamente `detalle` + `tareaId`; la pantalla hace explícito que vencidas y tareas con fecha de hoy pueden solaparse y nunca mezcla COP con MXN.
+- El riesgo alto se clasifica con el mismo lookup `estado + transportadora` y fallback sin transportadora de Pedidos, excluyendo `entregado`, `cancelado` y `devolucion`; no se agregó scoring ni regla operativa nueva.
+- Sidebar quedó en su estructura final: Hoy, Tareas, Pedidos, Clientes, Finanzas, Alertas y Configuración como principales; Costeos, Métricas, Investigación y Productividad bajo `Más / Herramientas`, conservando todas las rutas anteriores.
+- La raíz `/` ahora redirige a `/hoy`. Build de producción, TypeScript y lint completados; lint conserva dos warnings preexistentes fuera de este cambio.
