@@ -150,7 +150,7 @@ export async function ProductivityTable({
 
   if (summaries.length === 0) {
     return (
-      <div className="rounded-2xl border border-border bg-bg-surface p-8 text-center font-body text-sm text-text-secondary shadow-lg">
+      <div className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-8 text-center font-body text-sm text-text-secondary shadow-sm">
         Sin tareas completadas en este rango.
       </div>
     );
@@ -169,7 +169,7 @@ export async function ProductivityTable({
   }
 
   return (
-    <ul className="grid gap-3" aria-label="Productividad por usuario">
+    <ul className="grid gap-2" aria-label="Productividad por usuario">
       {summaries.map((summary) => {
         const visibleTaskTypes = taskTypeOrder.filter(
           (taskType) => summary.countsByType[taskType] > 0,
@@ -178,56 +178,52 @@ export async function ProductivityTable({
         return (
           <li
             key={summary.usuario}
-            className="rounded-2xl border border-border bg-bg-surface p-4 text-text-primary shadow-lg sm:p-5"
+            className="min-h-[var(--density-row-height-compact)] rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 text-text-primary shadow-sm sm:p-4"
           >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(9rem,0.55fr)_minmax(11rem,0.7fr)] lg:items-center">
               <div className="min-w-0">
                 <p className="font-body text-xs uppercase text-text-secondary">
                   Usuario
                 </p>
-                <h3 className="mt-2 break-words font-display text-lg font-semibold text-text-primary [overflow-wrap:anywhere]">
+                <h3 className="mt-1 break-words font-display text-base font-semibold text-text-primary [overflow-wrap:anywhere]">
                   {getDisplayName(profiles ?? [], summary.usuario)}
                 </h3>
               </div>
 
-              <div className="grid shrink-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:min-w-[22rem]">
-                <div className="rounded-2xl bg-bg-page p-3">
-                  <p className="font-body text-xs text-text-secondary">
-                    Tareas completadas
-                  </p>
-                  <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-text-primary">
-                    {countFormatter.format(summary.total)}
-                  </p>
-                </div>
+              <div className="rounded-lg bg-[var(--color-bg-surface-subtle)] px-3 py-2.5">
+                <p className="font-body text-xs text-text-secondary">
+                  Tareas completadas
+                </p>
+                <p className="mt-0.5 font-mono text-xl font-semibold tabular-nums text-text-primary">
+                  {countFormatter.format(summary.total)}
+                </p>
+              </div>
 
-                <div className="rounded-2xl bg-bg-page p-3">
-                  <p className="font-body text-xs text-text-secondary">
-                    Tiempo promedio
+              <div className="rounded-lg bg-[var(--color-bg-surface-subtle)] px-3 py-2.5">
+                <p className="font-body text-xs text-text-secondary">
+                  Tiempo promedio
+                </p>
+                {summary.averageHandlingMinutes === null ? (
+                  <p className="mt-1 font-body text-sm font-semibold text-text-secondary">
+                    Sin datos aún
                   </p>
-                  {summary.averageHandlingMinutes === null ? (
-                    <p className="mt-2 font-body text-sm font-semibold text-text-secondary">
-                      Sin datos aún
-                    </p>
-                  ) : (
-                    <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-text-primary">
-                      {minutesFormatter.format(
-                        summary.averageHandlingMinutes,
-                      )}{" "}
-                      min
-                    </p>
-                  )}
-                </div>
+                ) : (
+                  <p className="mt-0.5 font-mono text-xl font-semibold tabular-nums text-text-primary">
+                    {minutesFormatter.format(summary.averageHandlingMinutes)}{" "}
+                    min
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
+            <div className="mt-3 flex flex-wrap gap-1.5 rounded-lg bg-[var(--color-bg-surface-subtle)] p-2.5">
               {visibleTaskTypes.map((taskType) => {
                 const details = taskTypeDetails[taskType];
 
                 return (
                   <span
                     key={taskType}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-body text-xs font-semibold ${details.className}`}
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-body text-xs font-semibold ${details.className}`}
                   >
                     <span>{details.label}:</span>
                     <span className="font-mono tabular-nums">

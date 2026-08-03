@@ -83,7 +83,7 @@ function CountryStreetMoneyCard({
 
   return (
     <section
-      className="min-w-0 rounded-2xl border border-border bg-bg-surface p-5 text-text-primary shadow-lg"
+      className="min-w-0 rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-5 text-text-primary shadow-sm"
       aria-labelledby={headingId}
     >
       <div>
@@ -107,20 +107,20 @@ function CountryStreetMoneyCard({
 
       {sortedRows.length > 0 ? (
         <div className="mt-5">
-          <div className="hidden grid-cols-[minmax(0,1fr)_9.5rem_10.5rem] gap-4 border-b border-border pb-3 font-body text-xs uppercase text-text-secondary sm:grid">
+          <div className="hidden grid-cols-[minmax(0,1fr)_9.5rem_10.5rem] gap-4 rounded-lg bg-[var(--color-bg-surface-subtle)] px-3 py-2 font-body text-xs uppercase text-text-secondary sm:grid">
             <p>Producto</p>
             <p className="text-right">Pedidos por entregar</p>
             <p className="text-right">Dinero en la calle</p>
           </div>
 
           <ul
-            className="divide-y divide-border"
+            className="mt-1 divide-y divide-border/40"
             aria-label={`Pedidos y dinero en la calle por producto en ${countryLabel[pais]}`}
           >
             {sortedRows.map((row) => (
               <li
                 key={`${row.pais}-${row.nombre_producto}`}
-                className="py-4 first:pt-0 sm:grid sm:grid-cols-[minmax(0,1fr)_9.5rem_10.5rem] sm:items-center sm:gap-4 sm:first:pt-4"
+                className="min-h-[var(--density-row-height-compact)] px-3 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_9.5rem_10.5rem] sm:items-center sm:gap-4"
               >
                 <p className="min-w-0 break-words font-body text-sm font-medium text-text-primary">
                   {row.nombre_producto}
@@ -151,7 +151,7 @@ function CountryStreetMoneyCard({
           </ul>
         </div>
       ) : (
-        <div className="mt-5 rounded-2xl bg-bg-page p-4 font-body text-sm text-text-secondary">
+        <div className="mt-5 rounded-xl bg-[var(--color-bg-surface-subtle)] p-4 font-body text-sm text-text-secondary">
           Sin pedidos en tránsito pendientes de entrega.
         </div>
       )}

@@ -38,7 +38,7 @@ export function CapitalMovementsCard({
   hasMovements,
 }: CapitalMovementsCardProps) {
   return (
-    <article className="rounded-2xl border border-border bg-bg-surface p-5 text-text-primary shadow-lg">
+    <article className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-5 text-text-primary shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
@@ -57,7 +57,7 @@ export function CapitalMovementsCard({
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl bg-risk-low-bg p-4">
+        <div className="min-h-[var(--density-row-height-comfortable)] rounded-xl bg-risk-low-bg p-4">
           <p className="font-body text-xs font-medium text-risk-low">
             Recargas a la billetera
           </p>
@@ -65,7 +65,7 @@ export function CapitalMovementsCard({
             {formatCurrency(pais, recargas)}
           </p>
         </div>
-        <div className="rounded-2xl bg-risk-high-bg p-4">
+        <div className="min-h-[var(--density-row-height-comfortable)] rounded-xl bg-risk-high-bg p-4">
           <p className="font-body text-xs font-medium text-risk-high">
             Retiros de la billetera
           </p>

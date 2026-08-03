@@ -133,8 +133,8 @@ export default async function CommandCenterProductividadPage({
   }
 
   return (
-    <section className="min-h-screen px-6 py-6 sm:px-8">
-      <div className="flex flex-col gap-4 border-b border-border pb-5 xl:flex-row xl:items-end xl:justify-between">
+    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+      <header className="flex flex-col gap-4 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-5 shadow-sm xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
             Torre de control
@@ -155,9 +155,12 @@ export default async function CommandCenterProductividadPage({
           dateFrom={dateFrom}
           dateTo={dateTo}
         />
-      </div>
+      </header>
 
-      <section className="mt-6" aria-labelledby="team-productivity-heading">
+      <section
+        className="mt-5 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm sm:p-5"
+        aria-labelledby="team-productivity-heading"
+      >
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
             Equipo
@@ -174,7 +177,7 @@ export default async function CommandCenterProductividadPage({
           </p>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-5">
           <ProductivityTable
             completionRows={completionsResult.data ?? []}
             handlingRows={handlingTimeResult.data ?? []}

@@ -15,24 +15,27 @@ export default async function CommandCenterMetricasPage() {
   const productRows = productSummaryData ?? [];
 
   return (
-    <section className="min-h-screen px-6 py-6 sm:px-8">
-      <div className="border-b border-border pb-5">
-        <p className="font-body text-xs uppercase text-text-secondary">
-          Torre de control
-        </p>
-        <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
-          Métricas
-        </h1>
-        <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
-          Pedidos por producto, estados y porcentajes sobre el histórico
-          completo.
-        </p>
-        <p className="mt-2 font-body text-sm text-text-secondary">
+    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+      <header className="flex flex-col gap-4 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-5 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="font-body text-xs uppercase text-text-secondary">
+            Torre de control
+          </p>
+          <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
+            Métricas
+          </h1>
+          <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
+            Pedidos por producto, estados y porcentajes sobre el histórico
+            completo.
+          </p>
+        </div>
+
+        <p className="w-fit rounded-full bg-[var(--color-bg-surface-elevated)] px-3 py-2 font-body text-xs font-semibold text-text-secondary shadow-sm">
           Histórico completo, todos los períodos.
         </p>
-      </div>
+      </header>
 
-      <div className="mt-6">
+      <div className="mt-5">
         <ProductSummaryTable rows={productRows} />
       </div>
     </section>

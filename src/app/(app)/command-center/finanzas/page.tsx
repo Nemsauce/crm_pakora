@@ -289,8 +289,8 @@ export default async function CommandCenterFinanzasPage({
   } satisfies Record<Pais, ReturnType<typeof getCountryTotals>>;
 
   return (
-    <section className="min-h-screen px-6 py-6 sm:px-8">
-      <div className="flex flex-col gap-4 border-b border-border pb-5 xl:flex-row xl:items-end xl:justify-between">
+    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-6 py-6 sm:px-8">
+      <div className="flex flex-col gap-4 border-b border-border/40 pb-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
             Torre de control
@@ -345,6 +345,48 @@ export default async function CommandCenterFinanzasPage({
             refreshKey={snapshotUpdatedAt}
           />
         </div>
+      </section>
+
+      <section className="mt-8" aria-labelledby="street-money-heading">
+        <div>
+          <p className="font-body text-xs uppercase text-text-secondary">
+            Foto actual, sin filtro de fechas
+          </p>
+          <h2
+            id="street-money-heading"
+            className="mt-2 font-display text-xl font-semibold text-text-primary"
+          >
+            Dinero en la calle
+          </h2>
+          <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
+            Ganancia esperada de los pedidos confirmados que siguen en tránsito.
+            Este snapshot no cambia con el rango de fechas seleccionado.
+          </p>
+        </div>
+
+        <div className="mt-4">
+          <DineroEnLaCalleTable
+            rows={dineroEnLaCalleRows}
+            updatedAt={snapshotUpdatedAt}
+          />
+        </div>
+      </section>
+
+      <section className="mt-8" aria-labelledby="profit-trend-heading">
+        <div>
+          <p className="font-body text-xs uppercase text-text-secondary">
+            Evolución del período
+          </p>
+          <h2
+            id="profit-trend-heading"
+            className="mt-2 font-display text-xl font-semibold text-text-primary"
+          >
+            Tendencia por país
+          </h2>
+          <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
+            Utilidad neta diaria y comparación contra el período anterior.
+          </p>
+        </div>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-2">
           {countries.map((pais) => {
@@ -378,28 +420,31 @@ export default async function CommandCenterFinanzasPage({
         </div>
       </section>
 
-      <section className="mt-8" aria-labelledby="street-money-heading">
+      <section className="mt-8" aria-labelledby="movement-breakdown-heading">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
-            Foto actual, sin filtro de fechas
+            Composición del período
           </p>
           <h2
-            id="street-money-heading"
+            id="movement-breakdown-heading"
             className="mt-2 font-display text-xl font-semibold text-text-primary"
           >
-            Dinero en la calle
+            Detalle por categoría
           </h2>
           <p className="mt-2 max-w-2xl font-body text-sm text-text-secondary">
-            Ganancia esperada de los pedidos confirmados que siguen en tránsito.
-            Este snapshot no cambia con el rango de fechas seleccionado.
+            Entradas, salidas y resultado neto agrupados por el catálogo
+            existente.
           </p>
         </div>
 
-        <div className="mt-4">
-          <DineroEnLaCalleTable
-            rows={dineroEnLaCalleRows}
-            updatedAt={snapshotUpdatedAt}
-          />
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+          {countries.map((pais) => (
+            <MovementBreakdownTable
+              key={pais}
+              pais={pais}
+              rows={getRowsByCountry(summaryRows, pais)}
+            />
+          ))}
         </div>
       </section>
 
@@ -438,16 +483,6 @@ export default async function CommandCenterFinanzasPage({
           })}
         </div>
       </section>
-
-      <div className="mt-8 grid gap-4 xl:grid-cols-2">
-        {countries.map((pais) => (
-          <MovementBreakdownTable
-            key={pais}
-            pais={pais}
-            rows={getRowsByCountry(summaryRows, pais)}
-          />
-        ))}
-      </div>
     </section>
   );
 }

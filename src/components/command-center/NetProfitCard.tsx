@@ -72,7 +72,7 @@ const exchangeRateFormatter = new Intl.NumberFormat("es-CO", {
 function ComparisonBadge({ value }: { value: number | null }) {
   if (value === null) {
     return (
-      <span className="rounded-full bg-bg-page px-3 py-1 font-body text-xs font-semibold text-text-secondary">
+      <span className="rounded-full bg-[var(--color-bg-surface-subtle)] px-3 py-1 font-body text-xs font-semibold text-text-secondary">
         Sin base anterior
       </span>
     );
@@ -83,7 +83,7 @@ function ComparisonBadge({ value }: { value: number | null }) {
       ? "bg-risk-low-bg text-risk-low"
       : value < 0
         ? "bg-risk-high-bg text-risk-high"
-        : "bg-bg-page text-text-secondary";
+        : "bg-[var(--color-bg-surface-subtle)] text-text-secondary";
   const prefix = value > 0 ? "+" : "";
 
   return (
@@ -178,7 +178,7 @@ export function CombinedNetProfitCard({
     : null;
 
   return (
-    <article className="rounded-2xl border border-border bg-bg-surface p-5 text-text-primary shadow-xl">
+    <article className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-5 text-text-primary shadow-md">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
@@ -213,13 +213,13 @@ export function CombinedNetProfitCard({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[28rem]">
-          <div className="rounded-2xl bg-bg-page p-3">
+          <div className="rounded-xl bg-[var(--color-bg-surface-subtle)] p-3">
             <p className="font-body text-xs text-text-secondary">Colombia</p>
             <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-text-primary">
               {formatCurrency("CO", coNet)}
             </p>
           </div>
-          <div className="rounded-2xl bg-bg-page p-3">
+          <div className="rounded-xl bg-[var(--color-bg-surface-subtle)] p-3">
             <p className="font-body text-xs text-text-secondary">México</p>
             <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-text-primary">
               {formatCurrency("MX", mxNet)}
@@ -236,7 +236,7 @@ export function CombinedNetProfitCard({
       </div>
 
       {hasMxMovements && exchangeRate ? (
-        <p className="mt-4 border-t border-border pt-3 font-body text-xs text-text-secondary">
+        <p className="mt-4 border-t border-border/40 pt-3 font-body text-xs text-text-secondary">
           Conversión aplicada: 1 MXN = {" "}
           <span className="font-mono tabular-nums">
             {exchangeRateFormatter.format(exchangeRate.rate)} COP
@@ -263,7 +263,7 @@ export function NetProfitCard({
   const gradientId = `daily-operating-profit-${pais}`;
 
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-border bg-bg-surface p-5 text-text-primary shadow-xl">
+    <article className="relative overflow-hidden rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-5 text-text-primary shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
@@ -311,7 +311,7 @@ export function NetProfitCard({
           </div>
         </div>
       ) : (
-        <div className="mt-6 rounded-2xl bg-bg-page p-4">
+        <div className="mt-6 rounded-xl bg-[var(--color-bg-surface-subtle)] p-4">
           <div className="flex flex-wrap items-end gap-3">
             <div>
               <p className="font-body text-sm font-medium text-text-primary">
@@ -326,7 +326,7 @@ export function NetProfitCard({
         </div>
       )}
 
-      <div className="mt-5 border-t border-border pt-3">
+      <div className="mt-5 border-t border-border/40 pt-3">
         <p className="sr-only">Tendencia diaria del período seleccionado</p>
         {trendData.length > 0 ? (
           <div
@@ -350,12 +350,12 @@ export function NetProfitCard({
                   >
                     <stop
                       offset="0%"
-                      stopColor="var(--color-accent)"
+                      stopColor="var(--color-chart-net)"
                       stopOpacity={0.36}
                     />
                     <stop
                       offset="100%"
-                      stopColor="var(--color-accent)"
+                      stopColor="var(--color-chart-net)"
                       stopOpacity={0.02}
                     />
                   </linearGradient>
@@ -364,7 +364,7 @@ export function NetProfitCard({
                   type="linear"
                   dataKey="neto"
                   name="Neto diario"
-                  stroke="var(--color-accent)"
+                  stroke="var(--color-chart-net)"
                   strokeWidth={2}
                   fill={`url(#${gradientId})`}
                   isAnimationActive={false}

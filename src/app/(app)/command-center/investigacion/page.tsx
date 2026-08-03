@@ -159,8 +159,8 @@ function InvestigationShell({
   children: React.ReactNode;
 }) {
   return (
-    <section className="min-h-screen px-6 py-6 sm:px-8">
-      <div className="border-b border-border pb-5">
+    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+      <div className="border-b border-border/30 pb-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="font-body text-xs uppercase text-text-secondary">
@@ -183,7 +183,7 @@ function InvestigationShell({
 
         <nav
           aria-label="Vista de investigación"
-          className="mt-5 inline-flex rounded-xl border border-border bg-bg-page p-1"
+          className="mt-5 inline-flex rounded-xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-1 shadow-sm"
         >
           <ViewTab
             href="/command-center/investigacion"
@@ -234,7 +234,7 @@ function ProductLookupSection({
       : "/command-center/investigacion";
 
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface p-5 shadow-lg">
+    <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm sm:p-5">
       <div>
         <p className="font-body text-xs uppercase text-text-secondary">
           Consulta puntual
@@ -264,7 +264,7 @@ function ProductLookupSection({
             maxLength={100}
             inputMode="numeric"
             placeholder="Ej. 2091078"
-            className="h-11 rounded-xl border-border bg-bg-page font-mono tabular-nums text-text-primary"
+            className="h-[var(--density-row-height-compact)] rounded-xl border-border bg-[var(--color-bg-surface-elevated)] font-mono tabular-nums text-text-primary transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)]"
           />
         </label>
         <label className="grid gap-1.5">
@@ -272,7 +272,7 @@ function ProductLookupSection({
           <select
             name="product_country"
             defaultValue={country}
-            className="h-11 rounded-xl border border-border bg-bg-page px-3 font-body text-sm text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-[var(--density-row-height-compact)] rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] px-3 font-body text-sm text-text-primary outline-none transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="CO">Colombia</option>
             <option value="MX">México</option>
@@ -282,7 +282,7 @@ function ProductLookupSection({
       </form>
 
       {lookup.status === "not_found" ? (
-        <div className="mt-5 rounded-2xl border border-border bg-bg-page p-4 font-body text-sm text-text-secondary">
+        <div className="mt-5 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 font-body text-sm text-text-secondary shadow-sm">
           Producto {lookup.productId} no encontrado en {countryLabel[lookup.country]}.
         </div>
       ) : null}
@@ -334,10 +334,10 @@ function ViewTab({
       href={href}
       aria-current={active ? "page" : undefined}
       className={[
-        "rounded-lg px-4 py-2 font-body text-sm font-semibold transition-colors",
+        "inline-flex min-h-[var(--density-row-height-compact)] items-center rounded-lg px-4 py-2 font-body text-sm font-semibold transition-[background-color,color,box-shadow] duration-[var(--motion-duration-hover-focus)]",
         active
-          ? "bg-bg-surface text-text-primary shadow-sm"
-          : "text-text-secondary hover:text-text-primary",
+          ? "bg-[var(--color-bg-surface-elevated)] text-text-primary shadow-sm"
+          : "text-text-secondary hover:bg-[var(--color-bg-hover)] hover:text-text-primary",
       ].join(" ")}
     >
       {children}
@@ -355,7 +355,7 @@ function SweetSpotCountrySection({
   savedKeys: Set<string>;
 }) {
   return (
-    <section className="min-w-0">
+    <section className="min-w-0 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
@@ -376,7 +376,7 @@ function SweetSpotCountrySection({
           savedKeys={[...savedKeys]}
         />
       ) : (
-        <div className="mt-5 rounded-2xl bg-bg-page p-4 font-body text-sm text-text-secondary">
+        <div className="mt-5 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 font-body text-sm text-text-secondary shadow-sm">
           Sin datos
         </div>
       )}
@@ -390,7 +390,7 @@ function SavedProductsSection({
   products: SavedDropkillerProduct[];
 }) {
   return (
-    <section>
+    <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
@@ -412,7 +412,7 @@ function SavedProductsSection({
           ))}
         </div>
       ) : (
-        <div className="mt-5 rounded-2xl border border-border bg-bg-surface p-6 font-body text-sm text-text-secondary shadow-lg">
+        <div className="mt-5 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-6 font-body text-sm text-text-secondary shadow-sm">
           Aún no hay productos guardados.
         </div>
       )}

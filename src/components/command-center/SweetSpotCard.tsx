@@ -106,9 +106,9 @@ export function SweetSpotCard({
   return (
     <article
       className={[
-        "relative rounded-2xl border border-border bg-bg-surface p-5 text-text-primary shadow-lg",
+        "relative rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 text-text-primary shadow-sm",
         productUrl
-          ? "cursor-pointer transition-[box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl focus-within:ring-2 focus-within:ring-[var(--color-accent)] focus-within:ring-offset-2 focus-within:ring-offset-bg-page motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+          ? "cursor-pointer transition-[background-color,box-shadow] duration-[var(--motion-duration-hover-focus)] ease-out hover:bg-[var(--color-bg-hover)] hover:shadow-md focus-within:ring-2 focus-within:ring-[var(--color-accent)] focus-within:ring-offset-2 focus-within:ring-offset-[var(--color-bg-surface-subtle)] motion-reduce:transition-none"
           : "",
       ].join(" ")}
     >
@@ -170,7 +170,7 @@ export function SweetSpotCard({
             </p>
 
             {comparisonLabel ? (
-              <div className="mt-3 rounded-2xl bg-[var(--color-accent)]/10 px-3 py-2">
+              <div className="mt-3 rounded-xl bg-[var(--color-bg-selected)] px-3 py-2">
                 <p className="font-body text-xs font-semibold text-[var(--color-accent)]">
                   Percentil{" "}
                   <span className="font-mono tabular-nums">
@@ -213,7 +213,7 @@ export function SweetSpotCard({
           </form>
         </div>
 
-        <div className="mt-5 border-t border-border pt-4">
+        <div className="mt-5 border-t border-border/30 pt-4">
           <p className="font-body text-xs font-semibold uppercase text-text-secondary">
             Datos duros
           </p>
@@ -245,7 +245,7 @@ export function SweetSpotCard({
           </dl>
 
           {showRawSignals ? (
-            <div className="mt-4 border-t border-border pt-4">
+            <div className="mt-4 border-t border-border/30 pt-4">
               <p className="font-body text-xs font-semibold uppercase text-text-secondary">
                 Señales calculadas
               </p>
@@ -321,7 +321,7 @@ export function ExpandableSweetSpotList({
                 Math.min(current + 10, candidates.length),
               )
             }
-            className="rounded-full border-border bg-bg-surface text-text-primary hover:bg-bg-page hover:text-text-primary"
+            className="min-h-[var(--density-row-height-compact)] rounded-full border-transparent bg-[var(--color-bg-surface-elevated)] text-text-primary shadow-sm transition-[background-color,box-shadow] duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-text-primary hover:shadow-md"
           >
             Ver más
           </Button>
@@ -338,7 +338,7 @@ export function ProductLookupSubmitButton() {
     <Button
       type="submit"
       disabled={pending}
-      className="h-11 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 text-bg-surface hover:opacity-90 disabled:opacity-60"
+      className="h-[var(--density-row-height-compact)] rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 text-[var(--color-on-accent)] transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90 disabled:opacity-60"
     >
       {pending ? (
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -361,7 +361,7 @@ function ProductThumbnail({
 
   if (!src || failed) {
     return (
-      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-page text-text-secondary">
+      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-transparent bg-[var(--color-bg-surface-subtle)] text-text-secondary shadow-sm">
         <ImageIcon aria-hidden="true" className="h-7 w-7" />
         <span className="sr-only">Imagen no disponible</span>
       </div>
@@ -376,7 +376,7 @@ function ProductThumbnail({
       alt={productName}
       loading="lazy"
       onError={() => setFailed(true)}
-      className="h-20 w-20 shrink-0 rounded-xl border border-border bg-bg-page object-cover"
+      className="h-20 w-20 shrink-0 rounded-xl border border-transparent bg-[var(--color-bg-surface-subtle)] object-cover shadow-sm"
     />
   );
 }
@@ -397,10 +397,10 @@ function SaveButton({
       variant={isSaved ? "secondary" : "default"}
       disabled={isSaved || disabled || pending}
       className={[
-        "rounded-full",
+        "min-h-[var(--density-row-height-compact)] rounded-full transition-[background-color,opacity] duration-[var(--motion-duration-hover-focus)]",
         isSaved
           ? "bg-positive-bg text-positive hover:bg-positive-bg"
-          : "bg-gradient-to-r from-accent-from to-accent-to text-bg-surface hover:opacity-90",
+          : "bg-gradient-to-r from-accent-from to-accent-to text-[var(--color-on-accent)] hover:opacity-90",
       ].join(" ")}
     >
       {pending ? (

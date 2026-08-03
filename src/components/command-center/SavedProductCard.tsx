@@ -53,9 +53,9 @@ export function SavedProductCard({
   return (
     <article
       className={[
-        "relative rounded-2xl border border-border bg-bg-surface p-5 text-text-primary shadow-lg",
+        "relative rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 text-text-primary shadow-sm",
         productUrl
-          ? "cursor-pointer transition-[box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl focus-within:ring-2 focus-within:ring-[var(--color-accent)] focus-within:ring-offset-2 focus-within:ring-offset-bg-page motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+          ? "cursor-pointer transition-[background-color,box-shadow] duration-[var(--motion-duration-hover-focus)] ease-out hover:bg-[var(--color-bg-hover)] hover:shadow-md focus-within:ring-2 focus-within:ring-[var(--color-accent)] focus-within:ring-offset-2 focus-within:ring-offset-[var(--color-bg-surface-subtle)] motion-reduce:transition-none"
           : "",
       ].join(" ")}
     >
@@ -105,7 +105,7 @@ export function SavedProductCard({
           </div>
         </div>
 
-        <div className="mt-5 border-t border-border pt-4">
+        <div className="mt-5 border-t border-border/30 pt-4">
           <p className="font-body text-xs font-semibold uppercase text-text-secondary">
             Datos guardados
           </p>
@@ -160,7 +160,7 @@ function ProductThumbnail({
 
   if (!src || failed) {
     return (
-      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-page text-text-secondary">
+      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-transparent bg-[var(--color-bg-surface-subtle)] text-text-secondary shadow-sm">
         <ImageIcon aria-hidden="true" className="h-7 w-7" />
         <span className="sr-only">Imagen no disponible</span>
       </div>
@@ -175,7 +175,7 @@ function ProductThumbnail({
       alt={productName}
       loading="lazy"
       onError={() => setFailed(true)}
-      className="h-20 w-20 shrink-0 rounded-xl border border-border bg-bg-page object-cover"
+      className="h-20 w-20 shrink-0 rounded-xl border border-transparent bg-[var(--color-bg-surface-subtle)] object-cover shadow-sm"
     />
   );
 }
@@ -189,7 +189,7 @@ function RemoveButton() {
       variant="destructive"
       size="sm"
       disabled={pending}
-      className="rounded-full"
+      className="min-h-[var(--density-row-height-compact)] rounded-full transition-[background-color,opacity] duration-[var(--motion-duration-hover-focus)]"
     >
       <Trash2 aria-hidden="true" />
       {pending ? "Quitando..." : "Quitar de guardados"}

@@ -116,7 +116,7 @@ export function MovementBreakdownTable({
   );
 
   return (
-    <section className="rounded-2xl border border-border bg-bg-surface p-5 text-text-primary shadow-lg">
+    <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-5 text-text-primary shadow-sm">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
@@ -132,7 +132,7 @@ export function MovementBreakdownTable({
       </div>
 
       {groupedRows.length > 0 ? (
-        <ul className="mt-5 divide-y divide-border">
+        <ul className="mt-5 divide-y divide-border/40">
           {groupedRows.map((row) => {
             const barPercentage =
               largestAbsoluteNet > 0
@@ -149,7 +149,7 @@ export function MovementBreakdownTable({
             return (
               <li
                 key={row.categoria ?? "sin_categoria"}
-                className="py-4 first:pt-0 last:pb-0"
+                className="min-h-[var(--density-row-height-compact)] py-3 first:pt-0 last:pb-0"
               >
                 <div className="flex items-start justify-between gap-4">
                   <p className="font-body text-sm font-semibold text-text-primary">
@@ -163,7 +163,7 @@ export function MovementBreakdownTable({
                 </div>
 
                 <div
-                  className="mt-2 h-2.5 overflow-hidden rounded-full bg-bg-page"
+                  className="mt-2 h-2.5 overflow-hidden rounded-full bg-[var(--color-bg-surface-subtle)]"
                   role="meter"
                   aria-label={`Neto de ${getCategoryLabel(row.categoria)}`}
                   aria-valuenow={Math.abs(row.net)}
@@ -195,7 +195,7 @@ export function MovementBreakdownTable({
           })}
         </ul>
       ) : (
-        <div className="mt-5 rounded-2xl bg-bg-page p-4 font-body text-sm text-text-secondary">
+        <div className="mt-5 rounded-xl bg-[var(--color-bg-surface-subtle)] p-4 font-body text-sm text-text-secondary">
           Sin movimientos en este rango.
         </div>
       )}

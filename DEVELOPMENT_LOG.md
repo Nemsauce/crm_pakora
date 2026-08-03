@@ -305,3 +305,10 @@ Pendiente cuando se retome 'notis':
 - El riesgo alto se clasifica con el mismo lookup `estado + transportadora` y fallback sin transportadora de Pedidos, excluyendo `entregado`, `cancelado` y `devolucion`; no se agregó scoring ni regla operativa nueva.
 - Sidebar quedó en su estructura final: Hoy, Tareas, Pedidos, Clientes, Finanzas, Alertas y Configuración como principales; Costeos, Métricas, Investigación y Productividad bajo `Más / Herramientas`, conservando todas las rutas anteriores.
 - La raíz `/` ahora redirige a `/hoy`. Build de producción, TypeScript y lint completados; lint conserva dos warnings preexistentes fuera de este cambio.
+
+### [Rediseño CRM v5] Jerarquía visual de analítica — COMPLETADO
+- Finanzas quedó ordenada por decisión operativa: utilidad combinada, dinero en la calle sin rango, tendencia diaria real por país, desglose por categoría y movimientos de capital al final.
+- Métricas y Productividad adoptaron filas compactas, superficies `subtle/elevated`, bordes transparentes y sombras suaves; se conservaron filtros, porcentajes, conteos, ordenamientos, rangos y estados vacíos.
+- Investigación aplicó el mismo lenguaje a consulta puntual, tabs, sugeridos, guardados, `SweetSpotCard` y `SavedProductCard`; búsqueda on-demand, acciones, paginación `Ver más` y tooltip de momentum permanecen intactos.
+- No cambiaron RPCs, argumentos, fórmulas ni las invariantes financieras: recargas/retiros no forman parte de utilidad, dinero en la calle ignora el rango y CO/MX solo se combinan mediante FX explícito.
+- Build de producción, TypeScript y lint completados. Los snapshots live antes/después coincidieron en las cuatro pantallas; lint conserva dos warnings preexistentes fuera de este cambio.

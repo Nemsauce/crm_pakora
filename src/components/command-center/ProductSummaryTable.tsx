@@ -48,7 +48,8 @@ const statusChips = [
   {
     key: "en_transito",
     label: "En tránsito",
-    className: "bg-bg-page text-[var(--foreground)]",
+    className:
+      "bg-[var(--color-bg-surface-subtle)] text-[var(--foreground)]",
   },
   {
     key: "entregados",
@@ -123,54 +124,73 @@ function ProductCard({ pais, row }: { pais: Pais; row: ProductSummaryRow }) {
   const visibleChips = statusChips.filter((chip) => row[chip.key] > 0);
 
   return (
-    <article className="rounded-2xl border border-border bg-bg-surface p-4 text-text-primary shadow-lg">
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <article className="min-h-[var(--density-row-height-compact)] rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 text-text-primary shadow-sm">
+      <div className="grid min-w-0 grid-cols-2 items-center gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(4.5rem,0.35fr)_minmax(15rem,1.4fr)_minmax(5rem,0.5fr)_minmax(5rem,0.5fr)_minmax(5rem,0.5fr)_minmax(5rem,0.5fr)] xl:gap-2">
         <div className="min-w-0">
+          <p className="font-body text-[0.68rem] font-semibold uppercase text-text-secondary xl:hidden">
+            Producto
+          </p>
           <h4 className="break-words font-display text-base font-semibold text-text-primary">
             {row.nombre_producto}
           </h4>
         </div>
 
-        <div className="shrink-0 sm:text-right">
-          <p className="font-body text-xs text-text-secondary">Total</p>
-          <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-text-primary">
+        <div className="shrink-0 text-right xl:text-left">
+          <p className="font-body text-[0.68rem] font-semibold uppercase text-text-secondary xl:hidden">
+            Total
+          </p>
+          <p className="font-mono text-lg font-semibold tabular-nums text-text-primary">
             {formatCount(pais, row.total)}
           </p>
         </div>
-      </div>
 
-      {visibleChips.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {visibleChips.map((chip) => (
-            <span
-              key={chip.key}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-body text-xs font-semibold ${chip.className}`}
-            >
-              <span>{chip.label}:</span>
-              <span className="font-mono tabular-nums">
-                {formatCount(pais, row[chip.key])}
-              </span>
-            </span>
-          ))}
+        <div className="col-span-2 flex min-w-0 flex-wrap gap-1.5 xl:col-span-1">
+          {visibleChips.length > 0
+            ? visibleChips.map((chip) => (
+                <span
+                  key={chip.key}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-1 font-body text-[0.7rem] font-semibold ${chip.className}`}
+                >
+                  <span>{chip.label}:</span>
+                  <span className="font-mono tabular-nums">
+                    {formatCount(pais, row[chip.key])}
+                  </span>
+                </span>
+              ))
+            : null}
         </div>
-      ) : null}
 
-      <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border pt-3 sm:grid-cols-4">
         {percentageMetrics.map((metric) => (
           <div
             key={metric.key}
-            className={`rounded-2xl px-3 py-2 ${metric.className}`}
+            className={`rounded-lg px-2.5 py-2 xl:rounded-none xl:bg-transparent xl:px-0 xl:py-0 ${metric.className}`}
           >
-            <p className="font-body text-[0.7rem] font-semibold">
+            <p className="font-body text-[0.68rem] font-semibold xl:hidden">
               {metric.label}
             </p>
-            <p className="mt-1 font-mono text-sm font-semibold tabular-nums">
+            <p className="font-mono text-sm font-semibold tabular-nums">
               {formatPercentage(row.total, row[metric.key])}
             </p>
           </div>
         ))}
       </div>
     </article>
+  );
+}
+
+function ProductTableHeader() {
+  return (
+    <div
+      className="hidden grid-cols-[minmax(0,1.35fr)_minmax(4.5rem,0.35fr)_minmax(15rem,1.4fr)_minmax(5rem,0.5fr)_minmax(5rem,0.5fr)_minmax(5rem,0.5fr)_minmax(5rem,0.5fr)] gap-2 px-3 pb-2 font-body text-[0.68rem] font-semibold uppercase tracking-wide text-text-secondary xl:grid"
+      aria-hidden="true"
+    >
+      <span>Producto</span>
+      <span>Total</span>
+      <span>Estados</span>
+      {percentageMetrics.map((metric) => (
+        <span key={metric.key}>{metric.label}</span>
+      ))}
+    </div>
   );
 }
 
@@ -193,54 +213,59 @@ function ProductCountrySection({
   const searchId = `product-search-${pais.toLowerCase()}`;
 
   return (
-    <section className="min-w-0">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+    <section className="min-w-0 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm sm:p-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
             {countryLabel[pais]}
           </p>
-          <h3 className="mt-2 font-display text-lg font-semibold text-text-primary">
+          <h3 className="mt-1.5 font-display text-lg font-semibold text-text-primary">
             Pedidos por producto
           </h3>
+          <p className="mt-1 font-body text-sm text-text-secondary">
+            Total y estados críticos
+          </p>
         </div>
-        <p className="font-body text-sm text-text-secondary">
-          Total y estados críticos
-        </p>
-      </div>
 
-      <label
-        htmlFor={searchId}
-        className="mt-4 block font-body text-xs text-text-secondary"
-      >
-        Buscar producto
-      </label>
-      <div className="mt-1.5 flex h-11 items-center gap-2 rounded-2xl border border-border bg-bg-surface px-3 shadow-sm focus-within:ring-2 focus-within:ring-ring">
-        <Search
-          className="h-4 w-4 shrink-0 text-text-secondary"
-          aria-hidden="true"
-        />
-        <Input
-          id={searchId}
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Buscar por nombre"
-          className="h-8 border-0 bg-transparent p-0 font-body text-sm text-text-primary shadow-none focus-visible:ring-0"
-        />
+        <div className="w-full lg:max-w-sm">
+          <label
+            htmlFor={searchId}
+            className="block font-body text-xs text-text-secondary"
+          >
+            Buscar producto
+          </label>
+          <div className="mt-1.5 flex min-h-[var(--density-row-height-compact)] items-center gap-2 rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] px-3 shadow-sm transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-within:ring-2 focus-within:ring-ring">
+            <Search
+              className="h-4 w-4 shrink-0 text-text-secondary"
+              aria-hidden="true"
+            />
+            <Input
+              id={searchId}
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar por nombre"
+              className="h-8 border-0 bg-transparent p-0 font-body text-sm text-text-primary shadow-none focus-visible:ring-0"
+            />
+          </div>
+        </div>
       </div>
 
       {sortedRows.length > 0 ? (
-        <div className="mt-5 grid gap-3">
-          {sortedRows.map((row) => (
-            <ProductCard
-              key={`${row.pais}-${row.nombre_producto}`}
-              pais={pais}
-              row={row}
-            />
-          ))}
+        <div className="mt-5">
+          <ProductTableHeader />
+          <div className="grid gap-2">
+            {sortedRows.map((row) => (
+              <ProductCard
+                key={`${row.pais}-${row.nombre_producto}`}
+                pais={pais}
+                row={row}
+              />
+            ))}
+          </div>
         </div>
       ) : (
-        <div className="mt-5 rounded-2xl bg-bg-page p-4 font-body text-sm text-text-secondary">
+        <div className="mt-5 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 font-body text-sm text-text-secondary shadow-sm">
           {rows.length > 0 ? "Sin resultados" : "Sin datos"}
         </div>
       )}
@@ -250,7 +275,7 @@ function ProductCountrySection({
 
 export function ProductSummaryTable({ rows }: ProductSummaryTableProps) {
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="grid gap-5">
       {countries.map((pais) => (
         <ProductCountrySection
           key={pais}
