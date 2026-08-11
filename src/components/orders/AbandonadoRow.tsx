@@ -314,7 +314,7 @@ export function AbandonadoRow({ row }: { row: AbandonadoListItem }) {
         </div>
       </div>
 
-      <dl className="mt-4 grid gap-3 border-t border-[var(--color-border)]/30 pt-4 sm:grid-cols-2 xl:grid-cols-4">
+      <dl className="mt-4 grid gap-3 border-t border-[var(--color-border-subtle)] pt-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="flex min-w-0 gap-2">
           <Phone className="mt-0.5 h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
           <div className="min-w-0">
@@ -361,7 +361,7 @@ export function AbandonadoRow({ row }: { row: AbandonadoListItem }) {
         </div>
       </dl>
 
-      <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--color-border)]/30 pt-4">
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--color-border-subtle)] pt-4">
         <Button
           type="button"
           variant="outline"

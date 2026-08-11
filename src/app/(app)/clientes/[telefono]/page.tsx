@@ -296,7 +296,7 @@ export default async function ClientePage({
   ];
 
   return (
-    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-6 py-6 sm:px-8">
+    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 lg:px-8">
       <header className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-5 shadow-sm">
         <Link
           href="/clientes"
@@ -317,7 +317,7 @@ export default async function ClientePage({
           {whatsappUrl ? (
             <Button
               asChild
-              className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-[var(--color-on-accent)] transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90"
+              className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-[var(--color-on-accent)] shadow-md shadow-[var(--color-accent)]/20 transition-[opacity,transform,box-shadow] duration-[var(--motion-duration-hover-focus)] hover:-translate-y-0.5 hover:opacity-95 motion-reduce:transform-none"
             >
               <a href={whatsappUrl} target="_blank" rel="noreferrer">
                 <MessageCircle className="h-4 w-4" aria-hidden="true" />
@@ -395,7 +395,7 @@ export default async function ClientePage({
                 <dt className="font-body text-xs text-[var(--muted-foreground)]">
                   Pedidos en Dropi
                 </dt>
-                <dd className="mt-1 font-mono text-xl font-semibold tabular-nums text-[var(--foreground)]">
+                <dd className="crm-financial-glow mt-1 font-mono text-xl font-semibold tabular-nums text-[var(--foreground)]">
                   {dropiHistory.totalOrders}
                 </dd>
               </div>
@@ -403,7 +403,7 @@ export default async function ClientePage({
                 <dt className="font-body text-xs text-[var(--muted-foreground)]">
                   Entregados
                 </dt>
-                <dd className="mt-1 font-mono text-xl font-semibold tabular-nums text-risk-low">
+                <dd className="crm-financial-glow mt-1 font-mono text-xl font-semibold tabular-nums text-risk-low">
                   {dropiHistory.deliveredOrders}
                 </dd>
               </div>
@@ -411,7 +411,7 @@ export default async function ClientePage({
                 <dt className="font-body text-xs text-[var(--muted-foreground)]">
                   Devueltos
                 </dt>
-                <dd className="mt-1 font-mono text-xl font-semibold tabular-nums text-risk-high">
+                <dd className="crm-financial-glow mt-1 font-mono text-xl font-semibold tabular-nums text-risk-high">
                   {dropiHistory.returnedOrders}
                 </dd>
               </div>
@@ -419,7 +419,7 @@ export default async function ClientePage({
                 <dt className="font-body text-xs text-[var(--muted-foreground)]">
                   Otros estados
                 </dt>
-                <dd className="mt-1 font-mono text-xl font-semibold tabular-nums text-risk-medium">
+                <dd className="crm-financial-glow mt-1 font-mono text-xl font-semibold tabular-nums text-risk-medium">
                   {dropiHistory.otherOrders}
                 </dd>
               </div>
@@ -476,7 +476,7 @@ export default async function ClientePage({
                 <p className="mt-3 font-body text-sm text-[var(--muted-foreground)]">
                   {metric.label}
                 </p>
-                <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-[var(--foreground)]">
+                <p className="crm-financial-glow mt-1 font-mono text-2xl font-semibold tabular-nums text-[var(--foreground)]">
                   {metric.value}
                 </p>
               </article>
@@ -489,7 +489,7 @@ export default async function ClientePage({
             Historial de pedidos
           </h3>
 
-          <ul className="mt-3 divide-y divide-border">
+          <ul className="mt-3 divide-y divide-[var(--color-border-subtle)]">
             {orders.map((order) => (
               <li key={order.id} className="py-2 first:pt-0 last:pb-0">
                 <Link

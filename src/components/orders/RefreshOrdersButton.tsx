@@ -38,7 +38,7 @@ export function RefreshOrdersButton() {
         type="button"
         onClick={handleRefresh}
         disabled={isPending}
-        className="h-10 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-bg-surface shadow-md shadow-[var(--color-accent)]/20 hover:opacity-90 disabled:opacity-60"
+        className="h-10 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-[var(--color-on-accent)] shadow-md shadow-[var(--color-accent)]/20 hover:opacity-90 disabled:opacity-60"
       >
         {isPending ? (
           <Loader2 aria-hidden="true" className="crm-loader-orbit" />

@@ -284,11 +284,11 @@ export function OrderDetailDrawer() {
       <Dialog.Portal>
         <Dialog.Content
           id="order-detail-drawer"
-          className="crm-drawer-presence fixed inset-y-0 right-0 z-[var(--z-index-operational-drawer)] flex w-full max-w-xl flex-col border-l border-border bg-[var(--color-bg-surface-base)] text-[var(--foreground)] shadow-2xl outline-none motion-reduce:transform-none motion-reduce:animate-none"
+          className="crm-drawer-presence fixed inset-y-0 right-0 z-[var(--z-index-operational-drawer)] flex w-full max-w-xl flex-col border-l border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-base)] text-[var(--foreground)] shadow-2xl outline-none motion-reduce:transform-none motion-reduce:animate-none"
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
-          <div className="flex min-h-[var(--density-row-height-comfortable)] items-start justify-between gap-4 border-b border-border bg-[var(--color-bg-surface-elevated)] px-5 py-4">
+          <div className="flex min-h-[var(--density-row-height-comfortable)] items-start justify-between gap-4 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-elevated)] px-5 py-4">
             <div className="min-w-0">
               <Dialog.Title className="font-display text-lg font-semibold text-[var(--foreground)]">
                 Detalle de pedido
@@ -408,7 +408,7 @@ function OrderSummarySection({ order }: { order: Order }) {
         </div>
       </div>
 
-      <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-border/40 pt-4">
+      <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-[var(--color-border-subtle)] pt-4">
         <div className="col-span-2 min-h-[var(--density-row-height-comfortable)] rounded-xl bg-[var(--color-bg-surface-subtle)] p-3">
           <dt className="font-body text-xs text-[var(--muted-foreground)]">
             Producto

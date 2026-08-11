@@ -554,7 +554,7 @@ export default async function AlertasPage({ searchParams }: AlertasPageProps) {
 
   return (
     <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 lg:px-8">
-      <header className="border-b border-border/30 pb-4">
+      <header className="border-b border-[var(--color-border-subtle)] pb-4">
         <p className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">
           Operación
         </p>
@@ -763,7 +763,7 @@ export default async function AlertasPage({ searchParams }: AlertasPageProps) {
       )}
 
       <nav
-        className="mt-6 flex items-center justify-between border-t border-border/30 pt-4"
+        className="mt-6 flex items-center justify-between border-t border-[var(--color-border-subtle)] pt-4"
         aria-label="Paginación de alertas"
       >
         <Button

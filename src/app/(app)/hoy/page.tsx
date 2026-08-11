@@ -329,7 +329,7 @@ export default async function HoyPage() {
 
   return (
     <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 lg:px-8">
-      <header className="border-b border-border/30 pb-5">
+      <header className="border-b border-[var(--color-border-subtle)] pb-5">
         <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
           Hoy · resumen operativo
         </p>
@@ -432,7 +432,7 @@ export default async function HoyPage() {
         >
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="font-body text-xs uppercase text-text-secondary">
+              <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
                 Qué resolver ahora
               </p>
               <h2
@@ -605,7 +605,7 @@ export default async function HoyPage() {
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-body text-xs uppercase text-text-secondary">
+            <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
               Foto operativa actual
             </p>
             <h2
@@ -633,7 +633,7 @@ export default async function HoyPage() {
             return (
               <div
                 key={pais}
-                className="crm-financial-glow flex min-h-[var(--density-row-height-comfortable)] items-center justify-between gap-4 rounded-xl bg-[var(--color-bg-surface-elevated)] p-4 shadow-sm"
+                className="flex min-h-[var(--density-row-height-comfortable)] items-center justify-between gap-4 rounded-xl bg-[var(--color-bg-surface-elevated)] p-4 shadow-sm"
               >
                 <div>
                   <p className="font-body text-xs font-semibold uppercase text-text-secondary">
@@ -653,7 +653,7 @@ export default async function HoyPage() {
                   currency={pais === "CO" ? "COP" : "MXN"}
                   minimumFractionDigits={pais === "CO" ? 0 : 2}
                   maximumFractionDigits={pais === "CO" ? 0 : 2}
-                  className="font-mono text-lg font-semibold tabular-nums text-text-primary sm:text-xl"
+                  className="crm-financial-glow font-mono text-lg font-semibold tabular-nums text-text-primary sm:text-xl"
                 />
               </div>
             );
@@ -662,7 +662,7 @@ export default async function HoyPage() {
       </section>
 
       <nav
-        className="mt-5 flex flex-wrap items-center gap-2 border-t border-border/30 pt-4"
+        className="mt-5 flex flex-wrap items-center gap-2 border-t border-[var(--color-border-subtle)] pt-4"
         aria-label="Atajos operativos"
       >
         <span className="mr-1 font-body text-xs font-semibold uppercase text-text-secondary">

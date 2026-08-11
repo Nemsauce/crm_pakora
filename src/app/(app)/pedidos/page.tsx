@@ -196,9 +196,9 @@ function PedidosPageHeader({ view }: { view: PedidosView }) {
 
   return (
     <>
-      <div className="flex flex-col gap-4 border-b border-border/30 pb-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-4 border-b border-[var(--color-border-subtle)] pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="font-body text-xs uppercase text-text-secondary">
+          <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
             Pedidos
           </p>
           <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
@@ -464,7 +464,7 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
         </div>
       )}
 
-      <div className="mt-6 flex items-center justify-between border-t border-border/30 pt-4">
+      <div className="mt-6 flex items-center justify-between border-t border-[var(--color-border-subtle)] pt-4">
         <Button
           asChild={hasPreviousPage}
           type="button"

@@ -725,7 +725,7 @@ export function TaskDetailRow({
             } ${
               selected
                 ? "border-[var(--color-accent)] ring-2 ring-[var(--color-accent)] ring-offset-2 ring-offset-bg-page"
-                : "border-border"
+                : "border-transparent"
             }`
       }`}
     >
@@ -1237,7 +1237,7 @@ export function TaskDetailDrawer({
       <Dialog.Portal>
         <Dialog.Content
           id="task-detail-drawer"
-          className="crm-drawer-presence fixed inset-y-0 right-0 z-[var(--z-index-operational-drawer)] flex w-full max-w-xl flex-col border-l border-border bg-[var(--color-bg-surface-base)] text-[var(--foreground)] shadow-2xl outline-none"
+          className="crm-drawer-presence fixed inset-y-0 right-0 z-[var(--z-index-operational-drawer)] flex w-full max-w-xl flex-col border-l border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-base)] text-[var(--foreground)] shadow-2xl outline-none"
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
           onCloseAutoFocus={(event) => {
@@ -1252,7 +1252,7 @@ export function TaskDetailDrawer({
             }
           }}
         >
-          <div className="flex min-h-[var(--density-row-height-comfortable)] items-start justify-between gap-4 border-b border-border bg-[var(--color-bg-surface-elevated)] px-5 py-4">
+          <div className="flex min-h-[var(--density-row-height-comfortable)] items-start justify-between gap-4 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-elevated)] px-5 py-4">
             <div className="min-w-0">
               <Dialog.Title className="font-display text-lg font-semibold text-[var(--foreground)]">
                 Detalle de tarea
@@ -1277,14 +1277,14 @@ export function TaskDetailDrawer({
           <div className="flex-1 overflow-y-auto px-5 py-5">
             {isLoading ? (
               <div className="space-y-4">
-                <div className="crm-shimmer h-44 rounded-2xl border border-border bg-[var(--color-bg-surface-elevated)]" />
-                <div className="crm-shimmer h-32 rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)]" />
-                <div className="crm-shimmer h-24 rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)]" />
+                <div className="crm-shimmer h-44 rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] shadow-sm" />
+                <div className="crm-shimmer h-32 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] shadow-sm" />
+                <div className="crm-shimmer h-24 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] shadow-sm" />
               </div>
             ) : null}
 
             {!isLoading && error ? (
-              <div className="rounded-2xl border border-border bg-[var(--color-bg-surface-elevated)] p-4 font-body text-sm text-[var(--muted-foreground)] shadow-lg">
+              <div className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-elevated)] p-4 font-body text-sm text-[var(--muted-foreground)] shadow-lg">
                 {error}
               </div>
             ) : null}
@@ -1306,7 +1306,7 @@ export function TaskDetailDrawer({
                   onReassigned={handleTaskReassigned}
                   onSnoozed={handleTaskSnoozed}
                 />
-                <div className="space-y-3 border-t border-border pt-5">
+                <div className="space-y-3 border-t border-[var(--color-border-subtle)] pt-5">
                   <div>
                     <p className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">
                       Contexto del pedido
@@ -1328,7 +1328,7 @@ export function TaskDetailDrawer({
                     assigneeOptions={assigneeOptions ?? []}
                   />
                 </div>
-                <div className="space-y-3 border-t border-border pt-5">
+                <div className="space-y-3 border-t border-[var(--color-border-subtle)] pt-5">
                   <div>
                     <p className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">
                       Historial
@@ -1445,7 +1445,7 @@ function SelectedTaskSection({
         </div>
 
         {description ? (
-          <div className="mt-4 rounded-xl border border-border bg-[var(--color-bg-surface-subtle)] p-3">
+          <div className="mt-4 rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] p-3">
             <p className="font-body text-xs font-semibold text-[var(--muted-foreground)]">
               Contexto de la tarea
             </p>
@@ -1461,7 +1461,7 @@ function SelectedTaskSection({
               ? "border-[var(--color-positive)] bg-risk-low-bg text-risk-low"
               : deadline.isOverdue
                 ? "border-[var(--color-negative)] bg-risk-high-bg text-risk-high"
-                : "border-border bg-[var(--color-bg-surface-subtle)] text-[var(--foreground)]"
+                : "border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] text-[var(--foreground)]"
           }`}
         >
           {isCompleted ? (
@@ -1484,7 +1484,7 @@ function SelectedTaskSection({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] p-4">
+      <div className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm">
         <div>
           <p className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">
             Cliente y riesgo
@@ -1501,7 +1501,7 @@ function SelectedTaskSection({
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-          <div className="min-h-[var(--density-row-height-comfortable)] rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
+          <div className="min-h-[var(--density-row-height-comfortable)] rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm">
             <p className="font-body text-xs text-[var(--muted-foreground)]">
               Teléfono cliente
             </p>
@@ -1510,7 +1510,7 @@ function SelectedTaskSection({
             </p>
           </div>
 
-          <div className="rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
+          <div className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm">
             <p className="font-body text-xs text-[var(--muted-foreground)]">
               Historial del cliente en Dropi
             </p>
@@ -1558,7 +1558,7 @@ function SelectedTaskSection({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-[var(--color-bg-surface-elevated)] p-4 shadow-md">
+      <div className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-md">
         <div className="flex min-h-[var(--density-row-height-comfortable)] items-start justify-between gap-3">
           <div className="flex min-w-0 gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-positive-bg)] text-[var(--color-positive)]">
@@ -1615,7 +1615,7 @@ function SelectedTaskSection({
 
         {generatedSuggestion ? (
           <div
-            className="mt-4 rounded-xl border border-border bg-[var(--color-bg-surface-subtle)] p-3"
+            className="mt-4 rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] p-3"
             aria-live="polite"
           >
             <div className="flex items-center justify-between gap-3">
@@ -1660,7 +1660,7 @@ function SelectedTaskSection({
         ) : null}
 
         {completionNotes ? (
-          <div className="mt-4 rounded-xl border border-border bg-[var(--color-bg-surface-subtle)] p-3">
+          <div className="mt-4 rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] p-3">
             <p className="font-body text-xs text-[var(--muted-foreground)]">
               Nota de cierre
             </p>
@@ -1670,7 +1670,7 @@ function SelectedTaskSection({
           </div>
         ) : null}
 
-        <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mt-4 flex flex-col gap-3 border-t border-[var(--color-border-subtle)] pt-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="font-body text-xs text-[var(--muted-foreground)]">
               Responsable
@@ -1748,7 +1748,7 @@ function CompleteTaskForm({
   }
 
   return (
-    <div className="mt-4 space-y-3 rounded-xl border border-border bg-[var(--color-bg-surface-subtle)] p-3">
+    <div className="mt-4 space-y-3 rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] p-3">
       <div>
         <label
           id={`drawer-completion-result-${taskId}`}
@@ -1838,7 +1838,7 @@ function OtherTasksSection({
   assigneeOptions: AssigneeOption[];
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] p-4">
+    <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm">
       <h3 className="font-display text-base font-semibold text-[var(--foreground)]">
         Otras tareas de este pedido
       </h3>
@@ -1872,7 +1872,7 @@ function TaskSummaryItem({
   const deadline = getDeadline(task.fecha_limite, task.estado);
 
   return (
-    <li className="min-h-[var(--density-row-height-comfortable)] rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
+    <li className="min-h-[var(--density-row-height-comfortable)] rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-body text-xs uppercase text-[var(--muted-foreground)]">
@@ -1908,7 +1908,7 @@ function OrderDetailsSection({ order }: { order: Order }) {
 
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
-      <section className="rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] p-4">
+      <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm">
         <div className="flex items-center gap-2">
           <Collapsible.Trigger asChild>
             <button
@@ -1942,7 +1942,7 @@ function OrderDetailsSection({ order }: { order: Order }) {
 
         <Collapsible.Content>
           <dl className="mt-4 grid gap-3">
-            <div className="rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
+            <div className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm">
               <dt className="font-body text-xs text-[var(--muted-foreground)]">
                 Producto
               </dt>
@@ -1950,7 +1950,7 @@ function OrderDetailsSection({ order }: { order: Order }) {
                 {order.nombre_producto?.trim() || "Sin producto registrado"}
               </dd>
             </div>
-            <div className="rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
+            <div className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm">
               <dt className="font-body text-xs text-[var(--muted-foreground)]">
                 Ciudad / departamento
               </dt>
@@ -1958,7 +1958,7 @@ function OrderDetailsSection({ order }: { order: Order }) {
                 {location || "Sin ubicación registrada"}
               </dd>
             </div>
-            <div className="rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
+            <div className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm">
               <dt className="font-body text-xs text-[var(--muted-foreground)]">
                 País
               </dt>
@@ -2008,7 +2008,7 @@ function NovedadDetailsSection({
 
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
-      <section className="rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] p-4">
+      <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm">
         <Collapsible.Trigger asChild>
           <button
             type="button"
@@ -2028,7 +2028,7 @@ function NovedadDetailsSection({
 
         <Collapsible.Content>
           {latestNovedadStatus ? (
-            <div className="mt-4 rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3">
+            <div className="mt-4 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm">
               <p className="font-body text-sm text-[var(--foreground)]">
                 {latestNovedadStatus.novedad?.trim()}
               </p>
@@ -2057,7 +2057,7 @@ function WhatsAppMessagesSection({
 
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
-      <section className="rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] p-4">
+      <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm">
         <Collapsible.Trigger asChild>
           <button
             type="button"
@@ -2083,7 +2083,7 @@ function WhatsAppMessagesSection({
               return (
                 <li
                   key={message.id}
-                  className="rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3"
+                  className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -2099,7 +2099,7 @@ function WhatsAppMessagesSection({
                     </time>
                   </div>
 
-                  <div className="mt-3 border-t border-border pt-3">
+                  <div className="mt-3 border-t border-[var(--color-border-subtle)] pt-3">
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-body text-xs text-[var(--muted-foreground)]">
                         Sugerencia IA
@@ -2137,7 +2137,7 @@ function StatusHistorySection({
 
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen} asChild>
-      <section className="rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] p-4">
+      <section className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm">
         <Collapsible.Trigger asChild>
           <button
             type="button"
@@ -2161,7 +2161,7 @@ function StatusHistorySection({
               {statusHistory.map((historyItem) => (
                 <li
                   key={historyItem.id}
-                  className="rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-3"
+                  className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

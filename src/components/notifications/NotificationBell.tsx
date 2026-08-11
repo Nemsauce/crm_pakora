@@ -500,7 +500,7 @@ export function NotificationBell() {
       <DropdownMenuContent
         align="end"
         sideOffset={8}
-        className="w-96 rounded-2xl border border-border bg-bg-surface p-1 text-[var(--foreground)] shadow-md"
+        className="w-96 rounded-2xl border border-[var(--color-border-subtle)] bg-bg-surface p-1 text-[var(--foreground)] shadow-md"
       >
         <div className="flex items-center justify-between gap-3 px-3 py-3">
           <DropdownMenuLabel className="p-0 font-body font-normal">
@@ -541,7 +541,7 @@ export function NotificationBell() {
           </DropdownMenuItem>
         </div>
 
-        <DropdownMenuSeparator className="bg-border" />
+        <DropdownMenuSeparator className="bg-[var(--color-border-subtle)]" />
 
         <div className="max-h-[min(28rem,calc(100vh-8rem))] overflow-y-auto p-1">
           {isLoading ? (
@@ -651,14 +651,14 @@ export function NotificationBell() {
 
         {error ? (
           <>
-            <DropdownMenuSeparator className="bg-border" />
+            <DropdownMenuSeparator className="bg-[var(--color-border-subtle)]" />
             <p className="px-3 py-2 font-body text-xs text-risk-high">
               {error}
             </p>
           </>
         ) : null}
 
-        <DropdownMenuSeparator className="bg-border" />
+        <DropdownMenuSeparator className="bg-[var(--color-border-subtle)]" />
         <DropdownMenuItem
           asChild
           className="p-0 focus:bg-[var(--color-accent)]/10"

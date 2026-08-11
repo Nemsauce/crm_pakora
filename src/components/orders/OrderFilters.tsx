@@ -462,9 +462,9 @@ export function OrderFilters() {
           </PopoverTrigger>
           <PopoverContent
             align="start"
-            className="z-[var(--z-index-dropdown-popover)] max-w-[calc(100vw-2rem)] overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] p-0 text-[var(--color-text-primary)] shadow-xl"
+            className="z-[var(--z-index-dropdown-popover)] max-w-[calc(100vw-2rem)] overflow-x-auto rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-elevated)] p-0 text-[var(--color-text-primary)] shadow-xl"
           >
-            <div className="flex items-center gap-1 border-b border-border p-3">
+            <div className="flex items-center gap-1 border-b border-[var(--color-border-subtle)] p-3">
               {(["single", "range"] as const).map((mode) => (
                 <button
                   key={mode}
@@ -505,7 +505,7 @@ export function OrderFilters() {
               />
             )}
 
-            <div className="flex items-center justify-between gap-3 border-t border-border p-3">
+            <div className="flex items-center justify-between gap-3 border-t border-[var(--color-border-subtle)] p-3">
               <button
                 type="button"
                 onClick={clearDateFilter}

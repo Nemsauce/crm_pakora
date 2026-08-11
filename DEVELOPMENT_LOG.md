@@ -333,3 +333,9 @@ Pendiente cuando se retome 'notis':
 - El fondo ambiental reemplazó blurs fijos de `110/130px` y filtros animados permanentes por gradientes radiales sin filtro y una sola entrada finita. El stagger global bajó a `320ms + 32ms` y las listas largas limitan la entrada a tres filas.
 - El loading de Pedidos ahora representa la vista compacta real en vez de la grilla antigua de cards. Tokens de duración/capas y `--color-border-subtle` quedaron documentados y aplicados también en primitives compartidos.
 - Build de producción y lint dirigido completados; no cambiaron queries, acciones, fórmulas, datos ni dependencias.
+
+### [Rediseño CRM v5] Fase 10 — cohesión operativa y barrido de bordes — COMPLETADO
+- Hoy, Tareas, Pedidos, Clientes, Alertas y la ruta histórica de Notificaciones usan el mismo divisor decorativo `--color-border-subtle`; desaparecieron los contornos grises fuertes en headers, paginaciones, empty states y wrappers grandes.
+- Los drawers de Tareas/Pedidos, el dropdown de notificaciones, Abandonados y el selector de fechas distinguen superficies mediante `base/subtle/elevated`, sombra y límites sutiles. Inputs, botones, selección, urgencia y estados semánticos conservaron el borde operativo AA.
+- Clientes ganó la misma respuesta táctil y entrada breve de las listas operativas, además de jerarquía tipográfica y glow estático en métricas; el CTA de WhatsApp y los CTA operativos mantienen contraste mediante `--color-on-accent`.
+- No se cambiaron URLs, filtros, handlers, Server Actions, queries ni estructura de información. ESLint dirigido y build de producción completados.

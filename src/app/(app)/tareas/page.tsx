@@ -178,7 +178,7 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
           ))}
         </div>
       ) : (
-        <div className="mt-4 rounded-xl border border-border bg-[var(--color-bg-surface-subtle)] p-6 font-body text-sm text-text-secondary">
+        <div className="mt-4 rounded-xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-6 font-body text-sm text-text-secondary shadow-sm">
           No hay tareas que coincidan con la vista y los filtros actuales.
         </div>
       )}
