@@ -253,7 +253,7 @@ function CosteoActionButton({
       }`}
     >
       {pending ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+        <Loader2 className="crm-loader-orbit h-3.5 w-3.5" aria-hidden="true" />
       ) : (
         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
       )}

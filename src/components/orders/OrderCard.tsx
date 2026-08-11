@@ -157,10 +157,10 @@ export function OrderCard({
   return (
     <article
       className={[
-        "grid min-h-[var(--density-row-height-compact)] grid-cols-2 items-center gap-3 rounded-lg border bg-[var(--color-bg-surface-elevated)] p-3 text-[var(--foreground)] shadow-sm transition-[background-color,border-color,box-shadow] duration-[var(--motion-duration-hover-focus)] motion-reduce:transition-none lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,1.1fr)_minmax(0,0.75fr)_minmax(0,0.85fr)] lg:gap-2 lg:px-3 lg:py-1.5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,0.62fr)_minmax(0,1.05fr)_minmax(0,0.42fr)_minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,0.78fr)_minmax(0,0.32fr)]",
+        "crm-tactile-card grid min-h-[var(--density-row-height-compact)] grid-cols-2 items-center gap-3 rounded-lg border bg-[var(--color-bg-surface-elevated)] p-3 text-[var(--foreground)] shadow-sm transition-[background-color,border-color,box-shadow,transform] duration-[var(--motion-duration-hover-focus)] motion-reduce:transition-none lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,1.1fr)_minmax(0,0.75fr)_minmax(0,0.85fr)] lg:gap-2 lg:px-3 lg:py-1.5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,0.62fr)_minmax(0,1.05fr)_minmax(0,0.42fr)_minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,0.78fr)_minmax(0,0.32fr)]",
         selected
           ? "border-[var(--color-border-selected)] bg-[var(--color-bg-selected)] ring-2 ring-[var(--color-border-selected)] ring-offset-1 ring-offset-[var(--color-bg-surface-base)]"
-          : "border-transparent hover:bg-[var(--color-bg-hover)] hover:shadow-md",
+          : "border-transparent hover:bg-[var(--color-bg-hover)]",
       ].join(" ")}
     >
       <div className="col-span-2 min-w-0 lg:col-span-1">

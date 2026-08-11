@@ -168,11 +168,12 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
           className="mt-4 space-y-2"
           aria-label="Lista de tareas"
         >
-          {tasks.map((task) => (
+          {tasks.map((task, index) => (
             <TaskRow
               key={task.id}
               task={task}
               assigneeOptions={assigneeOptions}
+              staggerIndex={index}
             />
           ))}
         </div>

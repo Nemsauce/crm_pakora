@@ -41,7 +41,7 @@ export function RefreshOrdersButton() {
         className="h-10 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-bg-surface shadow-md shadow-[var(--color-accent)]/20 hover:opacity-90 disabled:opacity-60"
       >
         {isPending ? (
-          <Loader2 aria-hidden="true" className="animate-spin" />
+          <Loader2 aria-hidden="true" className="crm-loader-orbit" />
         ) : (
           <RefreshCw aria-hidden="true" />
         )}

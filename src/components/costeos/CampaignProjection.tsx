@@ -5,6 +5,10 @@ import { useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { updateCosteoImporteGastado } from "@/app/(app)/costeos/actions";
+import {
+  AnimatedNumber,
+  type AnimatedNumberProps,
+} from "@/components/motion/AnimatedNumber";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,10 +69,14 @@ function ProjectionRow({
   label,
   value,
   tone = "default",
+  animatedValue,
+  animatedFormat,
 }: {
   label: string;
   value: string;
   tone?: "default" | "positive" | "negative";
+  animatedValue?: number;
+  animatedFormat?: Omit<AnimatedNumberProps, "className" | "value">;
 }) {
   const valueClass =
     tone === "positive"
@@ -80,8 +88,14 @@ function ProjectionRow({
   return (
     <div className="flex min-h-[var(--density-row-height-compact)] items-center justify-between gap-4 border-b border-border/40 py-2 last:border-b-0">
       <span className="font-body text-sm text-text-secondary">{label}</span>
-      <span className={`font-mono text-sm font-semibold tabular-nums ${valueClass}`}>
-        {value}
+      <span
+        className={`font-mono text-sm font-semibold tabular-nums ${valueClass} ${tone === "default" ? "" : "crm-financial-glow"}`}
+      >
+        {animatedValue !== undefined && Number.isFinite(animatedValue) ? (
+          <AnimatedNumber value={animatedValue} {...animatedFormat} />
+        ) : (
+          value
+        )}
       </span>
     </div>
   );
@@ -98,7 +112,7 @@ function SaveImporteButton() {
     >
       {pending ? (
         <>
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          <Loader2 className="crm-loader-orbit h-4 w-4" aria-hidden="true" />
           Guardando...
         </>
       ) : (
@@ -206,36 +220,81 @@ export function CampaignProjection({
           <ProjectionRow
             label="Pedidos totales"
             value={formatNumber(projection.pedidosTotales)}
+            animatedValue={projection.pedidosTotales}
+            animatedFormat={{ locale: "es-CO", maximumFractionDigits: 1 }}
           />
           <ProjectionRow
             label="Valor facturación"
             value={formatMoney(projection.valorFacturacion)}
+            animatedValue={projection.valorFacturacion}
+            animatedFormat={{
+              locale: "es-CO",
+              currency: "COP",
+              maximumFractionDigits: 0,
+            }}
           />
           <ProjectionRow
             label="Pedidos despachados"
             value={formatNumber(projection.pedidosDespachados)}
+            animatedValue={projection.pedidosDespachados}
+            animatedFormat={{ locale: "es-CO", maximumFractionDigits: 1 }}
           />
           <ProjectionRow
             label="Valor despachado"
             value={formatMoney(projection.valorDespachado)}
+            animatedValue={projection.valorDespachado}
+            animatedFormat={{
+              locale: "es-CO",
+              currency: "COP",
+              maximumFractionDigits: 0,
+            }}
           />
           <ProjectionRow
             label="Pedidos entregados"
             value={formatNumber(projection.pedidosEntregados)}
+            animatedValue={projection.pedidosEntregados}
+            animatedFormat={{ locale: "es-CO", maximumFractionDigits: 1 }}
           />
           <ProjectionRow
             label="Valor entregado"
             value={formatMoney(projection.valorEntregado)}
+            animatedValue={projection.valorEntregado}
+            animatedFormat={{
+              locale: "es-CO",
+              currency: "COP",
+              maximumFractionDigits: 0,
+            }}
           />
           <ProjectionRow
             label="Utilidad neta"
             value={formatMoney(projection.utilidadNeta)}
+            animatedValue={projection.utilidadNeta}
+            animatedFormat={{
+              locale: "es-CO",
+              currency: "COP",
+              maximumFractionDigits: 0,
+            }}
             tone={projection.utilidadNeta >= 0 ? "positive" : "negative"}
           />
-          <ProjectionRow label="CPA real" value={formatMoney(projection.cpaReal)} />
+          <ProjectionRow
+            label="CPA real"
+            value={formatMoney(projection.cpaReal)}
+            animatedValue={projection.cpaReal}
+            animatedFormat={{
+              locale: "es-CO",
+              currency: "COP",
+              maximumFractionDigits: 0,
+            }}
+          />
           <ProjectionRow
             label="CPA real %"
             value={formatPercent(projection.cpaRealPct)}
+            animatedValue={projection.cpaRealPct}
+            animatedFormat={{
+              locale: "es-CO",
+              style: "percent",
+              maximumFractionDigits: 1,
+            }}
           />
         </div>
       </div>

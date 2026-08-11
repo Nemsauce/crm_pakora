@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import type { CSSProperties } from "react";
 
 import {
   markAllNotificationsRead,
@@ -352,7 +353,13 @@ async function openNotificationAction(
   redirect(destination);
 }
 
-function AlertNotificationRow({ notification }: { notification: Notification }) {
+function AlertNotificationRow({
+  notification,
+  staggerIndex = 0,
+}: {
+  notification: Notification;
+  staggerIndex?: number;
+}) {
   const destination = getNotificationDestination(notification);
   const category = getCategory(notification.tipo);
   const typeLabel = notificationTypeLabel[notification.tipo];
@@ -408,40 +415,49 @@ function AlertNotificationRow({ notification }: { notification: Notification }) 
   );
 
   return (
-    <article className="group flex min-h-[var(--density-row-height-compact)] items-stretch gap-1 rounded-lg border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm transition-[background-color,border-color,box-shadow] duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:shadow-md motion-reduce:transition-none">
-      {openAction ? (
-        <form action={openAction} className="min-w-0 flex-1">
-          <button
-            type="submit"
-            className="block h-full w-full rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label={`Abrir ${notification.titulo}`}
-          >
-            {content}
-          </button>
-        </form>
-      ) : (
-        <div className="min-w-0 flex-1">{content}</div>
-      )}
+    <div
+      className={staggerIndex < 3 ? "crm-list-enter" : undefined}
+      style={
+        staggerIndex < 3
+          ? ({ "--motion-stagger-index": staggerIndex } as CSSProperties)
+          : undefined
+      }
+    >
+      <article className="crm-tactile-card group flex min-h-[var(--density-row-height-compact)] items-stretch gap-1 rounded-lg border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm transition-[background-color,border-color,box-shadow,transform] duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] motion-reduce:transition-none">
+        {openAction ? (
+          <form action={openAction} className="min-w-0 flex-1">
+            <button
+              type="submit"
+              className="block h-full w-full rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`Abrir ${notification.titulo}`}
+            >
+              {content}
+            </button>
+          </form>
+        ) : (
+          <div className="min-w-0 flex-1">{content}</div>
+        )}
 
-      <form action={markAction} className="flex shrink-0 items-start">
-        <Button
-          type="submit"
-          variant="ghost"
-          size="icon-sm"
-          className="rounded-full text-text-secondary hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]"
-          aria-label={`Marcar “${notification.titulo}” como ${
-            isUnread ? "leída" : "no leída"
-          }`}
-          title={isUnread ? "Marcar como leída" : "Marcar como no leída"}
-        >
-          {isUnread ? (
-            <Check className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <Mail className="h-4 w-4" aria-hidden="true" />
-          )}
-        </Button>
-      </form>
-    </article>
+        <form action={markAction} className="flex shrink-0 items-start">
+          <Button
+            type="submit"
+            variant="ghost"
+            size="icon-sm"
+            className="rounded-full text-text-secondary hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]"
+            aria-label={`Marcar “${notification.titulo}” como ${
+              isUnread ? "leída" : "no leída"
+            }`}
+            title={isUnread ? "Marcar como leída" : "Marcar como no leída"}
+          >
+            {isUnread ? (
+              <Check className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Mail className="h-4 w-4" aria-hidden="true" />
+            )}
+          </Button>
+        </form>
+      </article>
+    </div>
   );
 }
 
@@ -716,10 +732,11 @@ export default async function AlertasPage({ searchParams }: AlertasPageProps) {
                         </span>
                       </div>
                       <div className="grid gap-1">
-                        {categoryNotifications.map((notification) => (
+                        {categoryNotifications.map((notification, index) => (
                           <AlertNotificationRow
                             key={notification.id}
                             notification={notification}
+                            staggerIndex={index}
                           />
                         ))}
                       </div>

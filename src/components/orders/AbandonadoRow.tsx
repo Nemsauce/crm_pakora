@@ -244,7 +244,7 @@ export function AbandonadoRow({ row }: { row: AbandonadoListItem }) {
   }
 
   return (
-    <article className="rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-sm">
+    <article className="crm-tactile-card rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-sm transition-[background-color,box-shadow,transform] duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] motion-reduce:transition-none">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -271,7 +271,7 @@ export function AbandonadoRow({ row }: { row: AbandonadoListItem }) {
               aria-label={`Estado de ${customerName}`}
             >
               {isUpdatingState ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                <Loader2 className="crm-loader-orbit h-3.5 w-3.5" aria-hidden="true" />
               ) : null}
               <Select.Value />
               <Select.Icon>
@@ -370,7 +370,7 @@ export function AbandonadoRow({ row }: { row: AbandonadoListItem }) {
           className="h-9 rounded-full border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] px-4 text-text-primary transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-text-primary"
         >
           {isSuggesting ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            <Loader2 className="crm-loader-orbit h-4 w-4" aria-hidden="true" />
           ) : (
             <Sparkles className="h-4 w-4" aria-hidden="true" />
           )}

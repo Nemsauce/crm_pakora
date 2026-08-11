@@ -57,7 +57,7 @@ export default async function AppLayout({
     <AssistantProvider>
       <AssistantPushLayout>
         <div className="min-h-screen p-4 text-text-primary md:p-6">
-          <div className="min-h-[calc(100vh-2rem)] overflow-hidden rounded-3xl bg-bg-surface shadow-xl md:min-h-[calc(100vh-3rem)] lg:flex">
+          <div className="crm-shell-depth min-h-[calc(100vh-2rem)] overflow-hidden rounded-3xl bg-bg-surface shadow-xl md:min-h-[calc(100vh-3rem)] lg:flex">
             <div className="lg:w-72 lg:shrink-0">
               <Sidebar />
             </div>

@@ -8,6 +8,11 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+import {
+  AnimatedNumber,
+  usePrefersReducedMotion,
+} from "@/components/motion/AnimatedNumber";
+
 type Pais = "CO" | "MX";
 
 export type NetProfitTrendPoint = {
@@ -41,23 +46,6 @@ const countryLabel: Record<Pais, string> = {
   CO: "Colombia",
   MX: "México",
 };
-
-const currencyFormatter = {
-  CO: new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }),
-  MX: new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    maximumFractionDigits: 0,
-  }),
-} satisfies Record<Pais, Intl.NumberFormat>;
-
-function formatCurrency(pais: Pais, value: number) {
-  return currencyFormatter[pais].format(value);
-}
 
 const exchangeRateDateFormatter = new Intl.DateTimeFormat("es-CO", {
   dateStyle: "medium",
@@ -178,7 +166,7 @@ export function CombinedNetProfitCard({
     : null;
 
   return (
-    <article className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-5 text-text-primary shadow-md">
+    <article className="crm-tactile-card rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-5 text-text-primary shadow-md">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
@@ -189,13 +177,23 @@ export function CombinedNetProfitCard({
           </h3>
           {!hasMovements ? (
             <p className="mt-4 font-mono text-3xl font-semibold tabular-nums text-text-secondary">
-              {formatCurrency("CO", 0)}
+              <AnimatedNumber
+                value={0}
+                locale="es-CO"
+                currency="COP"
+                maximumFractionDigits={0}
+              />
             </p>
           ) : canCalculate ? (
             <p
-              className={`mt-4 font-mono text-3xl font-semibold tabular-nums ${combinedTone}`}
+              className={`crm-financial-glow mt-4 font-mono text-3xl font-semibold tabular-nums ${combinedTone}`}
             >
-              {formatCurrency("CO", combinedNet)}
+              <AnimatedNumber
+                value={combinedNet}
+                locale="es-CO"
+                currency="COP"
+                maximumFractionDigits={0}
+              />
             </p>
           ) : exchangeRateError ? (
             <p role="alert" className="mt-4 font-body text-sm text-negative">
@@ -206,7 +204,7 @@ export function CombinedNetProfitCard({
               role="status"
               className="mt-4 inline-flex items-center gap-2 font-body text-sm text-text-secondary"
             >
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <Loader2 className="crm-loader-orbit h-4 w-4" aria-hidden="true" />
               Calculando total combinado...
             </p>
           )}
@@ -216,13 +214,23 @@ export function CombinedNetProfitCard({
           <div className="rounded-xl bg-[var(--color-bg-surface-subtle)] p-3">
             <p className="font-body text-xs text-text-secondary">Colombia</p>
             <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-text-primary">
-              {formatCurrency("CO", coNet)}
+              <AnimatedNumber
+                value={coNet}
+                locale="es-CO"
+                currency="COP"
+                maximumFractionDigits={0}
+              />
             </p>
           </div>
           <div className="rounded-xl bg-[var(--color-bg-surface-subtle)] p-3">
             <p className="font-body text-xs text-text-secondary">México</p>
             <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-text-primary">
-              {formatCurrency("MX", mxNet)}
+              <AnimatedNumber
+                value={mxNet}
+                locale="es-MX"
+                currency="MXN"
+                maximumFractionDigits={0}
+              />
             </p>
           </div>
         </div>
@@ -261,9 +269,10 @@ export function NetProfitCard({
   const net = entradasOperativas - salidasOperativas;
   const netTone = net < 0 ? "text-negative" : "text-positive";
   const gradientId = `daily-operating-profit-${pais}`;
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-5 text-text-primary shadow-sm">
+    <article className="crm-tactile-card relative overflow-hidden rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-5 text-text-primary shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
@@ -285,9 +294,14 @@ export function NetProfitCard({
         <div>
           <div className="mt-6 flex flex-wrap items-end gap-3">
             <p
-              className={`font-mono text-3xl font-semibold tabular-nums ${netTone}`}
+              className={`crm-financial-glow font-mono text-3xl font-semibold tabular-nums ${netTone}`}
             >
-              {formatCurrency(pais, net)}
+              <AnimatedNumber
+                value={net}
+                locale={pais === "CO" ? "es-CO" : "es-MX"}
+                currency={pais === "CO" ? "COP" : "MXN"}
+                maximumFractionDigits={0}
+              />
             </p>
             <ComparisonBadge value={comparisonPercentage} />
           </div>
@@ -297,7 +311,12 @@ export function NetProfitCard({
                 Entradas operativas
               </p>
               <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-low">
-                {formatCurrency(pais, entradasOperativas)}
+                <AnimatedNumber
+                  value={entradasOperativas}
+                  locale={pais === "CO" ? "es-CO" : "es-MX"}
+                  currency={pais === "CO" ? "COP" : "MXN"}
+                  maximumFractionDigits={0}
+                />
               </p>
             </div>
             <div className="rounded-2xl bg-risk-high-bg p-3">
@@ -305,7 +324,12 @@ export function NetProfitCard({
                 Salidas operativas
               </p>
               <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-risk-high">
-                {formatCurrency(pais, salidasOperativas)}
+                <AnimatedNumber
+                  value={salidasOperativas}
+                  locale={pais === "CO" ? "es-CO" : "es-MX"}
+                  currency={pais === "CO" ? "COP" : "MXN"}
+                  maximumFractionDigits={0}
+                />
               </p>
             </div>
           </div>
@@ -318,7 +342,12 @@ export function NetProfitCard({
                 Sin movimientos en este rango
               </p>
               <p className="mt-2 font-mono text-2xl font-semibold tabular-nums text-text-secondary">
-                {formatCurrency(pais, 0)}
+                <AnimatedNumber
+                  value={0}
+                  locale={pais === "CO" ? "es-CO" : "es-MX"}
+                  currency={pais === "CO" ? "COP" : "MXN"}
+                  maximumFractionDigits={0}
+                />
               </p>
             </div>
             <ComparisonBadge value={comparisonPercentage} />
@@ -330,9 +359,10 @@ export function NetProfitCard({
         <p className="sr-only">Tendencia diaria del período seleccionado</p>
         {trendData.length > 0 ? (
           <div
-            className="h-20 w-full"
+            className="crm-financial-glow h-20 w-full"
             role="img"
             aria-label={`Tendencia diaria de utilidad neta en ${countryLabel[pais]} para el período seleccionado`}
+            style={{ opacity: prefersReducedMotion === null ? 0 : 1 }}
           >
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
@@ -361,13 +391,16 @@ export function NetProfitCard({
                   </linearGradient>
                 </defs>
                 <Area
+                  key={prefersReducedMotion === false ? "animated" : "static"}
                   type="linear"
                   dataKey="neto"
                   name="Neto diario"
                   stroke="var(--color-chart-net)"
                   strokeWidth={2}
                   fill={`url(#${gradientId})`}
-                  isAnimationActive={false}
+                  isAnimationActive={prefersReducedMotion === false}
+                  animationDuration={760}
+                  animationEasing="ease-out"
                 />
               </AreaChart>
             </ResponsiveContainer>

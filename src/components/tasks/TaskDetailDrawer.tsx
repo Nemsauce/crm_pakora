@@ -563,7 +563,7 @@ function SnoozeTaskControl({
             className="rounded-full border-border bg-[var(--color-bg-surface-elevated)] text-[var(--foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)] disabled:opacity-60"
           >
             {isSnoozing ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <Loader2 className="crm-loader-orbit h-4 w-4" aria-hidden="true" />
             ) : (
               <Clock3 className="h-4 w-4" aria-hidden="true" />
             )}
@@ -655,7 +655,7 @@ export function TaskDetailRow({
       completionAnimationTimeoutRef.current = window.setTimeout(() => {
         setCompletionAnimation(detail.collapse ? "leaving" : "idle");
         completionAnimationTimeoutRef.current = null;
-      }, detail.collapse ? 90 : 600);
+      }, detail.collapse ? 220 : 720);
     }
 
     window.addEventListener(TASK_COMPLETED_EVENT, handleTaskCompleted);
@@ -715,9 +715,9 @@ export function TaskDetailRow({
       aria-pressed={orderId !== null && !isLeaving ? selected : undefined}
       onClick={orderId !== null && !isLeaving ? toggleDetail : undefined}
       onKeyDown={orderId !== null && !isLeaving ? handleKeyDown : undefined}
-      className={`overflow-hidden rounded-2xl border bg-bg-surface text-[var(--foreground)] transition-[max-height,opacity,transform,padding,border-color,box-shadow] duration-300 ease-out motion-reduce:transition-none ${
+      className={`overflow-hidden rounded-2xl border bg-bg-surface text-[var(--foreground)] transition-[max-height,opacity,transform,padding,border-color,box-shadow] duration-[var(--motion-duration-task-completion)] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
         isLeaving
-          ? "pointer-events-none max-h-0 scale-[0.98] border-transparent p-0 opacity-0"
+          ? "pointer-events-none max-h-0 -translate-y-2 scale-[0.96] border-transparent p-0 opacity-0"
           : `max-h-[40rem] p-4 shadow-lg ${isCompleted ? "opacity-70" : ""} ${
               orderId !== null
                 ? "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -739,13 +739,13 @@ export function TaskDetailRow({
           <div
             className={`flex size-12 shrink-0 items-center justify-center rounded-full ${
               showCompletionCheck
-                ? "bg-risk-low-bg text-risk-low"
+                ? "crm-completion-burst bg-risk-low-bg text-risk-low"
                 : taskTone.circleClassName
             }`}
             aria-hidden="true"
           >
             {showCompletionCheck ? (
-              <Check className="h-5 w-5 motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-200" />
+              <Check className="crm-check-draw h-5 w-5" />
             ) : (
               <Icon className="h-5 w-5" />
             )}
@@ -1199,7 +1199,7 @@ export function TaskDetailDrawer({
         navigateAfterTaskLeavesView(taskId);
         router.refresh();
       },
-      prefersReducedMotion ? 0 : 480,
+      prefersReducedMotion ? 0 : 680,
     );
   }
 
@@ -1235,31 +1235,9 @@ export function TaskDetailDrawer({
       }}
     >
       <Dialog.Portal>
-        <style>{`
-          @keyframes crm-task-drawer-enter {
-            from {
-              opacity: 0;
-              transform: translateX(24px);
-            }
-            to {
-              opacity: 1;
-              transform: translateX(0);
-            }
-          }
-
-          .crm-task-detail-drawer[data-state="open"] {
-            animation: crm-task-drawer-enter var(--motion-duration-drawer) cubic-bezier(0.2, 0.8, 0.2, 1) both;
-          }
-
-          @media (prefers-reduced-motion: reduce) {
-            .crm-task-detail-drawer[data-state="open"] {
-              animation: none;
-            }
-          }
-        `}</style>
         <Dialog.Content
           id="task-detail-drawer"
-          className="crm-task-detail-drawer fixed inset-y-0 right-0 z-[var(--z-index-operational-drawer)] flex w-full max-w-xl flex-col border-l border-border bg-[var(--color-bg-surface-base)] text-[var(--foreground)] shadow-xl outline-none"
+          className="crm-drawer-presence fixed inset-y-0 right-0 z-[var(--z-index-operational-drawer)] flex w-full max-w-xl flex-col border-l border-border bg-[var(--color-bg-surface-base)] text-[var(--foreground)] shadow-2xl outline-none"
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
           onCloseAutoFocus={(event) => {
@@ -1299,9 +1277,9 @@ export function TaskDetailDrawer({
           <div className="flex-1 overflow-y-auto px-5 py-5">
             {isLoading ? (
               <div className="space-y-4">
-                <div className="h-44 rounded-2xl border border-border bg-[var(--color-bg-surface-elevated)] motion-safe:animate-pulse" />
-                <div className="h-32 rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] motion-safe:animate-pulse" />
-                <div className="h-24 rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)] motion-safe:animate-pulse" />
+                <div className="crm-shimmer h-44 rounded-2xl border border-border bg-[var(--color-bg-surface-elevated)]" />
+                <div className="crm-shimmer h-32 rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)]" />
+                <div className="crm-shimmer h-24 rounded-2xl border border-border bg-[var(--color-bg-surface-subtle)]" />
               </div>
             ) : null}
 
@@ -1618,7 +1596,7 @@ function SelectedTaskSection({
             className="h-9 rounded-full border-border bg-[var(--color-bg-surface-elevated)] px-4 text-[var(--foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)] disabled:opacity-60"
           >
             {isSuggesting ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <Loader2 className="crm-loader-orbit h-4 w-4" aria-hidden="true" />
             ) : (
               <Sparkles className="h-4 w-4" aria-hidden="true" />
             )}
@@ -1712,7 +1690,7 @@ function SelectedTaskSection({
                 </p>
               ) : (
                 <span className="inline-flex h-9 items-center gap-2 font-body text-xs text-[var(--muted-foreground)]">
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  <Loader2 className="crm-loader-orbit h-4 w-4" aria-hidden="true" />
                   Cargando responsables
                 </span>
               )}
@@ -1839,10 +1817,14 @@ function CompleteTaskForm({
         type="button"
         disabled={isCompleting || !resultado}
         onClick={handleComplete}
-        className="min-h-[var(--density-row-height-comfortable)] rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 text-[var(--color-on-accent)] transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90 disabled:opacity-60"
+        className="crm-primary-halo min-h-[var(--density-row-height-comfortable)] rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 text-[var(--color-on-accent)] transition-[opacity,transform,box-shadow] duration-[var(--motion-duration-hover-focus)] hover:-translate-y-0.5 hover:opacity-95 disabled:opacity-60 motion-reduce:transform-none"
       >
-        <Check className="h-4 w-4" aria-hidden="true" />
-        Confirmar
+        {isCompleting ? (
+          <Loader2 className="crm-loader-orbit h-4 w-4" aria-hidden="true" />
+        ) : (
+          <Check className="h-4 w-4" aria-hidden="true" />
+        )}
+        {isCompleting ? "Completando…" : "Confirmar"}
       </Button>
     </div>
   );

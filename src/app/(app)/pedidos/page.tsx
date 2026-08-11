@@ -191,36 +191,6 @@ function PedidosViewSwitcher({ view }: { view: PedidosView }) {
   );
 }
 
-function ListEntranceStyles() {
-  return (
-    <style>{`
-      @keyframes crm-fade-slide-in {
-        from {
-          opacity: 0;
-          transform: translateY(4px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .crm-list-entrance {
-        opacity: 0;
-        animation: crm-fade-slide-in var(--motion-duration-content) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .crm-list-entrance {
-          opacity: 1;
-          transform: none;
-          animation: none;
-        }
-      }
-    `}</style>
-  );
-}
-
 function PedidosPageHeader({ view }: { view: PedidosView }) {
   const isAbandonados = view === "abandonados";
 
@@ -298,7 +268,6 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
 
     return (
       <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 lg:px-8">
-        <ListEntranceStyles />
         <PedidosPageHeader view={view} />
         <AbandonadosList
           rows={abandonados}
@@ -479,11 +448,12 @@ export default async function PedidosPage({ searchParams }: PedidosPageProps) {
           </div>
 
           <div className="grid gap-1" aria-label="Lista de pedidos">
-            {displayOrders.map((order) => (
+            {displayOrders.map((order, index) => (
               <OrderCardLink
                 key={order.id}
                 order={order}
                 selected={String(order.id) === selectedOrderId}
+                staggerIndex={index}
               />
             ))}
           </div>

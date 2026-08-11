@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
+import {
+  AnimatedNumber,
+  type AnimatedNumberProps,
+} from "@/components/motion/AnimatedNumber";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -197,10 +201,14 @@ function ResultRow({
   label,
   value,
   tone = "default",
+  animatedValue,
+  animatedFormat,
 }: {
   label: string;
   value: string;
   tone?: "default" | "positive" | "negative";
+  animatedValue?: number;
+  animatedFormat?: Omit<AnimatedNumberProps, "className" | "value">;
 }) {
   const valueClass =
     tone === "positive"
@@ -212,8 +220,14 @@ function ResultRow({
   return (
     <div className="flex min-h-[var(--density-row-height-comfortable)] items-center justify-between gap-4 border-b border-border/30 py-2.5 last:border-b-0">
       <span className="font-body text-sm text-text-secondary">{label}</span>
-      <span className={`font-mono text-sm font-semibold tabular-nums ${valueClass}`}>
-        {value}
+      <span
+        className={`font-mono text-sm font-semibold tabular-nums ${valueClass} ${tone === "default" ? "" : "crm-financial-glow"}`}
+      >
+        {animatedValue !== undefined && Number.isFinite(animatedValue) ? (
+          <AnimatedNumber value={animatedValue} {...animatedFormat} />
+        ) : (
+          value
+        )}
       </span>
     </div>
   );
@@ -247,7 +261,7 @@ function SubmitButton({ label }: { label: string }) {
     >
       {pending ? (
         <>
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          <Loader2 className="crm-loader-orbit h-4 w-4" aria-hidden="true" />
           {label === "Guardar cambios" ? "Guardando cambios..." : "Guardando..."}
         </>
       ) : (
@@ -276,6 +290,11 @@ export function CosteoCalculator({
   const moneyFormatter = currencyFormatter[fxDisplayEnabled ? "COP" : pais];
   const formatMoney = (value: number) =>
     Number.isFinite(value) ? moneyFormatter.format(value * displayMultiplier) : "—";
+  const animatedMoneyFormat = {
+    locale: fxDisplayEnabled || pais === "CO" ? "es-CO" : "es-MX",
+    currency: fxDisplayEnabled || pais === "CO" ? "COP" : "MXN",
+    maximumFractionDigits: 0,
+  } satisfies Omit<AnimatedNumberProps, "className" | "value">;
   const [nombreProducto, setNombreProducto] = useState(
     initialValues?.nombre_producto ?? "",
   );
@@ -838,7 +857,7 @@ export function CosteoCalculator({
           </div>
         </div>
 
-        <aside className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-md sm:p-5">
+        <aside className="crm-tactile-card rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-md sm:p-5">
           <div className="border-b border-border/30 pb-4">
             <p className="font-display text-lg font-semibold text-text-primary">
               Resultados
@@ -852,23 +871,39 @@ export function CosteoCalculator({
             <ResultRow
               label="Flete con devoluciones"
               value={formatMoney(values.fleteConDevoluciones)}
+              animatedValue={values.fleteConDevoluciones * displayMultiplier}
+              animatedFormat={animatedMoneyFormat}
             />
             <ResultRow
               label="CPA con devoluciones y cancelaciones"
               value={formatMoney(values.cpaConDevolucionesYCancelaciones)}
+              animatedValue={
+                values.cpaConDevolucionesYCancelaciones * displayMultiplier
+              }
+              animatedFormat={animatedMoneyFormat}
             />
             <ResultRow
               label="Costos totales"
               value={formatMoney(values.costosTotales)}
+              animatedValue={values.costosTotales * displayMultiplier}
+              animatedFormat={animatedMoneyFormat}
             />
             <ResultRow
               label="Utilidad por pedido entregado"
               value={formatMoney(values.utilidadPorPedidoEntregado)}
+              animatedValue={
+                values.utilidadPorPedidoEntregado * displayMultiplier
+              }
+              animatedFormat={animatedMoneyFormat}
               tone={values.utilidadPorPedidoEntregado >= 0 ? "positive" : "negative"}
             />
             <ResultRow
               label="Utilidad promedio por pedido Shopify"
               value={formatMoney(values.utilidadPromedioPorPedidoShopify)}
+              animatedValue={
+                values.utilidadPromedioPorPedidoShopify * displayMultiplier
+              }
+              animatedFormat={animatedMoneyFormat}
               tone={utilidadTone}
             />
             <ResultRow
@@ -878,10 +913,32 @@ export function CosteoCalculator({
                   ? "Inválido"
                   : formatMoney(values.precioComparacion)
               }
+              animatedValue={
+                values.precioComparacionInvalido
+                  ? undefined
+                  : values.precioComparacion * displayMultiplier
+              }
+              animatedFormat={animatedMoneyFormat}
               tone={values.precioComparacionInvalido ? "negative" : "default"}
             />
-            <ResultRow label="Breakeven" value={formatMoney(values.breakeven)} />
-            <ResultRow label="ROAS" value={formatMultiplier(values.roas)} />
+            <ResultRow
+              label="Breakeven"
+              value={formatMoney(values.breakeven)}
+              animatedValue={values.breakeven * displayMultiplier}
+              animatedFormat={animatedMoneyFormat}
+            />
+            <ResultRow
+              label="ROAS"
+              value={formatMultiplier(values.roas)}
+              animatedValue={Number(values.roas.toFixed(2))}
+              animatedFormat={{
+                locale: "en-US",
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+                suffix: "x",
+                useGrouping: false,
+              }}
+            />
           </div>
 
           <div className="mt-6">

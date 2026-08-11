@@ -1,3 +1,7 @@
+"use client";
+
+import { AnimatedNumber } from "@/components/motion/AnimatedNumber";
+
 type Pais = "CO" | "MX";
 
 export type DineroEnLaCalleRow = {
@@ -19,25 +23,6 @@ const countryLabel: Record<Pais, string> = {
   MX: "México",
 };
 
-const currencyFormatter = {
-  CO: new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }),
-  MX: new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }),
-} satisfies Record<Pais, Intl.NumberFormat>;
-
-const orderCountFormatter = {
-  CO: new Intl.NumberFormat("es-CO"),
-  MX: new Intl.NumberFormat("es-MX"),
-} satisfies Record<Pais, Intl.NumberFormat>;
-
 const updatedAtFormatter = new Intl.DateTimeFormat("es-CO", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -55,10 +40,6 @@ function toNumber(value: number | string | null) {
   }
 
   return 0;
-}
-
-function formatCurrency(pais: Pais, value: number) {
-  return currencyFormatter[pais].format(value);
 }
 
 function CountryStreetMoneyCard({
@@ -83,7 +64,7 @@ function CountryStreetMoneyCard({
 
   return (
     <section
-      className="min-w-0 rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-5 text-text-primary shadow-sm"
+      className="crm-tactile-card min-w-0 rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-5 text-text-primary shadow-sm"
       aria-labelledby={headingId}
     >
       <div>
@@ -98,8 +79,14 @@ function CountryStreetMoneyCard({
         </h3>
       </div>
 
-      <p className="mt-5 font-mono text-3xl font-semibold tabular-nums text-text-primary">
-        {formatCurrency(pais, total)}
+      <p className="crm-financial-glow mt-5 font-mono text-3xl font-semibold tabular-nums text-text-primary">
+        <AnimatedNumber
+          value={total}
+          locale={pais === "CO" ? "es-CO" : "es-MX"}
+          currency={pais === "CO" ? "COP" : "MXN"}
+          minimumFractionDigits={pais === "MX" ? 2 : undefined}
+          maximumFractionDigits={pais === "CO" ? 0 : 2}
+        />
       </p>
       <p className="mt-1 font-body text-sm text-text-secondary">
         Total actual pendiente de entrega
@@ -130,9 +117,11 @@ function CountryStreetMoneyCard({
                     Pedidos por entregar
                   </span>
                   <span className="font-mono text-sm tabular-nums text-text-secondary">
-                    {orderCountFormatter[pais].format(
-                      toNumber(row.pedidos_por_entregar),
-                    )}
+                    <AnimatedNumber
+                      value={toNumber(row.pedidos_por_entregar)}
+                      locale={pais === "CO" ? "es-CO" : "es-MX"}
+                      maximumFractionDigits={0}
+                    />
                   </span>
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-4 sm:mt-0 sm:block sm:text-right">
@@ -140,10 +129,13 @@ function CountryStreetMoneyCard({
                     Dinero en la calle
                   </span>
                   <span className="font-mono text-sm font-semibold tabular-nums text-text-primary">
-                    {formatCurrency(
-                      pais,
-                      toNumber(row.dinero_en_la_calle),
-                    )}
+                    <AnimatedNumber
+                      value={toNumber(row.dinero_en_la_calle)}
+                      locale={pais === "CO" ? "es-CO" : "es-MX"}
+                      currency={pais === "CO" ? "COP" : "MXN"}
+                      minimumFractionDigits={pais === "MX" ? 2 : undefined}
+                      maximumFractionDigits={pais === "CO" ? 0 : 2}
+                    />
                   </span>
                 </div>
               </li>

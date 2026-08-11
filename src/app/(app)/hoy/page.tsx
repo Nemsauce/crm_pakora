@@ -9,7 +9,9 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
+import { AnimatedNumber } from "@/components/motion/AnimatedNumber";
 import { Button } from "@/components/ui/button";
 import {
   getTodaySummary,
@@ -37,20 +39,6 @@ const alertTimeFormatter = new Intl.DateTimeFormat("es-CO", {
   month: "short",
   timeZone: BOGOTA_TIME_ZONE,
 });
-const currencyFormatter = {
-  CO: new Intl.NumberFormat("es-CO", {
-    currency: "COP",
-    maximumFractionDigits: 0,
-    style: "currency",
-  }),
-  MX: new Intl.NumberFormat("es-MX", {
-    currency: "MXN",
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
-    style: "currency",
-  }),
-} as const;
-
 const taskTypeLabel: Record<TodayTaskItem["type"], string> = {
   llamar_confirmacion: "Confirmación",
   notificar_guia: "Notificar guía",
@@ -169,11 +157,16 @@ function TaskPreviewList({
 
   return (
     <ul className="space-y-1.5">
-      {items.map((task) => (
+      {items.map((task, index) => (
         <li key={task.id}>
           <Link
             href={task.href}
-            className="group grid min-h-[var(--density-row-height-compact)] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] px-3 py-2.5 shadow-sm outline-none transition-[background-color,box-shadow] duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+            style={
+              {
+                "--motion-stagger-index": Math.min(index, 8),
+              } as CSSProperties
+            }
+            className="crm-list-enter crm-tactile-card group grid min-h-[var(--density-row-height-compact)] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] px-3 py-2.5 shadow-sm outline-none transition-[background-color,box-shadow,transform] duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
           >
             <span className="min-w-0">
               <span className="flex min-w-0 items-center gap-2">
@@ -220,17 +213,24 @@ function OrderActionRow({
   description,
   count,
   tone,
+  staggerIndex = 0,
 }: {
   href: string;
   label: string;
   description: string;
   count: number;
   tone: "neutral" | "risk";
+  staggerIndex?: number;
 }) {
   return (
     <Link
       href={href}
-      className="group flex min-h-[var(--density-row-height-comfortable)] items-center gap-3 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm outline-none transition-[background-color,box-shadow] duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+      style={
+        {
+          "--motion-stagger-index": Math.min(staggerIndex, 8),
+        } as CSSProperties
+      }
+      className="crm-list-enter crm-tactile-card group flex min-h-[var(--density-row-height-comfortable)] items-center gap-3 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm outline-none transition-[background-color,box-shadow,transform] duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
     >
       <span
         className={`flex size-10 shrink-0 items-center justify-center rounded-full ${
@@ -253,9 +253,11 @@ function OrderActionRow({
           {description}
         </span>
       </span>
-      <span className="font-mono text-xl font-semibold tabular-nums text-text-primary">
-        {countFormatter.format(count)}
-      </span>
+      <AnimatedNumber
+        value={count}
+        maximumFractionDigits={0}
+        className="font-mono text-xl font-semibold tabular-nums text-text-primary"
+      />
       <ArrowRight
         className="size-4 shrink-0 text-text-secondary transition-transform duration-[var(--motion-duration-hover-focus)] group-hover:translate-x-0.5 motion-reduce:transition-none"
         aria-hidden="true"
@@ -264,7 +266,13 @@ function OrderActionRow({
   );
 }
 
-function AlertPreview({ alert }: { alert: TodayAlertItem }) {
+function AlertPreview({
+  alert,
+  staggerIndex = 0,
+}: {
+  alert: TodayAlertItem;
+  staggerIndex?: number;
+}) {
   const content = (
     <>
       <span className="min-w-0 flex-1">
@@ -295,14 +303,17 @@ function AlertPreview({ alert }: { alert: TodayAlertItem }) {
     </>
   );
   const className =
-    "flex min-h-[var(--density-row-height-compact)] items-center gap-3 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm outline-none transition-[background-color,box-shadow] duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none";
+    "crm-list-enter crm-tactile-card flex min-h-[var(--density-row-height-compact)] items-center gap-3 rounded-xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm outline-none transition-[background-color,box-shadow,transform] duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none";
+  const style = {
+    "--motion-stagger-index": Math.min(staggerIndex, 8),
+  } as CSSProperties;
 
   return alert.href ? (
-    <Link href={alert.href} className={className}>
+    <Link href={alert.href} className={className} style={style}>
       {content}
     </Link>
   ) : (
-    <Link href="/alertas?lectura=unread" className={className}>
+    <Link href="/alertas?lectura=unread" className={className} style={style}>
       {content}
     </Link>
   );
@@ -362,7 +373,7 @@ export default async function HoyPage() {
       </header>
 
       <section
-        className="mt-5 rounded-2xl border border-[var(--color-border-selected)] bg-[var(--color-bg-surface-elevated)] p-4 shadow-lg sm:p-5"
+        className="crm-command-panel mt-5 rounded-2xl border border-[var(--color-border-selected)] bg-[var(--color-bg-surface-elevated)] p-4 shadow-lg sm:p-5"
         aria-labelledby="next-action-heading"
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -404,7 +415,7 @@ export default async function HoyPage() {
           </div>
           <Button
             asChild
-            className="min-h-[var(--density-row-height-compact)] shrink-0 bg-gradient-to-r from-accent-from to-accent-to px-5 text-[var(--color-on-accent)] hover:opacity-90"
+            className="crm-primary-halo min-h-[var(--density-row-height-compact)] shrink-0 bg-gradient-to-r from-accent-from to-accent-to px-5 text-[var(--color-on-accent)] transition-[opacity,transform,box-shadow] duration-[var(--motion-duration-hover-focus)] hover:-translate-y-0.5 hover:opacity-95 motion-reduce:transform-none"
           >
             <Link href={nextTask?.href ?? "/tareas"}>
               {nextTask ? "Resolver siguiente" : "Revisar tareas"}
@@ -445,9 +456,11 @@ export default async function HoyPage() {
                 <h3 className="font-body text-sm font-semibold text-text-primary">
                   Vencidas
                 </h3>
-                <span className="font-mono text-sm font-semibold tabular-nums text-[var(--color-danger)]">
-                  {countFormatter.format(summary.overdueTasks.count)}
-                </span>
+                <AnimatedNumber
+                  value={summary.overdueTasks.count}
+                  maximumFractionDigits={0}
+                  className="font-mono text-sm font-semibold tabular-nums text-[var(--color-danger)]"
+                />
               </div>
               <TaskPreviewList
                 items={summary.overdueTasks.items}
@@ -469,9 +482,11 @@ export default async function HoyPage() {
                 <h3 className="font-body text-sm font-semibold text-text-primary">
                   Con fecha de hoy
                 </h3>
-                <span className="font-mono text-sm font-semibold tabular-nums text-[var(--color-warning)]">
-                  {countFormatter.format(summary.todayTasks.count)}
-                </span>
+                <AnimatedNumber
+                  value={summary.todayTasks.count}
+                  maximumFractionDigits={0}
+                  className="font-mono text-sm font-semibold tabular-nums text-[var(--color-warning)]"
+                />
               </div>
               <TaskPreviewList
                 items={summary.todayTasks.items}
@@ -514,6 +529,7 @@ export default async function HoyPage() {
                 )}
                 count={summary.ordersReceivedToday.count}
                 tone="neutral"
+                staggerIndex={0}
               />
               <OrderActionRow
                 href={nextHighRiskHref}
@@ -525,6 +541,7 @@ export default async function HoyPage() {
                 )}
                 count={summary.activeHighRiskOrders.count}
                 tone="risk"
+                staggerIndex={1}
               />
             </div>
             <p className="mt-2 font-body text-xs text-text-secondary">
@@ -550,18 +567,20 @@ export default async function HoyPage() {
                   Alertas por atender
                 </h2>
               </div>
-              <span className="font-mono text-lg font-semibold tabular-nums text-text-primary">
-                {countFormatter.format(summary.unreadAttentionAlerts.count)}
-              </span>
+              <AnimatedNumber
+                value={summary.unreadAttentionAlerts.count}
+                maximumFractionDigits={0}
+                className="font-mono text-lg font-semibold tabular-nums text-text-primary"
+              />
             </div>
             <p className="mt-1 font-body text-xs text-text-secondary">
               Sin leer, para tu usuario, dentro de Acción requerida.
             </p>
             {summary.unreadAttentionAlerts.items.length > 0 ? (
               <ul className="mt-3 space-y-2">
-                {summary.unreadAttentionAlerts.items.map((alert) => (
+                {summary.unreadAttentionAlerts.items.map((alert, index) => (
                   <li key={alert.id}>
-                    <AlertPreview alert={alert} />
+                    <AlertPreview alert={alert} staggerIndex={index} />
                   </li>
                 ))}
               </ul>
@@ -614,7 +633,7 @@ export default async function HoyPage() {
             return (
               <div
                 key={pais}
-                className="flex min-h-[var(--density-row-height-comfortable)] items-center justify-between gap-4 rounded-xl bg-[var(--color-bg-surface-elevated)] p-4 shadow-sm"
+                className="crm-financial-glow flex min-h-[var(--density-row-height-comfortable)] items-center justify-between gap-4 rounded-xl bg-[var(--color-bg-surface-elevated)] p-4 shadow-sm"
               >
                 <div>
                   <p className="font-body text-xs font-semibold uppercase text-text-secondary">
@@ -628,9 +647,14 @@ export default async function HoyPage() {
                     )}
                   </p>
                 </div>
-                <p className="font-mono text-lg font-semibold tabular-nums text-text-primary sm:text-xl">
-                  {currencyFormatter[pais].format(money.amount)}
-                </p>
+                <AnimatedNumber
+                  value={money.amount}
+                  locale={pais === "CO" ? "es-CO" : "es-MX"}
+                  currency={pais === "CO" ? "COP" : "MXN"}
+                  minimumFractionDigits={pais === "CO" ? 0 : 2}
+                  maximumFractionDigits={pais === "CO" ? 0 : 2}
+                  className="font-mono text-lg font-semibold tabular-nums text-text-primary sm:text-xl"
+                />
               </div>
             );
           })}

@@ -1,4 +1,8 @@
+"use client";
+
 import { Landmark } from "lucide-react";
+
+import { AnimatedNumber } from "@/components/motion/AnimatedNumber";
 
 type Pais = "CO" | "MX";
 
@@ -14,23 +18,6 @@ const countryLabel: Record<Pais, string> = {
   MX: "México",
 };
 
-const currencyFormatter = {
-  CO: new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }),
-  MX: new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    maximumFractionDigits: 0,
-  }),
-} satisfies Record<Pais, Intl.NumberFormat>;
-
-function formatCurrency(pais: Pais, value: number) {
-  return currencyFormatter[pais].format(value);
-}
-
 export function CapitalMovementsCard({
   pais,
   recargas,
@@ -38,7 +25,7 @@ export function CapitalMovementsCard({
   hasMovements,
 }: CapitalMovementsCardProps) {
   return (
-    <article className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-5 text-text-primary shadow-sm">
+    <article className="crm-tactile-card rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-5 text-text-primary shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
@@ -61,17 +48,25 @@ export function CapitalMovementsCard({
           <p className="font-body text-xs font-medium text-risk-low">
             Recargas a la billetera
           </p>
-          <p className="mt-2 font-mono text-xl font-semibold tabular-nums text-risk-low">
-            {formatCurrency(pais, recargas)}
-          </p>
+          <AnimatedNumber
+            value={recargas}
+            locale={pais === "CO" ? "es-CO" : "es-MX"}
+            currency={pais === "CO" ? "COP" : "MXN"}
+            maximumFractionDigits={0}
+            className="crm-financial-glow mt-2 block font-mono text-xl font-semibold tabular-nums text-risk-low"
+          />
         </div>
         <div className="min-h-[var(--density-row-height-comfortable)] rounded-xl bg-risk-high-bg p-4">
           <p className="font-body text-xs font-medium text-risk-high">
             Retiros de la billetera
           </p>
-          <p className="mt-2 font-mono text-xl font-semibold tabular-nums text-risk-high">
-            {formatCurrency(pais, retiros)}
-          </p>
+          <AnimatedNumber
+            value={retiros}
+            locale={pais === "CO" ? "es-CO" : "es-MX"}
+            currency={pais === "CO" ? "COP" : "MXN"}
+            maximumFractionDigits={0}
+            className="crm-financial-glow mt-2 block font-mono text-xl font-semibold tabular-nums text-risk-high"
+          />
         </div>
       </div>
 

@@ -3,7 +3,7 @@
 import { Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { type CSSProperties, useState, useTransition } from "react";
 
 import {
   triggerAbandonadosSync,
@@ -184,7 +184,7 @@ export function AbandonadosList({
             className="h-10 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-[var(--color-on-accent)] shadow-md shadow-[var(--color-accent)]/20 transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90 disabled:opacity-60"
           >
             {isSyncing ? (
-              <Loader2 className="animate-spin" aria-hidden="true" />
+              <Loader2 className="crm-loader-orbit" aria-hidden="true" />
             ) : (
               <RefreshCw aria-hidden="true" />
             )}
@@ -218,8 +218,12 @@ export function AbandonadosList({
           {rows.map((row, index) => (
             <div
               key={`${row.id}-${row.sincronizado_en}`}
-              className="crm-list-entrance"
-              style={{ animationDelay: `${Math.min(index * 10, 120)}ms` }}
+              className={index < 8 ? "crm-list-enter" : undefined}
+              style={
+                index < 8
+                  ? ({ "--motion-stagger-index": index } as CSSProperties)
+                  : undefined
+              }
             >
               <AbandonadoRow row={row} />
             </div>

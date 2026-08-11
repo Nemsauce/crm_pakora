@@ -17,6 +17,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Select } from "radix-ui";
 import {
+  type CSSProperties,
   type KeyboardEvent,
   useEffect,
   useRef,
@@ -51,6 +52,7 @@ export type TaskWithOrderContext = Task & {
 type TaskRowProps = {
   task: TaskWithOrderContext;
   assigneeOptions: AssigneeOption[];
+  staggerIndex?: number;
 };
 
 type TaskTone = {
@@ -419,7 +421,7 @@ function SnoozeTaskControl({
             className="h-8 rounded-full border-border bg-[var(--color-bg-surface-elevated)] px-3 text-[var(--foreground)] transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)] disabled:opacity-60"
           >
             {isSnoozing ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <Loader2 className="crm-loader-orbit h-4 w-4" aria-hidden="true" />
             ) : (
               <Clock3 className="h-4 w-4" aria-hidden="true" />
             )}
@@ -468,7 +470,11 @@ function SnoozeTaskControl({
   );
 }
 
-export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
+export function TaskRow({
+  task,
+  assigneeOptions,
+  staggerIndex = 0,
+}: TaskRowProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -490,6 +496,7 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
   const completionAnimationTimeoutRef = useRef<number | null>(null);
   const showCompletionCheck = completionAnimation !== "idle";
   const isLeaving = completionAnimation === "leaving";
+  const animateEntrance = staggerIndex < 8;
 
   useEffect(() => {
     function handleTaskCompleted(event: Event) {
@@ -503,16 +510,11 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
         window.clearTimeout(completionAnimationTimeoutRef.current);
       }
 
-      if (detail.collapse) {
-        setCompletionAnimation("leaving");
-        return;
-      }
-
       setCompletionAnimation("checked");
       completionAnimationTimeoutRef.current = window.setTimeout(() => {
-        setCompletionAnimation("idle");
+        setCompletionAnimation(detail.collapse ? "leaving" : "idle");
         completionAnimationTimeoutRef.current = null;
-      }, 600);
+      }, detail.collapse ? 220 : 720);
     }
 
     window.addEventListener(TASK_COMPLETED_EVENT, handleTaskCompleted);
@@ -565,14 +567,19 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
   return (
     <article
       role="listitem"
-      className={`overflow-hidden text-[var(--foreground)] transition-[max-height,opacity,transform] duration-[var(--motion-duration-task-completion)] ease-out motion-reduce:transition-none ${
+      style={
+        animateEntrance
+          ? ({ "--motion-stagger-index": staggerIndex } as CSSProperties)
+          : undefined
+      }
+      className={`${animateEntrance ? "crm-list-enter " : ""}overflow-hidden text-[var(--foreground)] transition-[max-height,opacity,transform] duration-[var(--motion-duration-task-completion)] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
         isLeaving
-          ? "pointer-events-none max-h-0 scale-[0.98] opacity-0"
+          ? "pointer-events-none max-h-0 -translate-y-2 scale-[0.96] opacity-0"
           : "max-h-[40rem]"
       }`}
     >
       <div
-        className={`relative min-h-[var(--density-row-height-compact)] rounded-xl border bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm transition-[background-color,border-color,box-shadow] duration-[var(--motion-duration-hover-focus)] motion-reduce:transition-none ${
+        className={`crm-tactile-card relative min-h-[var(--density-row-height-compact)] rounded-xl border bg-[var(--color-bg-surface-elevated)] p-3 shadow-sm transition-[background-color,border-color,box-shadow,transform] duration-[var(--motion-duration-hover-focus)] motion-reduce:transition-none ${
           deadline.isOverdue
             ? "border-l-4 border-l-[var(--color-negative)]"
             : isCompleted
@@ -608,13 +615,13 @@ export function TaskRow({ task, assigneeOptions }: TaskRowProps) {
             <div
               className={`flex size-[var(--density-row-height-compact)] shrink-0 items-center justify-center rounded-full ${
                 showCompletionCheck
-                  ? "bg-[var(--color-positive-bg)] text-[var(--color-positive)]"
+                  ? "crm-completion-burst bg-[var(--color-positive-bg)] text-[var(--color-positive)]"
                   : taskTone.circleClassName
               }`}
               aria-hidden="true"
             >
               {showCompletionCheck ? (
-                <Check className="h-5 w-5 motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-[var(--motion-duration-task-completion)]" />
+                <Check className="crm-check-draw h-5 w-5" />
               ) : (
                 <Icon className="h-5 w-5" />
               )}

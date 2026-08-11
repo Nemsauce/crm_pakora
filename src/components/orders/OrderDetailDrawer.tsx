@@ -282,31 +282,9 @@ export function OrderDetailDrawer() {
       }}
     >
       <Dialog.Portal>
-        <style>{`
-          @keyframes crm-drawer-enter {
-            from {
-              opacity: 0;
-              transform: translateX(24px);
-            }
-            to {
-              opacity: 1;
-              transform: translateX(0);
-            }
-          }
-
-          .crm-order-detail-drawer[data-state="open"] {
-            animation: crm-drawer-enter var(--motion-duration-drawer) cubic-bezier(0.2, 0.8, 0.2, 1) both;
-          }
-
-          @media (prefers-reduced-motion: reduce) {
-            .crm-order-detail-drawer[data-state="open"] {
-              animation: none;
-            }
-          }
-        `}</style>
         <Dialog.Content
           id="order-detail-drawer"
-          className="crm-order-detail-drawer fixed inset-y-0 right-0 z-[var(--z-index-operational-drawer)] flex w-full max-w-xl flex-col border-l border-border bg-[var(--color-bg-surface-base)] text-[var(--foreground)] shadow-xl outline-none"
+          className="crm-drawer-presence fixed inset-y-0 right-0 z-[var(--z-index-operational-drawer)] flex w-full max-w-xl flex-col border-l border-border bg-[var(--color-bg-surface-base)] text-[var(--foreground)] shadow-2xl outline-none motion-reduce:transform-none motion-reduce:animate-none"
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
@@ -343,9 +321,9 @@ export function OrderDetailDrawer() {
                 <span className="sr-only" role="status">
                   Cargando detalle del pedido
                 </span>
-                <div className="h-40 rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] shadow-sm motion-safe:animate-pulse" />
-                <div className="h-32 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] shadow-sm motion-safe:animate-pulse" />
-                <div className="h-28 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] shadow-sm motion-safe:animate-pulse" />
+                <div className="crm-shimmer h-40 rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] shadow-sm motion-reduce:animate-none" />
+                <div className="crm-shimmer h-32 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] shadow-sm motion-reduce:animate-none" />
+                <div className="crm-shimmer h-28 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] shadow-sm motion-reduce:animate-none" />
               </div>
             ) : null}
 
@@ -784,7 +762,7 @@ function EditablePhoneField({
               className="rounded-full"
             >
               {isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                <Loader2 className="crm-loader-orbit h-4 w-4" aria-hidden="true" />
               ) : (
                 <Check className="h-4 w-4" aria-hidden="true" />
               )}

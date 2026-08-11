@@ -96,7 +96,12 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const notificationsRef = useRef<Notification[]>([]);
   const baseDocumentTitleRef = useRef<string | null>(null);
+  const liveOrderPulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const liveOrderPulseFrameRef = useRef<number | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isLiveOrderPulse, setIsLiveOrderPulse] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingNotificationId, setPendingNotificationId] = useState<
@@ -280,6 +285,27 @@ export function NotificationBell() {
             if (payload.eventType === "INSERT") {
               const inserted = payload.new as Notification;
 
+              if (inserted.tipo === "pedido_nuevo") {
+                setIsLiveOrderPulse(false);
+
+                if (liveOrderPulseTimeoutRef.current !== null) {
+                  clearTimeout(liveOrderPulseTimeoutRef.current);
+                }
+
+                if (liveOrderPulseFrameRef.current !== null) {
+                  cancelAnimationFrame(liveOrderPulseFrameRef.current);
+                }
+
+                liveOrderPulseFrameRef.current = requestAnimationFrame(() => {
+                  setIsLiveOrderPulse(true);
+                  liveOrderPulseFrameRef.current = null;
+                  liveOrderPulseTimeoutRef.current = setTimeout(() => {
+                    setIsLiveOrderPulse(false);
+                    liveOrderPulseTimeoutRef.current = null;
+                  }, 3400);
+                });
+              }
+
               setNotificationList((current) => [
                 inserted,
                 ...current.filter(
@@ -353,6 +379,16 @@ export function NotificationBell() {
 
       if (channel) {
         void supabase.removeChannel(channel);
+      }
+
+      if (liveOrderPulseTimeoutRef.current !== null) {
+        clearTimeout(liveOrderPulseTimeoutRef.current);
+        liveOrderPulseTimeoutRef.current = null;
+      }
+
+      if (liveOrderPulseFrameRef.current !== null) {
+        cancelAnimationFrame(liveOrderPulseFrameRef.current);
+        liveOrderPulseFrameRef.current = null;
       }
     };
   }, [setNotificationList, supabase]);
@@ -446,7 +482,9 @@ export function NotificationBell() {
           type="button"
           variant="ghost"
           size="icon"
-          className="relative rounded-full text-[var(--muted-foreground)] transition-colors hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]"
+          className={`crm-tactile-card relative rounded-full text-[var(--muted-foreground)] transition-colors hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)] ${
+            isLiveOrderPulse ? "crm-live-pulse" : ""
+          }`}
           aria-label={`Notificaciones${
             unreadCount > 0 ? `: ${unreadCount} sin leer` : ""
           }`}
@@ -492,7 +530,7 @@ export function NotificationBell() {
             >
               {isMarkingAll ? (
                 <Loader2
-                  className="h-3.5 w-3.5 animate-spin"
+                  className="crm-loader-orbit h-3.5 w-3.5"
                   aria-hidden="true"
                 />
               ) : (
@@ -508,7 +546,7 @@ export function NotificationBell() {
         <div className="max-h-[min(28rem,calc(100vh-8rem))] overflow-y-auto p-1">
           {isLoading ? (
             <div className="flex items-center justify-center gap-2 px-3 py-8 text-sm text-[var(--muted-foreground)]">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <Loader2 className="crm-loader-orbit h-4 w-4" aria-hidden="true" />
               Cargando
             </div>
           ) : notifications.length === 0 ? (
@@ -567,7 +605,7 @@ export function NotificationBell() {
                         </span>
                         {isPending && !notification.leida ? (
                           <Loader2
-                            className="mt-1 h-4 w-4 shrink-0 animate-spin text-[var(--muted-foreground)]"
+                            className="crm-loader-orbit mt-1 h-4 w-4 shrink-0 text-[var(--muted-foreground)]"
                             aria-hidden="true"
                           />
                         ) : null}
@@ -594,7 +632,7 @@ export function NotificationBell() {
                         >
                           {isPending ? (
                             <Loader2
-                              className="h-4 w-4 animate-spin"
+                              className="crm-loader-orbit h-4 w-4"
                               aria-hidden="true"
                             />
                           ) : (
