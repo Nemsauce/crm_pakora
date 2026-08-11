@@ -339,3 +339,9 @@ Pendiente cuando se retome 'notis':
 - Los drawers de Tareas/Pedidos, el dropdown de notificaciones, Abandonados y el selector de fechas distinguen superficies mediante `base/subtle/elevated`, sombra y límites sutiles. Inputs, botones, selección, urgencia y estados semánticos conservaron el borde operativo AA.
 - Clientes ganó la misma respuesta táctil y entrada breve de las listas operativas, además de jerarquía tipográfica y glow estático en métricas; el CTA de WhatsApp y los CTA operativos mantienen contraste mediante `--color-on-accent`.
 - No se cambiaron URLs, filtros, handlers, Server Actions, queries ni estructura de información. ESLint dirigido y build de producción completados.
+
+### [Rediseño CRM v5] Fase 10 — cohesión de analítica, Costeos y Auth — COMPLETADO
+- Finanzas, Métricas, Productividad, Investigación y la portada de Command Center comparten header, padding, superficies y divisores; las cards navegables conservan foco fuerte y elevación táctil sin contorno gris de caja.
+- Costeos CO/MX, calculadora, proyección, promociones y guardados migraron sus separadores puramente decorativos al token sutil. Inputs, tabs, selects y acciones destructivas/seleccionadas mantienen exactamente sus bordes operativos y fórmulas.
+- Configuración, login y set-password ganaron profundidad de panel y halo en su único CTA primario, reutilizando primitives de Fase 10 y `--color-on-accent` sin tocar auth, sesión, errores ni acciones.
+- Se conservaron todos los RPCs, rangos, filtros, cálculos, porcentajes y monedas. Build de producción y lint dirigido completados sin errores.

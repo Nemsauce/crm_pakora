@@ -244,7 +244,7 @@ export function CombinedNetProfitCard({
       </div>
 
       {hasMxMovements && exchangeRate ? (
-        <p className="mt-4 border-t border-border/40 pt-3 font-body text-xs text-text-secondary">
+        <p className="mt-4 border-t border-[var(--color-border-subtle)] pt-3 font-body text-xs text-text-secondary">
           Conversión aplicada: 1 MXN = {" "}
           <span className="font-mono tabular-nums">
             {exchangeRateFormatter.format(exchangeRate.rate)} COP
@@ -355,7 +355,7 @@ export function NetProfitCard({
         </div>
       )}
 
-      <div className="mt-5 border-t border-border/40 pt-3">
+      <div className="mt-5 border-t border-[var(--color-border-subtle)] pt-3">
         <p className="sr-only">Tendencia diaria del período seleccionado</p>
         {trendData.length > 0 ? (
           <div

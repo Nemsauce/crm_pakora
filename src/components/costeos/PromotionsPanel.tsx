@@ -244,7 +244,7 @@ export function PromotionsPanel({
       <div className="mt-5 overflow-x-auto rounded-xl border border-transparent bg-[var(--color-bg-surface-base)] shadow-sm">
         <table className="min-w-[900px] w-full border-collapse">
           <thead className="bg-[var(--color-bg-surface-subtle)]">
-            <tr className="border-b border-border/40">
+            <tr className="border-b border-[var(--color-border-subtle)]">
               <th className="h-[var(--density-row-height-compact)] px-4 text-left font-body text-xs uppercase text-text-secondary">
                 Cantidad
               </th>
@@ -269,7 +269,7 @@ export function PromotionsPanel({
             {rows.map((row) => (
               <tr
                 key={row.cantidad}
-                className="h-[var(--density-row-height-comfortable)] border-b border-border/30 transition-colors duration-[var(--motion-duration-hover-focus)] last:border-b-0 hover:bg-[var(--color-bg-hover)] motion-reduce:transition-none"
+                className="h-[var(--density-row-height-comfortable)] border-b border-[var(--color-border-subtle)] transition-colors duration-[var(--motion-duration-hover-focus)] last:border-b-0 hover:bg-[var(--color-bg-hover)] motion-reduce:transition-none"
               >
                 <td className="px-4 py-2 font-mono text-sm font-semibold tabular-nums text-text-primary">
                   {row.cantidad}

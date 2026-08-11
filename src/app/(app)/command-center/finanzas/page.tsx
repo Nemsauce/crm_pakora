@@ -289,10 +289,10 @@ export default async function CommandCenterFinanzasPage({
   } satisfies Record<Pais, ReturnType<typeof getCountryTotals>>;
 
   return (
-    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-6 py-6 sm:px-8">
-      <div className="flex flex-col gap-4 border-b border-border/40 pb-5 xl:flex-row xl:items-end xl:justify-between">
+    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+      <div className="flex flex-col gap-4 border-b border-[var(--color-border-subtle)] pb-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <p className="font-body text-xs uppercase text-text-secondary">
+          <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
             Torre de control
           </p>
           <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">

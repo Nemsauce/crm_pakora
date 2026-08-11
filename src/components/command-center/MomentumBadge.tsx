@@ -67,7 +67,7 @@ export function MomentumBadge({
         <TooltipPrimitive.Portal>
           <TooltipPrimitive.Content
             sideOffset={8}
-            className="z-50 max-w-xs rounded-2xl border border-border bg-bg-surface px-3 py-2 font-body text-xs leading-relaxed text-text-primary shadow-xl"
+            className="z-[var(--z-index-dropdown-popover)] max-w-xs rounded-2xl border border-border bg-bg-surface px-3 py-2 font-body text-xs leading-relaxed text-text-primary shadow-xl"
           >
             {tooltipText}
             <TooltipPrimitive.Arrow className="fill-bg-surface" />

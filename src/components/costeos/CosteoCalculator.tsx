@@ -218,7 +218,7 @@ function ResultRow({
         : "text-text-primary";
 
   return (
-    <div className="flex min-h-[var(--density-row-height-comfortable)] items-center justify-between gap-4 border-b border-border/30 py-2.5 last:border-b-0">
+    <div className="flex min-h-[var(--density-row-height-comfortable)] items-center justify-between gap-4 border-b border-[var(--color-border-subtle)] py-2.5 last:border-b-0">
       <span className="font-body text-sm text-text-secondary">{label}</span>
       <span
         className={`font-mono text-sm font-semibold tabular-nums ${valueClass} ${tone === "default" ? "" : "crm-financial-glow"}`}
@@ -257,7 +257,7 @@ function SubmitButton({ label }: { label: string }) {
     <Button
       type="submit"
       disabled={pending}
-      className="min-h-[var(--density-row-height-compact)] rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-[var(--color-on-accent)] shadow-sm transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90 motion-reduce:transition-none"
+      className="crm-primary-halo min-h-[var(--density-row-height-compact)] rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 font-body font-semibold text-[var(--color-on-accent)]"
     >
       {pending ? (
         <>
@@ -638,7 +638,7 @@ export function CosteoCalculator({
         <input type="hidden" name="pais" value={pais} />
         <input type="hidden" name="cpa_manual" value={String(cpaManual)} />
         <div className="rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-2 border-b border-border/30 pb-4">
+          <div className="flex flex-col gap-2 border-b border-[var(--color-border-subtle)] pb-4">
             <p className="font-display text-lg font-semibold text-text-primary">
               {isEditing ? "Editar costeo" : "Calculadora de costeos"}
             </p>
@@ -858,7 +858,7 @@ export function CosteoCalculator({
         </div>
 
         <aside className="crm-tactile-card rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-4 shadow-md sm:p-5">
-          <div className="border-b border-border/30 pb-4">
+          <div className="border-b border-[var(--color-border-subtle)] pb-4">
             <p className="font-display text-lg font-semibold text-text-primary">
               Resultados
             </p>

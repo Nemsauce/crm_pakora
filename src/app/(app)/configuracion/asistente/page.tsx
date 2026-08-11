@@ -31,9 +31,9 @@ export default async function AssistantSettingsPage({
   const reglas = typeof data?.reglas === "string" ? data.reglas : "";
 
   return (
-    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-6 py-6 sm:px-8">
-      <div className="border-b border-border/30 pb-4">
-        <p className="font-body text-xs uppercase text-text-secondary">
+    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+      <div className="border-b border-[var(--color-border-subtle)] pb-4">
+        <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
           CONFIGURACIÓN
         </p>
         <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
@@ -77,7 +77,7 @@ export default async function AssistantSettingsPage({
           <div className="mt-4 flex justify-end">
             <Button
               type="submit"
-              className="min-h-[var(--density-row-height-compact)] rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 text-[var(--color-on-accent)] transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90"
+              className="crm-primary-halo min-h-[var(--density-row-height-compact)] rounded-full bg-gradient-to-r from-accent-from to-accent-to px-5 text-[var(--color-on-accent)]"
             >
               Guardar
             </Button>

@@ -151,7 +151,7 @@ export function DateRangeSelector({
             locale={es}
             className="rounded-2xl bg-bg-surface"
           />
-          <div className="flex items-center justify-between gap-4 border-t border-border p-3">
+          <div className="flex items-center justify-between gap-4 border-t border-[var(--color-border-subtle)] p-3">
             <p className="font-mono text-xs tabular-nums text-text-secondary">
               {formatRangeLabel(draftRange)}
             </p>
@@ -159,7 +159,7 @@ export function DateRangeSelector({
               type="button"
               disabled={!draftRange?.from || !draftRange.to}
               onClick={applyCustomRange}
-              className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 font-body text-sm font-semibold text-bg-surface outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-9 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 font-body text-sm font-semibold text-[var(--color-on-accent)] outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             >
               Aplicar
             </button>

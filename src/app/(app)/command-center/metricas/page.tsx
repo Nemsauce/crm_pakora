@@ -16,9 +16,9 @@ export default async function CommandCenterMetricasPage() {
 
   return (
     <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
-      <header className="flex flex-col gap-4 rounded-2xl border border-transparent bg-[var(--color-bg-surface-subtle)] p-5 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+      <header className="flex flex-col gap-4 border-b border-[var(--color-border-subtle)] pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="font-body text-xs uppercase text-text-secondary">
+          <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
             Torre de control
           </p>
           <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">

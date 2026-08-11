@@ -105,7 +105,7 @@ export function SavedProductCard({
           </div>
         </div>
 
-        <div className="mt-5 border-t border-border/30 pt-4">
+        <div className="mt-5 border-t border-[var(--color-border-subtle)] pt-4">
           <p className="font-body text-xs font-semibold uppercase text-text-secondary">
             Datos guardados
           </p>

@@ -31,7 +31,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-sm rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] shadow-sm ring-0">
+      <Card className="crm-command-panel w-full max-w-sm overflow-visible rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] shadow-xl ring-0">
         <CardHeader className="gap-2">
           <CardTitle className="font-display text-2xl font-semibold text-text-primary">
             CRM Pakora
@@ -80,7 +80,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               />
             </div>
             <Button
-              className="min-h-[var(--density-row-height-compact)] w-full rounded-full bg-gradient-to-r from-accent-from to-accent-to text-[var(--color-on-accent)] shadow-sm transition-opacity duration-[var(--motion-duration-hover-focus)] hover:opacity-90"
+              className="crm-primary-halo min-h-[var(--density-row-height-compact)] w-full rounded-full bg-gradient-to-r from-accent-from to-accent-to text-[var(--color-on-accent)]"
               type="submit"
             >
               Entrar

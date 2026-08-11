@@ -86,7 +86,7 @@ function ProjectionRow({
         : "text-text-primary";
 
   return (
-    <div className="flex min-h-[var(--density-row-height-compact)] items-center justify-between gap-4 border-b border-border/40 py-2 last:border-b-0">
+    <div className="flex min-h-[var(--density-row-height-compact)] items-center justify-between gap-4 border-b border-[var(--color-border-subtle)] py-2 last:border-b-0">
       <span className="font-body text-sm text-text-secondary">{label}</span>
       <span
         className={`font-mono text-sm font-semibold tabular-nums ${valueClass} ${tone === "default" ? "" : "crm-financial-glow"}`}

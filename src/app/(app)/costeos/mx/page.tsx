@@ -130,8 +130,8 @@ export default async function CosteosMexicoPage({
 
   return (
     <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
-      <div className="border-b border-border/30 pb-4">
-        <p className="font-body text-xs uppercase text-text-secondary">
+      <div className="border-b border-[var(--color-border-subtle)] pb-4">
+        <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
           COSTEOS
         </p>
         <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">

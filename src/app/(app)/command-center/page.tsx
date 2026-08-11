@@ -30,9 +30,9 @@ const sections = [
 
 export default function CommandCenterPage() {
   return (
-    <section className="min-h-screen px-6 py-6 sm:px-8">
-      <div className="border-b border-border pb-5">
-        <p className="font-body text-xs uppercase text-text-secondary">
+    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+      <div className="border-b border-[var(--color-border-subtle)] pb-5">
+        <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
           Torre de control
         </p>
         <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
@@ -53,7 +53,7 @@ export default function CommandCenterPage() {
             <Link
               key={section.href}
               href={section.href}
-              className="group rounded-2xl border border-border bg-bg-surface p-6 text-text-primary shadow-lg outline-none transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-[var(--color-accent)]/30 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+              className="crm-tactile-card group rounded-2xl border border-transparent bg-[var(--color-bg-surface-elevated)] p-6 text-text-primary shadow-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>

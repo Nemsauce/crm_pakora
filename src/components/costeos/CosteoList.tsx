@@ -202,7 +202,7 @@ export function CosteoList({ costeos, selectedId, pais }: CosteoListProps) {
                   </div>
                 </Link>
 
-                <div className="flex min-h-[var(--density-row-height-compact)] flex-wrap items-center gap-2 border-t border-border/30 bg-[var(--color-bg-surface-subtle)] px-3 py-1.5">
+                <div className="flex min-h-[var(--density-row-height-compact)] flex-wrap items-center gap-2 border-t border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] px-3 py-1.5">
                   <form
                     action={duplicateCosteo.bind(null, costeo.id)}
                     onSubmit={handleDuplicateSubmit}

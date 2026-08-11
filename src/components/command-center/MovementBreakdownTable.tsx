@@ -132,7 +132,7 @@ export function MovementBreakdownTable({
       </div>
 
       {groupedRows.length > 0 ? (
-        <ul className="mt-5 divide-y divide-border/40">
+        <ul className="mt-5 divide-y divide-[var(--color-border-subtle)]">
           {groupedRows.map((row) => {
             const barPercentage =
               largestAbsoluteNet > 0
