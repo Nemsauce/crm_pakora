@@ -326,3 +326,10 @@ Pendiente cuando se retome 'notis':
 - La finalización de tareas ahora dibuja el check, expande un anillo verde y encadena el colapso antes del avance automático existente. Pedidos, Tareas y Alertas escalonan solo los primeros elementos visibles para conservar presencia sin animar listas completas fuera de viewport.
 - `Resolver siguiente` y los totales financieros ganaron halo/glow con profundidad; el shell y las rutas ambientales reforzaron la firma violeta sin colocarse por encima del contenido. La campana reutiliza el realtime existente para emitir un pulso de radar reiniciable exclusivamente ante `pedido_nuevo`; `RiskOrb` quedó sin cambios.
 - `prefers-reduced-motion` desactiva count-up, chart reveal, entradas, drawers, shimmer, loaders, halo, radar, fondo y celebración, preservando valores, color, texto e iconos. No cambiaron queries, RPCs, Server Actions, fórmulas, rutas, filtros ni estructura de información; no se agregaron dependencias.
+
+### [Rediseño CRM v5] Fase 10 — optimización de motion global — COMPLETADO
+- El count-up conserva su entrada de `600–900ms`, pero dejó de provocar un render de React por cifra y por frame: todas las cifras comparten un único scheduler, actualizan únicamente su nodo de texto y los cambios posteriores al montaje son instantáneos para no penalizar calculadoras en vivo.
+- `DineroEnLaCalleTable` volvió a renderizado servidor; solo los dos totales por país mantienen count-up. Las celdas densas reutilizan formatters estáticos, eliminando hidratación y `2N` animaciones sin cambiar valores, orden ni formato.
+- El fondo ambiental reemplazó blurs fijos de `110/130px` y filtros animados permanentes por gradientes radiales sin filtro y una sola entrada finita. El stagger global bajó a `320ms + 32ms` y las listas largas limitan la entrada a tres filas.
+- El loading de Pedidos ahora representa la vista compacta real en vez de la grilla antigua de cards. Tokens de duración/capas y `--color-border-subtle` quedaron documentados y aplicados también en primitives compartidos.
+- Build de producción y lint dirigido completados; no cambiaron queries, acciones, fórmulas, datos ni dependencias.

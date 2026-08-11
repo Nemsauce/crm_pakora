@@ -4,7 +4,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   useSyncExternalStore,
 } from "react";
 
@@ -14,6 +13,17 @@ const MAX_DURATION_MS = 900;
 const DEFAULT_DURATION_MS = 760;
 const reducedMotionSubscribers = new Set<() => void>();
 let reducedMotionMediaQuery: MediaQueryList | null = null;
+
+type NumberAnimationJob = {
+  duration: number;
+  from: number;
+  startedAt: number | null;
+  to: number;
+  update: (value: number) => void;
+};
+
+const numberAnimationJobs = new Map<symbol, NumberAnimationJob>();
+let sharedAnimationFrame: number | null = null;
 
 export type AnimatedNumberProps = {
   value: number;
@@ -26,6 +36,7 @@ export type AnimatedNumberProps = {
   prefix?: string;
   suffix?: string;
   duration?: number;
+  animateChanges?: boolean;
   className?: string;
 };
 
@@ -35,6 +46,43 @@ function easeOutCubic(progress: number) {
 
 function getDuration(duration: number) {
   return Math.min(MAX_DURATION_MS, Math.max(MIN_DURATION_MS, duration));
+}
+
+function runNumberAnimations(timestamp: number) {
+  sharedAnimationFrame = null;
+
+  for (const [id, job] of numberAnimationJobs) {
+    job.startedAt ??= timestamp;
+    const progress = Math.min((timestamp - job.startedAt) / job.duration, 1);
+    const nextValue = job.from + (job.to - job.from) * easeOutCubic(progress);
+
+    job.update(progress === 1 ? job.to : nextValue);
+
+    if (progress === 1) {
+      numberAnimationJobs.delete(id);
+    }
+  }
+
+  if (numberAnimationJobs.size > 0) {
+    sharedAnimationFrame = window.requestAnimationFrame(runNumberAnimations);
+  }
+}
+
+function scheduleNumberAnimation(id: symbol, job: NumberAnimationJob) {
+  numberAnimationJobs.set(id, job);
+
+  if (sharedAnimationFrame === null) {
+    sharedAnimationFrame = window.requestAnimationFrame(runNumberAnimations);
+  }
+}
+
+function cancelNumberAnimation(id: symbol) {
+  numberAnimationJobs.delete(id);
+
+  if (numberAnimationJobs.size === 0 && sharedAnimationFrame !== null) {
+    window.cancelAnimationFrame(sharedAnimationFrame);
+    sharedAnimationFrame = null;
+  }
 }
 
 function getReducedMotionMediaQuery() {
@@ -91,14 +139,14 @@ export function AnimatedNumber({
   prefix = "",
   suffix = "",
   duration = DEFAULT_DURATION_MS,
+  animateChanges = false,
   className,
 }: AnimatedNumberProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
-  const [displayedValue, setDisplayedValue] = useState(value);
-  const [hasStarted, setHasStarted] = useState(false);
+  const animationIdRef = useRef(Symbol("animated-number"));
   const currentValueRef = useRef(value);
   const hasAnimatedRef = useRef(false);
-  const hasStartedRef = useRef(false);
+  const visibleValueRef = useRef<HTMLSpanElement>(null);
   const formatter = useMemo(
     () =>
       new Intl.NumberFormat(locale, {
@@ -117,96 +165,62 @@ export function AnimatedNumber({
       useGrouping,
     ],
   );
-  const formatValue = (nextValue: number) =>
-    `${prefix}${formatter.format(nextValue)}${suffix}`;
+  const formatValue = useMemo(
+    () => (nextValue: number) =>
+      `${prefix}${formatter.format(nextValue)}${suffix}`,
+    [formatter, prefix, suffix],
+  );
 
   useEffect(() => {
-    let animationFrame: number | null = null;
+    const animationId = animationIdRef.current;
+    const visibleValue = visibleValueRef.current;
+
+    cancelNumberAnimation(animationId);
+
+    if (!visibleValue) {
+      return;
+    }
 
     if (prefersReducedMotion === null) {
       currentValueRef.current = value;
       return;
     }
 
+    const updateVisibleValue = (nextValue: number) => {
+      currentValueRef.current = nextValue;
+      visibleValue.textContent = formatValue(nextValue);
+      visibleValue.style.opacity = "1";
+    };
+
     if (!Number.isFinite(value)) {
       hasAnimatedRef.current = false;
       currentValueRef.current = 0;
-      hasStartedRef.current = false;
-      animationFrame = window.requestAnimationFrame(() => {
-        setDisplayedValue(value);
-        setHasStarted(false);
-      });
+      updateVisibleValue(value);
     } else if (prefersReducedMotion) {
       hasAnimatedRef.current = true;
-      currentValueRef.current = value;
-      hasStartedRef.current = false;
-      animationFrame = window.requestAnimationFrame(() => {
-        setDisplayedValue(value);
-        setHasStarted(false);
-      });
+      updateVisibleValue(value);
     } else {
-      const startValue = hasAnimatedRef.current ? currentValueRef.current : 0;
+      const hasAnimated = hasAnimatedRef.current;
+      const startValue = hasAnimated ? currentValueRef.current : 0;
       const targetValue = value;
-      const animationDuration = getDuration(duration);
-      let startedAt: number | null = null;
 
       hasAnimatedRef.current = true;
 
-      const revealValue = () => {
-        if (!hasStartedRef.current) {
-          hasStartedRef.current = true;
-          setHasStarted(true);
-        }
-      };
-
-      if (Object.is(startValue, targetValue)) {
-        animationFrame = window.requestAnimationFrame(() => {
-          currentValueRef.current = targetValue;
-          setDisplayedValue(targetValue);
-          revealValue();
-        });
+      if ((hasAnimated && !animateChanges) || Object.is(startValue, targetValue)) {
+        updateVisibleValue(targetValue);
       } else {
-        const drawFrame = (timestamp: number) => {
-          startedAt ??= timestamp;
-          const progress = Math.min(
-            (timestamp - startedAt) / animationDuration,
-            1,
-          );
-          const nextValue =
-            startValue + (targetValue - startValue) * easeOutCubic(progress);
-
-          currentValueRef.current = nextValue;
-          setDisplayedValue(nextValue);
-          revealValue();
-
-          if (progress < 1) {
-            animationFrame = window.requestAnimationFrame(drawFrame);
-            return;
-          }
-
-          currentValueRef.current = targetValue;
-          setDisplayedValue(targetValue);
-        };
-
-        animationFrame = window.requestAnimationFrame(drawFrame);
+        scheduleNumberAnimation(animationId, {
+          duration: getDuration(duration),
+          from: startValue,
+          startedAt: null,
+          to: targetValue,
+          update: updateVisibleValue,
+        });
       }
     }
 
-    return () => {
-      if (animationFrame !== null) {
-        window.cancelAnimationFrame(animationFrame);
-      }
-    };
-  }, [duration, prefersReducedMotion, value]);
-
-  const visibleValue =
-    prefersReducedMotion === false && Number.isFinite(value)
-      ? displayedValue
-      : value;
-  const isVisualReady =
-    prefersReducedMotion === true ||
-    !Number.isFinite(value) ||
-    (prefersReducedMotion === false && hasStarted);
+    return () => cancelNumberAnimation(animationId);
+  }, [animateChanges, duration, formatValue, prefersReducedMotion, value]);
 
   return (
     <span className={className}>
@@ -218,12 +232,11 @@ export function AnimatedNumber({
           {formatValue(value)}
         </span>
         <span
+          ref={visibleValueRef}
           aria-hidden="true"
           className="col-start-1 row-start-1 text-right"
-          style={{ opacity: isVisualReady ? 1 : 0 }}
-        >
-          {formatValue(visibleValue)}
-        </span>
+          style={{ opacity: 0 }}
+        />
       </span>
       <span className="sr-only">{formatValue(value)}</span>
     </span>

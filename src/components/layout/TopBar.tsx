@@ -93,7 +93,7 @@ export function TopBar({ profile }: TopBarProps) {
   }
 
   return (
-    <header className="flex h-20 shrink-0 items-center justify-end border-b border-border bg-bg-surface px-6 sm:px-8">
+    <header className="flex h-20 shrink-0 items-center justify-end border-b border-[var(--color-border-subtle)] bg-bg-surface px-6 sm:px-8">
       <div className="flex items-center gap-2">
         <GlobalSearch />
 
@@ -105,7 +105,7 @@ export function TopBar({ profile }: TopBarProps) {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent)]/10 font-display text-sm font-semibold text-[var(--color-accent)] outline-none ring-1 ring-[var(--color-accent)]/10 transition-colors hover:bg-[var(--color-accent)]/20 focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent)]/10 font-display text-sm font-semibold text-[var(--color-accent)] outline-none ring-1 ring-[var(--color-accent)]/10 transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-accent)]/20 focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
               title={primaryLabel}
               aria-label={`Usuario ${primaryLabel}`}
             >
@@ -115,7 +115,7 @@ export function TopBar({ profile }: TopBarProps) {
           <DropdownMenuContent
             align="end"
             sideOffset={8}
-            className="w-72 rounded-2xl border border-border bg-bg-surface p-1 text-[var(--foreground)] shadow-md"
+            className="z-[var(--z-index-dropdown-popover)] w-72 rounded-2xl border border-[var(--color-border-subtle)] bg-bg-surface p-1 text-[var(--foreground)] shadow-md"
           >
             <DropdownMenuLabel className="space-y-3 px-3 py-3 font-body font-normal">
               <div className="min-w-0">
@@ -150,7 +150,7 @@ export function TopBar({ profile }: TopBarProps) {
                 </span>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-border" />
+            <DropdownMenuSeparator className="bg-[var(--color-border-subtle)]" />
             <DropdownMenuItem
               disabled={isSigningOut}
               onSelect={(event) => {

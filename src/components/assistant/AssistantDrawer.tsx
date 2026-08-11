@@ -274,7 +274,7 @@ export function AssistantPushLayout({
       className={
         isResizing
           ? "min-w-0 transition-none"
-          : "min-w-0 transition-[margin-left] duration-200 ease-out motion-reduce:transition-none"
+          : "min-w-0 transition-[margin-left] duration-[var(--motion-duration-drawer)] ease-out motion-reduce:transition-none"
       }
       style={{ marginLeft: isOpen ? drawerWidth : 0 }}
     >
@@ -549,10 +549,10 @@ export function AssistantDrawer() {
           <Button
             type="button"
             size="icon"
-            className={`fixed bottom-6 left-6 z-[100] h-14 w-14 rounded-full bg-gradient-to-r from-accent-from to-accent-to text-bg-surface shadow-xl hover:opacity-90 focus-visible:ring-[var(--color-accent)]/30 ${
+            className={`fixed bottom-6 left-6 z-[calc(var(--z-index-assistant-drawer)+1)] h-14 w-14 rounded-full bg-gradient-to-r from-accent-from to-accent-to text-[var(--color-on-accent)] shadow-xl hover:opacity-90 focus-visible:ring-[var(--color-accent)]/30 ${
               isResizing
                 ? "transition-none"
-                : "transition-[left,opacity,box-shadow] duration-200 motion-reduce:transition-none"
+                : "transition-[left,opacity,box-shadow] duration-[var(--motion-duration-drawer)] motion-reduce:transition-none"
             }`}
             style={
               isOpen
@@ -589,7 +589,7 @@ export function AssistantDrawer() {
           }
 
           .crm-assistant-drawer[data-state="open"] {
-            animation: crm-assistant-drawer-enter 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+            animation: crm-assistant-drawer-enter var(--motion-duration-drawer) cubic-bezier(0.2, 0.8, 0.2, 1) both;
           }
 
           @media (prefers-reduced-motion: reduce) {
@@ -600,12 +600,12 @@ export function AssistantDrawer() {
         `}</style>
         <Dialog.Content
           id="assistant-drawer"
-          className="crm-assistant-drawer fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-bg-surface text-[var(--foreground)] shadow-xl outline-none"
+          className="crm-assistant-drawer fixed inset-y-0 left-0 z-[var(--z-index-assistant-drawer)] flex flex-col border-r border-[var(--color-border-subtle)] bg-bg-surface text-[var(--foreground)] shadow-xl outline-none"
           style={{ width: drawerWidth, maxWidth: "100vw" }}
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
-        <div className="border-b border-border px-5 py-4">
+        <div className="border-b border-[var(--color-border-subtle)] px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <Dialog.Title className="font-display text-lg font-semibold text-[var(--foreground)]">
@@ -667,8 +667,8 @@ export function AssistantDrawer() {
                 <article
                   className={`max-w-[88%] rounded-2xl px-4 py-3 font-body text-sm leading-6 shadow-sm ${
                     message.role === "user"
-                      ? "whitespace-pre-wrap bg-gradient-to-r from-accent-from to-accent-to text-bg-surface"
-                      : "border border-border bg-bg-surface text-text-primary"
+                      ? "whitespace-pre-wrap bg-gradient-to-r from-accent-from to-accent-to text-[var(--color-on-accent)]"
+                      : "border border-[var(--color-border-subtle)] bg-bg-surface text-text-primary"
                   }`}
                 >
                   {message.role === "user" ? (
@@ -688,7 +688,7 @@ export function AssistantDrawer() {
 
           {isSending ? (
             <div className="flex justify-start">
-              <div className="inline-flex items-center gap-2 rounded-2xl border border-border bg-bg-surface px-4 py-3 font-body text-sm text-text-secondary shadow-sm">
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border-subtle)] bg-bg-surface px-4 py-3 font-body text-sm text-text-secondary shadow-sm">
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                 Revisando el pedido…
               </div>
@@ -698,7 +698,7 @@ export function AssistantDrawer() {
 
         <form
           onSubmit={handleSubmit}
-          className="border-t border-border bg-bg-surface p-4"
+          className="border-t border-[var(--color-border-subtle)] bg-bg-surface p-4"
         >
           <label className="sr-only" htmlFor="asistente-pedido-mensaje">
             Pregunta sobre un pedido
@@ -721,7 +721,7 @@ export function AssistantDrawer() {
             <Button
               type="submit"
               disabled={!draft.trim() || isSending}
-              className="h-11 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-bg-surface hover:opacity-90"
+              className="h-11 rounded-full bg-gradient-to-r from-accent-from to-accent-to px-4 text-[var(--color-on-accent)] hover:opacity-90"
             >
               {isSending ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

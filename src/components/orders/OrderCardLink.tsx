@@ -23,7 +23,7 @@ export function OrderCardLink({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const animateEntrance = staggerIndex < 8;
+  const animateEntrance = staggerIndex < 3;
 
   function toggleDetail() {
     const params = new URLSearchParams(searchParams);

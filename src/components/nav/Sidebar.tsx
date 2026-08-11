@@ -149,7 +149,7 @@ function SidebarLink({
     <Link
       href={item.href}
       aria-current={isActive ? "page" : undefined}
-      className={`flex h-10 items-center gap-3 rounded-2xl px-3 font-body text-sm outline-none transition-all focus-visible:ring-2 focus-visible:ring-ring ${
+      className={`flex h-10 items-center gap-3 rounded-2xl px-3 font-body text-sm outline-none transition-[background-color,border-color,box-shadow,color] duration-[var(--motion-duration-hover-focus)] ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none ${
         isActive
           ? "border border-[var(--color-accent)]/15 bg-gradient-to-r from-accent-from/15 to-accent-to/25 font-semibold text-[var(--color-accent)] shadow-md shadow-[var(--color-accent)]/10 hover:from-accent-from/20 hover:to-accent-to/30 dark:border-[var(--color-accent)]/40 dark:from-accent-from/20 dark:to-accent-to/10 dark:shadow-lg dark:shadow-[var(--color-accent)]/25 dark:hover:from-accent-from/25 dark:hover:to-accent-to/15"
           : "font-medium text-[var(--muted-foreground)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)]"
@@ -168,9 +168,9 @@ export function Sidebar() {
   );
 
   return (
-    <aside className="flex h-full w-full border-b border-border bg-bg-surface text-[var(--foreground)] lg:w-72 lg:border-b-0 lg:border-r">
+    <aside className="flex h-full w-full border-b border-[var(--color-border-subtle)] bg-bg-surface text-[var(--foreground)] lg:w-72 lg:border-b-0 lg:border-r">
       <div className="flex min-h-full w-full flex-col">
-        <div className="border-b border-border px-5 py-4">
+        <div className="border-b border-[var(--color-border-subtle)] px-5 py-4">
           <div className="flex items-center gap-3">
             <PakoraLogoMark />
             <div className="min-w-0">
@@ -194,7 +194,7 @@ export function Sidebar() {
             ))}
           </div>
 
-          <div className="mt-5 hidden border-t border-border/40 pt-4 lg:block">
+          <div className="mt-5 hidden border-t border-[var(--color-border-subtle)] pt-4 lg:block">
             <div className="mb-2 flex items-center justify-between gap-2 px-3">
               <p className="font-body text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
                 Más / Herramientas
@@ -214,7 +214,7 @@ export function Sidebar() {
           </div>
 
           <details
-            className="group mt-5 border-t border-border/40 pt-3 lg:hidden"
+            className="group mt-5 border-t border-[var(--color-border-subtle)] pt-3 lg:hidden"
             open={hasActiveTool}
           >
             <summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-2xl px-3 font-body text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted-foreground)] outline-none hover:bg-[var(--color-bg-hover)] focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">

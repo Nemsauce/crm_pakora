@@ -10,6 +10,7 @@ SaaS profesional, cálido y vibrante — evolución del sistema anterior con may
 - `--color-text-primary: #0F172A`
 - `--color-text-secondary: #617187`
 - `--color-border: #87919F` (frontera operativa con contraste no textual AA; separadores puramente decorativos pueden reducir su opacidad si no son la única señal)
+- `--color-border-subtle: rgba(135,145,159,0.30)` (divisores y límites decorativos de secciones grandes; nunca sustituye el borde operativo de controles o estados)
 - `--color-positive: #15803D` con `--color-positive-bg: #DCFCE7` (ganancias, entradas, deltas positivos)
 - `--color-negative: #B91C1C` con `--color-negative-bg: #FEE2E2` (salidas, deltas negativos, riesgo alto)
 - `--color-risk-medium: #B45309` con `--color-risk-medium-bg: #FEF3C7`
@@ -26,6 +27,7 @@ SaaS profesional, cálido y vibrante — evolución del sistema anterior con may
 - `--color-text-primary: #F8FAFC`
 - `--color-text-secondary: #94A3B8`
 - `--color-border: #627085` (frontera operativa con contraste no textual AA en las superficies oscuras declaradas)
+- `--color-border-subtle: rgba(98,112,133,0.30)` (divisores y límites decorativos de secciones grandes; nunca sustituye el borde operativo de controles o estados)
 - `--color-positive: #4ADE80` con `--color-positive-bg: rgba(34,197,94,0.12)`
 - `--color-negative: #F87171` con `--color-negative-bg: rgba(239,68,68,0.12)`
 - `--color-risk-medium: #FBBF24` con `--color-risk-medium-bg: rgba(245,158,11,0.14)`
@@ -50,6 +52,7 @@ Esta fase solo declara infraestructura. Ningún alias consumido por las pantalla
 | `--color-bg-surface-elevated` | `#FFFFFF` | Nivel elevado para cards, paneles flotantes y diálogos. |
 | `--color-bg-hover` | `#F8FAFC` | Feedback de hover sobre filas, items y controles. |
 | `--color-bg-selected` | `#FAF9FF` | Fondo de selección; se usa junto con `--color-border-selected`, nunca como única señal. |
+| `--color-border-subtle` | `rgba(135, 145, 159, 0.30)` | Límite decorativo de wrappers y secciones extensas; no comunica estado y no se usa en controles. |
 | `--color-border-hover` | `#64748B` | Contorno perceptible para controles con hover cuando el fondo no basta. |
 | `--color-border-selected` | `#7C3AED` | Contorno o indicador de selección con contraste no textual AA. |
 | `--color-overlay` | `rgba(15, 23, 42, 0.56)` | Scrim detrás de drawers y diálogos; no es una superficie para texto. |
@@ -72,6 +75,7 @@ Esta fase solo declara infraestructura. Ningún alias consumido por las pantalla
 | `--color-bg-surface-elevated` | `#171B2A` | Nivel elevado para cards, paneles flotantes y diálogos. |
 | `--color-bg-hover` | `#1E2433` | Feedback de hover sobre filas, items y controles. |
 | `--color-bg-selected` | `#251E42` | Fondo de selección; se usa junto con `--color-border-selected`, nunca como única señal. |
+| `--color-border-subtle` | `rgba(98, 112, 133, 0.30)` | Límite decorativo de wrappers y secciones extensas; no comunica estado y no se usa en controles. |
 | `--color-border-hover` | `#64748B` | Contorno perceptible para controles con hover cuando el fondo no basta. |
 | `--color-border-selected` | `#A78BFA` | Contorno o indicador de selección con contraste no textual AA. |
 | `--color-overlay` | `rgba(2, 6, 23, 0.72)` | Scrim detrás de drawers y diálogos; no es una superficie para texto. |
@@ -193,7 +197,7 @@ Space Grotesk (display/headers), Manrope (body/UI), JetBrains Mono tabular-nums 
 - Botones primarios: degradado `accent-from → accent-to`, `rounded-full`
 
 ## Motion
-Motivo de ruta de fondo: líneas punteadas estáticas y de muy baja opacidad en los bordes. Riesgo alto: un único pulso de radar discreto que se desactiva con `prefers-reduced-motion`; los demás niveles permanecen estáticos. Listas (pedidos, tareas): animación de entrada notoria (fade + slide sutil) al cargar, escalonada entre items (stagger corto). Transiciones de tema (claro↔oscuro): instantáneas o con transición muy breve de color, nunca un fundido lento que se sienta lag. Hover en cards/botones: transición sutil de sombra/color.
+Motivo de ruta de fondo: líneas punteadas de muy baja opacidad en los bordes con una sola entrada fluida y finita; nunca mantienen filtros ni animación continua durante la sesión. Riesgo alto: un único pulso de radar discreto que se desactiva con `prefers-reduced-motion`; los demás niveles permanecen estáticos. Listas (pedidos, tareas): animación de entrada notoria (fade + slide sutil) al cargar, escalonada solo en los primeros items con stagger corto. Cifras principales: count-up de entrada coordinado por un único frame scheduler; las actualizaciones posteriores son instantáneas para no penalizar inputs o datos densos. Transiciones de tema (claro↔oscuro): instantáneas o con transición muy breve de color, nunca un fundido lento que se sienta lag. Hover en cards/botones: transición sutil de sombra/color.
 
 ## Theme toggle
 Toggle explícito (no sigue preferencia del sistema), persistido en localStorage vía next-themes, sin flash de tema incorrecto al cargar (`suppressHydrationWarning`).

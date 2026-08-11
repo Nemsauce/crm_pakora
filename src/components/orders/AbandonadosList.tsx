@@ -218,9 +218,9 @@ export function AbandonadosList({
           {rows.map((row, index) => (
             <div
               key={`${row.id}-${row.sincronizado_en}`}
-              className={index < 8 ? "crm-list-enter" : undefined}
+              className={index < 3 ? "crm-list-enter" : undefined}
               style={
-                index < 8
+                index < 3
                   ? ({ "--motion-stagger-index": index } as CSSProperties)
                   : undefined
               }
@@ -235,7 +235,7 @@ export function AbandonadosList({
         </div>
       )}
 
-      <div className="mt-6 flex items-center justify-between border-t border-border/30 pt-4">
+      <div className="mt-6 flex items-center justify-between border-t border-[var(--color-border-subtle)] pt-4">
         <Button
           asChild={hasPreviousPage}
           type="button"

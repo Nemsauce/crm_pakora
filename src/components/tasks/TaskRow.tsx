@@ -496,7 +496,7 @@ export function TaskRow({
   const completionAnimationTimeoutRef = useRef<number | null>(null);
   const showCompletionCheck = completionAnimation !== "idle";
   const isLeaving = completionAnimation === "leaving";
-  const animateEntrance = staggerIndex < 8;
+  const animateEntrance = staggerIndex < 3;
 
   useEffect(() => {
     function handleTaskCompleted(event: Event) {
@@ -680,7 +680,7 @@ export function TaskRow({
             </div>
           </div>
 
-          <div className="pointer-events-auto relative z-10 flex min-w-0 flex-wrap items-end gap-2 border-t border-border pt-3 xl:min-w-80 xl:flex-nowrap xl:justify-end xl:border-t-0 xl:border-l xl:pt-0 xl:pl-3">
+          <div className="pointer-events-auto relative z-10 flex min-w-0 flex-wrap items-end gap-2 border-t border-[var(--color-border-subtle)] pt-3 xl:min-w-80 xl:flex-nowrap xl:justify-end xl:border-t-0 xl:border-l xl:pt-0 xl:pl-3">
             <div
               className="min-w-0"
               onClick={(event) => event.stopPropagation()}

@@ -4,8 +4,8 @@ export function BackgroundBlobs() {
       aria-hidden="true"
       className="pointer-events-none fixed inset-0 z-[var(--z-index-ambient)] overflow-hidden text-[var(--color-accent)]"
     >
-      <div className="absolute -left-28 -top-24 size-[28rem] rounded-full bg-[var(--color-accent)] opacity-[0.08] blur-[110px] dark:opacity-[0.16]" />
-      <div className="absolute -bottom-36 -right-28 size-[34rem] rounded-full bg-[var(--color-accent-to)] opacity-[0.1] blur-[130px] dark:opacity-[0.18]" />
+      <div className="crm-ambient-glow absolute -left-28 -top-24 size-[28rem]" />
+      <div className="crm-ambient-glow crm-ambient-glow-secondary absolute -bottom-36 -right-28 size-[34rem]" />
 
       <svg
         viewBox="0 0 360 280"

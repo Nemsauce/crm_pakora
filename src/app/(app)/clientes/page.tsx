@@ -5,6 +5,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,15 +122,27 @@ function getProfileHref(customer: CustomerDirectoryRow) {
   return `/clientes/${encodeURIComponent(customer.telefono)}?${params.toString()}`;
 }
 
-function CustomerRow({ customer }: { customer: CustomerDirectoryRow }) {
+function CustomerRow({
+  customer,
+  staggerIndex = 0,
+}: {
+  customer: CustomerDirectoryRow;
+  staggerIndex?: number;
+}) {
   const risk = normalizeRisk(customer.nivel_riesgo);
   const history = getCustomerHistoryStats(customer);
   const name = getCustomerName(customer);
+  const animateEntrance = staggerIndex < 3;
 
   return (
     <Link
       href={getProfileHref(customer)}
-      className="grid min-h-[var(--density-row-height-compact)] grid-cols-2 items-center gap-3 rounded-lg border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 text-[var(--foreground)] shadow-sm outline-none transition-[background-color,border-color,box-shadow] duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:shadow-md focus-visible:border-[var(--color-border-selected)] focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.46fr)_minmax(0,0.62fr)_minmax(0,0.72fr)_minmax(0,0.62fr)_minmax(0,1.2fr)_1.5rem] lg:gap-2 lg:px-3 lg:py-1.5"
+      style={
+        animateEntrance
+          ? ({ "--motion-stagger-index": staggerIndex } as CSSProperties)
+          : undefined
+      }
+      className={`${animateEntrance ? "crm-list-enter " : ""}crm-tactile-card group grid min-h-[var(--density-row-height-compact)] grid-cols-2 items-center gap-3 rounded-lg border border-transparent bg-[var(--color-bg-surface-elevated)] p-3 text-[var(--foreground)] shadow-sm outline-none transition-[background-color,border-color,box-shadow,transform] duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] focus-visible:border-[var(--color-border-selected)] focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.46fr)_minmax(0,0.62fr)_minmax(0,0.72fr)_minmax(0,0.62fr)_minmax(0,1.2fr)_1.5rem] lg:gap-2 lg:px-3 lg:py-1.5`}
     >
       <div className="col-span-2 min-w-0 lg:col-span-1">
         <p className="truncate font-display text-sm font-semibold text-text-primary">
@@ -201,7 +214,7 @@ function CustomerRow({ customer }: { customer: CustomerDirectoryRow }) {
       </div>
 
       <ChevronRight
-        className="hidden h-4 w-4 text-text-secondary lg:block"
+        className="hidden h-4 w-4 text-text-secondary transition-transform duration-[var(--motion-duration-hover-focus)] group-hover:translate-x-0.5 motion-reduce:transition-none lg:block"
         aria-hidden="true"
       />
     </Link>
@@ -230,8 +243,8 @@ export default async function ClientesPage({
 
   return (
     <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 lg:px-8">
-      <header className="border-b border-border/30 pb-4">
-        <p className="font-body text-xs uppercase text-text-secondary">
+      <header className="border-b border-[var(--color-border-subtle)] pb-4">
+        <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
           Clientes
         </p>
         <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -339,10 +352,11 @@ export default async function ClientesPage({
           </div>
 
           <div className="grid gap-1" aria-label="Directorio de clientes">
-            {customers.map((customer) => (
+            {customers.map((customer, index) => (
               <CustomerRow
                 key={`${customer.pais}\u0000${customer.telefono}`}
                 customer={customer}
+                staggerIndex={index}
               />
             ))}
           </div>
@@ -363,7 +377,7 @@ export default async function ClientesPage({
       )}
 
       <nav
-        className="mt-6 flex items-center justify-between border-t border-border/30 pt-4"
+        className="mt-6 flex items-center justify-between border-t border-[var(--color-border-subtle)] pt-4"
         aria-label="Paginación del directorio"
       >
         <Button

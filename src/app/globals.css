@@ -378,12 +378,9 @@
 
 .crm-list-enter {
   animation: crm-list-enter
-    calc(
-      var(--motion-duration-content) + var(--motion-duration-content) +
-        var(--motion-duration-micro)
-    )
+    calc(var(--motion-duration-content) + var(--motion-duration-micro))
     cubic-bezier(0.16, 1, 0.3, 1) backwards;
-  animation-delay: calc(var(--motion-stagger-index, 0) * 42ms);
+  animation-delay: calc(var(--motion-stagger-index, 0) * 32ms);
 }
 
 .crm-list-enter:focus,
@@ -398,7 +395,7 @@
     -1.25rem 0 4rem color-mix(in srgb, var(--color-text-primary) 19%, transparent),
     -0.25rem 0 1.25rem color-mix(in srgb, var(--color-accent) 22%, transparent);
   transform-origin: right center;
-  will-change: opacity, filter, transform;
+  will-change: opacity, transform;
 }
 
 .crm-drawer-presence[data-state="open"] {
@@ -438,7 +435,7 @@
 
 .crm-tactile-card {
   transition-duration: var(--motion-duration-hover-focus);
-  transition-property: background-color, border-color, box-shadow, filter, transform;
+  transition-property: background-color, border-color, box-shadow, transform;
   transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -448,14 +445,18 @@
     0 0 0 1px color-mix(in srgb, var(--color-accent) 18%, transparent),
     0 1rem 2.4rem color-mix(in srgb, var(--color-text-primary) 14%, transparent),
     0 0 1.6rem color-mix(in srgb, var(--color-accent) 17%, transparent);
-  filter: saturate(1.06);
   transform: translate3d(0, -3px, 0) scale(1.006);
 }
 
 .crm-financial-glow {
+  text-shadow: 0 0 0.8rem color-mix(in srgb, currentColor 38%, transparent);
+}
+
+svg.crm-financial-glow {
   filter: drop-shadow(
-    0 0 0.7rem color-mix(in srgb, currentColor 38%, transparent)
+    0 0 0.55rem color-mix(in srgb, var(--color-accent) 32%, transparent)
   );
+  text-shadow: none;
 }
 
 .crm-primary-halo {
@@ -466,7 +467,7 @@
   isolation: isolate;
   position: relative;
   transition-duration: var(--motion-duration-hover-focus);
-  transition-property: box-shadow, filter, transform;
+  transition-property: box-shadow, transform;
   transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -484,7 +485,10 @@
 
 .crm-primary-halo:hover,
 .crm-primary-halo:focus-visible {
-  filter: saturate(1.14) brightness(1.05);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 68%, transparent),
+    0 0 2.3rem color-mix(in srgb, var(--color-accent) 44%, transparent),
+    0 1.1rem 2.6rem color-mix(in srgb, var(--color-accent) 30%, transparent);
   transform: translate3d(0, -3px, 0) scale(1.025);
 }
 
@@ -532,9 +536,6 @@
 
 .crm-loader-orbit {
   animation: crm-loader-orbit 720ms linear infinite;
-  filter: drop-shadow(
-    0 0 0.45rem color-mix(in srgb, currentColor 55%, transparent)
-  );
 }
 
 .crm-live-pulse {
@@ -565,17 +566,27 @@
     inset 0 1px 0 color-mix(in srgb, var(--color-bg-surface-elevated) 82%, transparent);
 }
 
-.crm-ambient-route {
-  animation: crm-route-drift 7.2s ease-in-out infinite;
-  filter: drop-shadow(
-    0 0 0.65rem color-mix(in srgb, var(--color-accent) 72%, transparent)
+.crm-ambient-glow {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-accent) 22%, transparent) 0%,
+    color-mix(in srgb, var(--color-accent) 9%, transparent) 42%,
+    transparent 72%
+  );
+  border-radius: 9999px;
+}
+
+.crm-ambient-glow-secondary {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-accent-to) 24%, transparent) 0%,
+    color-mix(in srgb, var(--color-accent-to) 10%, transparent) 42%,
+    transparent 72%
   );
 }
 
-.crm-ambient-node {
-  filter: drop-shadow(
-    0 0 0.8rem color-mix(in srgb, var(--color-accent) 78%, transparent)
-  );
+.crm-ambient-route {
+  animation: crm-route-drift 1.2s cubic-bezier(0.16, 1, 0.3, 1) 1 both;
 }
 
 @media (prefers-reduced-motion: reduce) {

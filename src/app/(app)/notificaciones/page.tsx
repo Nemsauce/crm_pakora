@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
@@ -101,9 +102,9 @@ export default async function NotificationsPage({
   const notifications = (data ?? []) as Notification[];
 
   return (
-    <section className="min-h-screen px-6 py-6 sm:px-8">
-      <div className="border-b border-border pb-4">
-        <p className="font-body text-xs uppercase text-text-secondary">
+    <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 lg:px-8">
+      <div className="border-b border-[var(--color-border-subtle)] pb-4">
+        <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
           Actividad
         </p>
         <h1 className="mt-2 font-display text-2xl font-semibold text-text-primary">
@@ -125,15 +126,21 @@ export default async function NotificationsPage({
       </div>
 
       {notifications.length > 0 ? (
-        <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-bg-surface shadow-lg">
-          <ul className="divide-y divide-border">
-            {notifications.map((notification) => {
+        <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--color-border-subtle)] bg-bg-surface shadow-lg">
+          <ul className="divide-y divide-[var(--color-border-subtle)]">
+            {notifications.map((notification, index) => {
               const destination = getNotificationDestination(notification);
+              const animateEntrance = index < 3;
 
               return (
                 <li
                   key={notification.id}
-                  className="flex items-start gap-3 px-4 py-4 sm:px-5"
+                  style={
+                    animateEntrance
+                      ? ({ "--motion-stagger-index": index } as CSSProperties)
+                      : undefined
+                  }
+                  className={`${animateEntrance ? "crm-list-enter " : ""}flex items-start gap-3 px-4 py-4 sm:px-5`}
                 >
                   <span
                     className={`mt-2 h-2 w-2 shrink-0 rounded-full ${
@@ -184,7 +191,7 @@ export default async function NotificationsPage({
           </ul>
         </div>
       ) : (
-        <div className="mt-4 rounded-2xl border border-border bg-bg-surface p-8 text-center font-body text-sm text-text-secondary shadow-lg">
+        <div className="mt-4 rounded-2xl border border-[var(--color-border-subtle)] bg-bg-surface p-8 text-center font-body text-sm text-text-secondary shadow-lg">
           No hay notificaciones.
         </div>
       )}

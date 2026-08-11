@@ -109,7 +109,7 @@ export function GlobalSearch() {
           type="button"
           variant="ghost"
           size="icon"
-          className="relative rounded-full text-[var(--muted-foreground)] transition-colors hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)]"
+          className="relative rounded-full text-[var(--muted-foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-accent)]/10 hover:text-[var(--color-accent)] motion-reduce:transition-none"
           aria-label="Buscar pedidos"
           title="Buscar pedidos (Ctrl+K)"
         >
@@ -118,15 +118,15 @@ export function GlobalSearch() {
       </Dialog.Trigger>
 
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-[var(--color-text-primary)]/20" />
+        <Dialog.Overlay className="fixed inset-0 z-[var(--z-index-dialog)] bg-[var(--color-text-primary)]/20" />
         <Dialog.Content
-          className="fixed left-1/2 top-[12vh] z-50 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-bg-surface text-[var(--foreground)] shadow-xl outline-none"
+          className="fixed left-1/2 top-[12vh] z-[var(--z-index-dialog)] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 overflow-hidden rounded-2xl border border-[var(--color-border-subtle)] bg-bg-surface text-[var(--foreground)] shadow-xl outline-none"
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             inputRef.current?.focus();
           }}
         >
-          <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+          <div className="flex items-center gap-3 border-b border-[var(--color-border-subtle)] px-4 py-3">
             <Search
               className="h-5 w-5 shrink-0 text-[var(--muted-foreground)]"
               aria-hidden="true"
@@ -183,7 +183,7 @@ export function GlobalSearch() {
                     <Link
                       href={`/pedidos?detalle=${result.id}`}
                       onClick={() => setIsOpen(false)}
-                      className="flex items-start justify-between gap-4 rounded-xl px-3 py-3 outline-none transition-colors hover:bg-[var(--color-accent)]/10 focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex items-start justify-between gap-4 rounded-xl px-3 py-3 outline-none transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-accent)]/10 focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
                     >
                       <span className="min-w-0">
                         <span className="flex flex-wrap items-center gap-2">
@@ -211,7 +211,7 @@ export function GlobalSearch() {
             )}
           </div>
 
-          <div className="border-t border-border px-4 py-2 font-body text-xs text-[var(--muted-foreground)]">
+          <div className="border-t border-[var(--color-border-subtle)] px-4 py-2 font-body text-xs text-[var(--muted-foreground)]">
             <span className="font-mono">Esc</span> para cerrar
           </div>
         </Dialog.Content>
