@@ -135,7 +135,7 @@ export default async function TareasPage({ searchParams }: TareasPageProps) {
 
   return (
     <section className="min-h-screen bg-[var(--color-bg-surface-base)] px-4 py-5 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-2 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-2 border-b border-[var(--color-border-subtle)] pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
             Operación · cola de trabajo

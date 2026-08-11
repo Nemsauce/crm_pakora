@@ -21,7 +21,7 @@ export function TaskSummaryBar({ total, vencidas, view }: TaskSummaryBarProps) {
     <section
       aria-label="Resumen de tareas"
       aria-live="polite"
-      className="grid gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface-subtle)] p-2 sm:grid-cols-2"
+      className="grid gap-2 rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] p-2 sm:grid-cols-2"
     >
       <div className="flex min-h-[var(--density-row-height-comfortable)] items-center gap-3 rounded-xl bg-[var(--color-bg-surface-elevated)] px-3 py-2">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--color-bg-selected)] text-[var(--color-accent)]">

@@ -85,6 +85,8 @@
   --color-bg-surface-elevated: #FFFFFF;
   --color-bg-hover: #F8FAFC;
   --color-bg-selected: #FAF9FF;
+  /* Decorative section boundaries; never the only cue for state or input. */
+  --color-border-subtle: rgba(135, 145, 159, 0.30);
   --color-border-hover: #64748B;
   --color-border-selected: #7C3AED;
   --color-overlay: rgba(15, 23, 42, 0.56);
@@ -189,6 +191,8 @@
   --color-bg-surface-elevated: #171B2A;
   --color-bg-hover: #1E2433;
   --color-bg-selected: #251E42;
+  /* Decorative section boundaries; never the only cue for state or input. */
+  --color-border-subtle: rgba(98, 112, 133, 0.30);
   --color-border-hover: #64748B;
   --color-border-selected: #A78BFA;
   --color-overlay: rgba(2, 6, 23, 0.72);

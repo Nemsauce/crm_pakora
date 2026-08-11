@@ -324,7 +324,7 @@ export function TaskFilters() {
         onChange={(value) => updateFilter("estado_vista", value, "abiertas")}
       />
 
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface-subtle)] p-2.5">
+      <div className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] p-2.5">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_minmax(0,1fr)_minmax(15rem,1.5fr)_auto]">
           <FilterSelect
             label="Tipo"
