@@ -1242,32 +1242,47 @@ export function InternalChatDrawer() {
                               isOwnMessage ? "justify-end" : "justify-start"
                             }`}
                           >
-                            <article
-                              className={`max-w-[88%] rounded-2xl px-3 py-2.5 font-body text-sm leading-5 shadow-sm ${
-                                isOwnMessage
-                                  ? "bg-gradient-to-r from-accent-from to-accent-to text-[var(--color-on-accent)]"
-                                  : "border border-[var(--color-border-subtle)] bg-bg-surface text-text-primary"
-                              }`}
-                              aria-label={
-                                isOwnMessage
-                                  ? "Mensaje enviado por ti"
-                                  : `Mensaje de ${getMemberLabel(selectedMember)}`
-                              }
-                            >
-                              <p className="whitespace-pre-wrap break-words">
-                                {message.mensaje}
-                              </p>
-                              <time
-                                dateTime={message.created_at}
-                                className={`mt-1.5 block text-right font-mono text-[10px] tabular-nums ${
+                            <div className="flex min-w-0 max-w-[88%] items-end gap-2">
+                              {!isOwnMessage ? (
+                                <span
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)]/10 font-display text-[10px] font-semibold text-[var(--color-accent)] ring-1 ring-[var(--color-accent)]/15"
+                                  aria-hidden="true"
+                                >
+                                  {getMemberInitials(selectedMember)}
+                                </span>
+                              ) : null}
+                              <article
+                                className={`min-w-0 rounded-2xl px-4 py-3 font-body text-sm leading-6 shadow-sm ${
                                   isOwnMessage
-                                    ? "text-[var(--color-on-accent)]"
-                                    : "text-text-secondary"
+                                    ? "rounded-br-md bg-[var(--color-accent)] text-[var(--color-on-accent)]"
+                                    : "rounded-bl-md border border-[var(--color-border-subtle)] bg-bg-surface text-text-primary"
                                 }`}
+                                aria-label={
+                                  isOwnMessage
+                                    ? "Mensaje enviado por ti"
+                                    : `Mensaje de ${getMemberLabel(selectedMember)}`
+                                }
                               >
-                                {formatMessageTime(message.created_at)}
-                              </time>
-                            </article>
+                                {!isOwnMessage ? (
+                                  <p className="mb-1 truncate font-display text-[11px] font-semibold text-[var(--color-accent)]">
+                                    {getMemberLabel(selectedMember)}
+                                  </p>
+                                ) : null}
+                                <p className="whitespace-pre-wrap break-words">
+                                  {message.mensaje}
+                                </p>
+                                <time
+                                  dateTime={message.created_at}
+                                  className={`mt-1.5 block text-right font-mono text-[10px] tabular-nums ${
+                                    isOwnMessage
+                                      ? "text-[var(--color-on-accent)] opacity-90"
+                                      : "text-text-secondary"
+                                  }`}
+                                >
+                                  {formatMessageTime(message.created_at)}
+                                </time>
+                              </article>
+                            </div>
                           </div>
                         );
                       })
