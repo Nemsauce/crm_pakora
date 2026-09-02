@@ -205,6 +205,10 @@ export async function checkConfirmationFollowups(): Promise<CheckConfirmationFol
   let ordersProcessed = 0;
 
   for (const order of orders) {
+    if (order.pausar_tareas_automaticas === true) {
+      continue;
+    }
+
     try {
       const categoria = await lookupCategory(order);
 

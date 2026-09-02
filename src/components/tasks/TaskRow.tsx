@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  Ban,
   Check,
   ChevronDown,
   Clock3,
@@ -15,7 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Select } from "radix-ui";
+import { AlertDialog, Select } from "radix-ui";
 import {
   type CSSProperties,
   type KeyboardEvent,
@@ -25,7 +26,12 @@ import {
   useTransition,
 } from "react";
 
-import { reassignTask, snoozeTask } from "@/app/(app)/tareas/actions";
+import {
+  cancelTask,
+  cancelTaskAndPauseFutureTasks,
+  reassignTask,
+  snoozeTask,
+} from "@/app/(app)/tareas/actions";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -112,9 +118,14 @@ const taskStateClassName: Record<TaskState, string> = {
 
 const UNASSIGNED_VALUE = "sin_asignar";
 const TASK_COMPLETED_EVENT = "crm:task-completed";
+export const TASK_CANCELLED_EVENT = "crm:task-cancelled";
 
 type TaskCompletedEventDetail = {
   collapse: boolean;
+  taskId: number;
+};
+
+export type TaskCancelledEventDetail = {
   taskId: number;
 };
 
@@ -124,6 +135,7 @@ type ActionFeedback = {
 };
 
 type SnoozeOption = "one_hour" | "three_hours" | "tomorrow";
+type CancellationMode = "task_and_future" | "task_only";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-CO", {
   day: "2-digit",
@@ -175,7 +187,9 @@ function getDeadline(value: string | null, estado: TaskState) {
 
   return {
     label: dateTimeFormatter.format(date),
-    isOverdue: estado !== "completada" && date.getTime() < Date.now(),
+    isOverdue:
+      (estado === "pendiente" || estado === "en_progreso") &&
+      date.getTime() < Date.now(),
   };
 }
 
@@ -470,6 +484,152 @@ function SnoozeTaskControl({
   );
 }
 
+export function CancelTaskControl({
+  taskId,
+  onCancelled,
+}: {
+  taskId: number;
+  onCancelled?: (taskId: number) => void;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [isCancelling, startCancelling] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (isCancelling) {
+      return;
+    }
+
+    setOpen(nextOpen);
+
+    if (!nextOpen) {
+      setError(null);
+    }
+  }
+
+  function handleCancel(mode: CancellationMode) {
+    setError(null);
+
+    startCancelling(async () => {
+      try {
+        const result =
+          mode === "task_only"
+            ? await cancelTask(taskId)
+            : await cancelTaskAndPauseFutureTasks(taskId);
+
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+
+        setOpen(false);
+        window.dispatchEvent(
+          new CustomEvent<TaskCancelledEventDetail>(TASK_CANCELLED_EVENT, {
+            detail: { taskId },
+          }),
+        );
+        onCancelled?.(taskId);
+        router.refresh();
+      } catch {
+        setError("No se pudo cancelar la tarea.");
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <AlertDialog.Root open={open} onOpenChange={handleOpenChange}>
+        <AlertDialog.Trigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 rounded-full px-3 text-risk-high transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-risk-high-bg hover:text-risk-high motion-reduce:transition-none"
+          >
+            <Ban className="h-4 w-4" aria-hidden="true" />
+            Cancelar
+          </Button>
+        </AlertDialog.Trigger>
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 z-[var(--z-index-dialog)] bg-[var(--color-text-primary)]/20" />
+          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[var(--z-index-dialog)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-elevated)] p-5 text-[var(--foreground)] shadow-xl outline-none motion-reduce:transition-none">
+            <AlertDialog.Title className="font-display text-lg font-semibold text-[var(--foreground)]">
+              Cancelar tarea
+            </AlertDialog.Title>
+            <AlertDialog.Description className="mt-2 font-body text-sm text-[var(--muted-foreground)]">
+              Elige si esta decisión aplica únicamente a la tarea actual o también
+              a las tareas automáticas futuras del mismo pedido.
+            </AlertDialog.Description>
+
+            {error ? (
+              <p role="alert" className="mt-3 font-body text-sm text-risk-high">
+                {error}
+              </p>
+            ) : null}
+
+            <div className="mt-5 grid gap-2">
+              <AlertDialog.Action asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isCancelling}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    handleCancel("task_only");
+                  }}
+                  className="h-auto min-h-[var(--density-row-height-comfortable)] justify-start whitespace-normal rounded-xl border-border bg-[var(--color-bg-surface-elevated)] px-4 py-3 text-left text-[var(--foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)] disabled:opacity-60 motion-reduce:transition-none"
+                >
+                  {isCancelling ? (
+                    <Loader2
+                      className="crm-loader-orbit h-4 w-4 shrink-0"
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  Cancelar solo esta tarea
+                </Button>
+              </AlertDialog.Action>
+              <AlertDialog.Action asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isCancelling}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    handleCancel("task_and_future");
+                  }}
+                  className="h-auto min-h-[var(--density-row-height-comfortable)] justify-start whitespace-normal rounded-xl border-[var(--color-negative)] bg-risk-high-bg px-4 py-3 text-left text-risk-high transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-risk-high-bg hover:text-risk-high disabled:opacity-60 motion-reduce:transition-none"
+                >
+                  {isCancelling ? (
+                    <Loader2
+                      className="crm-loader-orbit h-4 w-4 shrink-0"
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  Cancelar esta y futuras del mismo pedido
+                </Button>
+              </AlertDialog.Action>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <AlertDialog.Cancel asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={isCancelling}
+                  className="rounded-full text-[var(--muted-foreground)] transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--foreground)] disabled:opacity-60 motion-reduce:transition-none"
+                >
+                  Volver
+                </Button>
+              </AlertDialog.Cancel>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
+    </div>
+  );
+}
+
 export function TaskRow({
   task,
   assigneeOptions,
@@ -482,6 +642,7 @@ export function TaskRow({
   const Icon = taskTone.icon;
   const deadline = getDeadline(task.fecha_limite, task.estado);
   const isCompleted = task.estado === "completada";
+  const isCancelled = task.estado === "cancelada";
   const orderId = task.orders?.id ?? null;
   const selectedOrderId = searchParams.get("detalle");
   const selectedTaskId = searchParams.get("tareaId");
@@ -560,9 +721,22 @@ export function TaskRow({
     router.push(buildDetailHref(pathname, params), { scroll: false });
   }
 
+  function handleTaskCancelled() {
+    if (!selected || searchParams.get("estado_vista") === "todas") {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams);
+    params.delete("detalle");
+    params.delete("tareaId");
+    router.push(buildDetailHref(pathname, params), { scroll: false });
+  }
+
   const deadlineText = isCompleted
     ? getCompletionLabel(task, assigneeOptions)
-    : `${deadline.isOverdue ? "Vencida" : "Vence"} · ${deadline.label}`;
+    : isCancelled
+      ? "Sin acciones pendientes"
+      : `${deadline.isOverdue ? "Vencida" : "Vence"} · ${deadline.label}`;
 
   return (
     <article
@@ -717,15 +891,26 @@ export function TaskRow({
             ) : null}
 
             {task.estado === "pendiente" || task.estado === "en_progreso" ? (
-              <div
-                onClick={(event) => event.stopPropagation()}
-                onKeyDown={stopKeyPropagation}
-              >
-                <SnoozeTaskControl
-                  taskId={task.id}
-                  onSnoozed={handleTaskSnoozed}
-                />
-              </div>
+              <>
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={stopKeyPropagation}
+                >
+                  <SnoozeTaskControl
+                    taskId={task.id}
+                    onSnoozed={handleTaskSnoozed}
+                  />
+                </div>
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={stopKeyPropagation}
+                >
+                  <CancelTaskControl
+                    taskId={task.id}
+                    onCancelled={handleTaskCancelled}
+                  />
+                </div>
+              </>
             ) : null}
           </div>
         </div>

@@ -160,6 +160,9 @@ async function loadStaleOrderCandidates(
     .from("orders")
     .select("*, status_history!inner(registrado_en)")
     .eq("activo", true)
+    .or(
+      "pausar_tareas_automaticas.is.null,pausar_tareas_automaticas.eq.false",
+    )
     .order("updated_at", { ascending: true })
     .order("registrado_en", {
       foreignTable: "status_history",
@@ -242,6 +245,10 @@ export async function checkStaleOrders(): Promise<CheckStaleOrdersResult> {
   let tasksCreated = 0;
 
   for (const order of orders) {
+    if (order.pausar_tareas_automaticas === true) {
+      continue;
+    }
+
     try {
       const categoria = await lookupCategory(supabase, order);
       const taskConfig = getStaleTaskConfig(categoria);

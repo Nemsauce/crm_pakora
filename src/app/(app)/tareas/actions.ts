@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import {
   sendTelegramMessage,
   type TelegramCountry,
@@ -11,6 +13,126 @@ import { isValidResultado } from "@/lib/tasks/resultadoOptions";
 export type CompleteTaskResult = {
   error: string | null;
 };
+
+export type CancelTaskResult = {
+  error: string | null;
+};
+
+const CANCELLABLE_TASK_STATES = ["pendiente", "en_progreso"] as const;
+
+type OrderTaskPauseState = {
+  id: number;
+  pausar_tareas_automaticas: boolean | null;
+};
+
+function isValidTaskId(taskId: number) {
+  return Number.isInteger(taskId) && taskId > 0;
+}
+
+export async function cancelTask(
+  taskId: number,
+): Promise<CancelTaskResult> {
+  if (!isValidTaskId(taskId)) {
+    return { error: "Tarea inválida." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({ estado: "cancelada" })
+    .eq("id", taskId)
+    .in("estado", CANCELLABLE_TASK_STATES)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    return { error: "No se pudo cancelar la tarea." };
+  }
+
+  revalidatePath("/tareas");
+  return { error: null };
+}
+
+export async function cancelTaskAndPauseFutureTasks(
+  taskId: number,
+): Promise<CancelTaskResult> {
+  if (!isValidTaskId(taskId)) {
+    return { error: "Tarea inválida." };
+  }
+
+  const supabase = await createClient();
+  const { data: task, error: taskError } = await supabase
+    .from("tasks")
+    .select("order_id,estado")
+    .eq("id", taskId)
+    .maybeSingle();
+
+  if (
+    taskError ||
+    !task ||
+    task.order_id === null ||
+    (task.estado !== "pendiente" && task.estado !== "en_progreso")
+  ) {
+    return { error: "No se pudo validar la tarea y su pedido." };
+  }
+
+  const { data: orderData, error: orderError } = await supabase
+    .from("orders")
+    .select("id,pausar_tareas_automaticas")
+    .eq("id", task.order_id)
+    .maybeSingle();
+  const order = orderData as unknown as OrderTaskPauseState | null;
+
+  if (orderError || !order) {
+    return { error: "No se pudo validar el pedido de la tarea." };
+  }
+
+  const previousPauseState = order.pausar_tareas_automaticas;
+  const { data: pausedOrder, error: pauseError } = await supabase
+    .from("orders")
+    .update({ pausar_tareas_automaticas: true } as never)
+    .eq("id", task.order_id)
+    .select("id")
+    .maybeSingle();
+
+  if (pauseError || !pausedOrder) {
+    return { error: "No se pudo pausar la creación automática de tareas." };
+  }
+
+  const previousState = task.estado;
+  const { data: cancelledTask, error: cancelError } = await supabase
+    .from("tasks")
+    .update({ estado: "cancelada" })
+    .eq("id", taskId)
+    .eq("estado", previousState)
+    .select("id")
+    .maybeSingle();
+
+  if (cancelError || !cancelledTask) {
+    if (previousPauseState !== true) {
+      const { data: restoredOrder, error: rollbackError } = await supabase
+        .from("orders")
+        .update({
+          pausar_tareas_automaticas: previousPauseState ?? false,
+        } as never)
+        .eq("id", task.order_id)
+        .select("id")
+        .maybeSingle();
+
+      if (rollbackError || !restoredOrder) {
+        return {
+          error:
+            "No se pudo cancelar la tarea y el pedido quedó pausado. Recarga la página.",
+        };
+      }
+    }
+
+    return { error: "No se pudo cancelar la tarea." };
+  }
+
+  revalidatePath("/tareas");
+  return { error: null };
+}
 
 export async function logTaskHandlingOpen(taskId: number): Promise<void> {
   if (!Number.isInteger(taskId) || taskId <= 0) {

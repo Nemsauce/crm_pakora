@@ -2,7 +2,9 @@ import { sendTelegramMessage } from "@/lib/notifications/sendTelegram";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 
-export type Order = Tables<"orders">;
+export type Order = Tables<"orders"> & {
+  pausar_tareas_automaticas?: boolean | null;
+};
 type Task = Tables<"tasks">;
 export type TaskType = Database["public"]["Enums"]["tipo_tarea_enum"];
 type TaskState = Database["public"]["Enums"]["estado_tarea_enum"];
@@ -168,12 +170,42 @@ async function findOpenTask(orderId: number, tipo: TaskType) {
   return data;
 }
 
+async function automaticTaskCreationIsPaused(order: Order) {
+  if (order.pausar_tareas_automaticas === true) {
+    return true;
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("pausar_tareas_automaticas")
+    .eq("id", order.id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  const currentOrder = data as unknown as {
+    pausar_tareas_automaticas: boolean | null;
+  } | null;
+
+  return currentOrder?.pausar_tareas_automaticas === true;
+}
+
 export async function ensureOpenTask({
   order,
   tipo,
   titulo,
   descripcion = null,
 }: EnsureTaskOptions): Promise<ProcessResult> {
+  if (await automaticTaskCreationIsPaused(order)) {
+    return {
+      action: "tasks_paused",
+      categoria: "",
+    };
+  }
+
   const existingTask = await findOpenTask(order.id, tipo);
 
   if (existingTask) {
@@ -202,6 +234,22 @@ export async function ensureOpenTask({
 
   if (error) {
     throw error;
+  }
+
+  if (await automaticTaskCreationIsPaused(order)) {
+    const { error: rollbackError } = await supabase
+      .from("tasks")
+      .delete()
+      .eq("id", data.id);
+
+    if (rollbackError) {
+      throw rollbackError;
+    }
+
+    return {
+      action: "tasks_paused",
+      categoria: "",
+    };
   }
 
   return {

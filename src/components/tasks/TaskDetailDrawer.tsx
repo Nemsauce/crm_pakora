@@ -39,6 +39,11 @@ import {
 import { suggestTaskMessage } from "@/app/(app)/tareas/suggest-actions";
 import { Button } from "@/components/ui/button";
 import {
+  CancelTaskControl,
+  TASK_CANCELLED_EVENT,
+  type TaskCancelledEventDetail,
+} from "@/components/tasks/TaskRow";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -230,7 +235,9 @@ function getDeadline(value: string | null, estado: TaskState) {
 
   return {
     label: dateTimeFormatter.format(date),
-    isOverdue: estado !== "completada" && date.getTime() < Date.now(),
+    isOverdue:
+      (estado === "pendiente" || estado === "en_progreso") &&
+      date.getTime() < Date.now(),
   };
 }
 
@@ -624,6 +631,7 @@ export function TaskDetailRow({
   const Icon = taskTone.icon;
   const deadline = getDeadline(task.fecha_limite, task.estado);
   const isCompleted = task.estado === "completada";
+  const isCancelled = task.estado === "cancelada";
   const orderId = task.orders?.id ?? null;
   const selectedOrderId = searchParams.get("detalle");
   const selectedTaskId = searchParams.get("tareaId");
@@ -797,6 +805,10 @@ export function TaskDetailRow({
             <div className="rounded-full bg-risk-low-bg px-3 py-1 font-mono text-xs font-semibold tabular-nums text-risk-low">
               {getCompletionLabel(task, assigneeOptions)}
             </div>
+          ) : isCancelled ? (
+            <div className="rounded-full bg-risk-high-bg px-3 py-1 font-body text-xs font-semibold text-risk-high">
+              Cancelada
+            </div>
           ) : (
             <div
               className={`rounded-full px-3 py-1 font-mono text-xs font-semibold tabular-nums ${
@@ -875,6 +887,30 @@ export function TaskDetailDrawer({
   const nextSuggestionRequestIdRef = useRef(0);
   const [, startTaskSuggestionTransition] = useTransition();
   const isOpen = Boolean(selectedOrderId);
+
+  useEffect(() => {
+    function handleTaskCancelledEvent(event: Event) {
+      const { taskId } = (event as CustomEvent<TaskCancelledEventDetail>).detail;
+
+      setDetail((currentDetail) => {
+        if (!currentDetail) {
+          return currentDetail;
+        }
+
+        return {
+          ...currentDetail,
+          tasks: currentDetail.tasks.map((task) =>
+            task.id === taskId ? { ...task, estado: "cancelada" } : task,
+          ),
+        };
+      });
+    }
+
+    window.addEventListener(TASK_CANCELLED_EVENT, handleTaskCancelledEvent);
+    return () => {
+      window.removeEventListener(TASK_CANCELLED_EVENT, handleTaskCancelledEvent);
+    };
+  }, []);
 
   useEffect(() => {
     if (!selectedOrderId) {
@@ -1209,6 +1245,25 @@ export function TaskDetailDrawer({
     }
   }
 
+  function handleTaskCancelled(taskId: number) {
+    setDetail((currentDetail) => {
+      if (!currentDetail) {
+        return currentDetail;
+      }
+
+      return {
+        ...currentDetail,
+        tasks: currentDetail.tasks.map((task) =>
+          task.id === taskId ? { ...task, estado: "cancelada" } : task,
+        ),
+      };
+    });
+
+    if (searchParams.get("estado_vista") !== "todas") {
+      navigateAfterTaskLeavesView(taskId);
+    }
+  }
+
   function handleTaskReassigned(taskId: number, userId: string | null) {
     setDetail((currentDetail) => {
       if (!currentDetail) {
@@ -1303,6 +1358,7 @@ export function TaskDetailDrawer({
                   suggestion={taskSuggestions[selectedTask.id] ?? null}
                   onSuggest={generateSuggestionForTask}
                   onCompleted={handleTaskCompleted}
+                  onCancelled={handleTaskCancelled}
                   onReassigned={handleTaskReassigned}
                   onSnoozed={handleTaskSnoozed}
                 />
@@ -1366,6 +1422,7 @@ function SelectedTaskSection({
   suggestion,
   onSuggest,
   onCompleted,
+  onCancelled,
   onReassigned,
   onSnoozed,
 }: {
@@ -1377,6 +1434,7 @@ function SelectedTaskSection({
   suggestion: TaskSuggestionState | null;
   onSuggest: (taskId: number) => void;
   onCompleted: (taskId: number, notes: string | null) => void;
+  onCancelled: (taskId: number) => void;
   onReassigned: (taskId: number, userId: string | null) => void;
   onSnoozed: (taskId: number) => void;
 }) {
@@ -1384,6 +1442,7 @@ function SelectedTaskSection({
   const Icon = taskTone.icon;
   const deadline = getDeadline(task.fecha_limite, task.estado);
   const isCompleted = task.estado === "completada";
+  const isCancelled = task.estado === "cancelada";
   const isActionable =
     task.estado === "pendiente" || task.estado === "en_progreso";
   const generatedSuggestion = suggestion?.suggestion ?? null;
@@ -1459,6 +1518,8 @@ function SelectedTaskSection({
           className={`mt-4 flex min-h-[var(--density-row-height-comfortable)] items-center gap-3 rounded-xl border px-3 py-2.5 ${
             isCompleted
               ? "border-[var(--color-positive)] bg-risk-low-bg text-risk-low"
+              : isCancelled
+                ? "border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] text-[var(--muted-foreground)]"
               : deadline.isOverdue
                 ? "border-[var(--color-negative)] bg-risk-high-bg text-risk-high"
                 : "border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] text-[var(--foreground)]"
@@ -1466,6 +1527,8 @@ function SelectedTaskSection({
         >
           {isCompleted ? (
             <Check className="h-5 w-5 shrink-0" aria-hidden="true" />
+          ) : isCancelled ? (
+            <X className="h-5 w-5 shrink-0" aria-hidden="true" />
           ) : deadline.isOverdue ? (
             <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" />
           ) : (
@@ -1473,12 +1536,20 @@ function SelectedTaskSection({
           )}
           <div className="min-w-0">
             <p className="font-body text-xs font-semibold uppercase tracking-wide">
-              {isCompleted ? "Finalizada" : deadline.isOverdue ? "Atención inmediata" : "Fecha límite"}
+              {isCompleted
+                ? "Finalizada"
+                : isCancelled
+                  ? "Cancelada"
+                  : deadline.isOverdue
+                    ? "Atención inmediata"
+                    : "Fecha límite"}
             </p>
             <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums">
               {isCompleted
                 ? getCompletionLabel(task, assigneeOptions ?? [])
-                : `${deadline.isOverdue ? "Vencida " : "Vence "}${deadline.label}`}
+                : isCancelled
+                  ? "Sin acciones pendientes"
+                  : `${deadline.isOverdue ? "Vencida " : "Vence "}${deadline.label}`}
             </p>
           </div>
         </div>
@@ -1646,7 +1717,9 @@ function SelectedTaskSection({
             Acciones operativas
           </p>
           <h3 className="mt-1 font-display text-base font-semibold text-[var(--foreground)]">
-            {isActionable ? "Cerrar, reasignar o posponer" : "Gestión registrada"}
+            {isActionable
+              ? "Cerrar, reasignar, posponer o cancelar"
+              : "Gestión registrada"}
           </h3>
         </div>
 
@@ -1698,11 +1771,18 @@ function SelectedTaskSection({
           </div>
 
           {task.estado === "pendiente" || task.estado === "en_progreso" ? (
-            <SnoozeTaskControl
-              key={`drawer-snooze-${task.id}`}
-              taskId={task.id}
-              onSnoozed={onSnoozed}
-            />
+            <div className="flex flex-wrap items-start justify-end gap-2">
+              <SnoozeTaskControl
+                key={`drawer-snooze-${task.id}`}
+                taskId={task.id}
+                onSnoozed={onSnoozed}
+              />
+              <CancelTaskControl
+                key={`drawer-cancel-${task.id}`}
+                taskId={task.id}
+                onCancelled={onCancelled}
+              />
+            </div>
           ) : null}
         </div>
       </div>
@@ -1895,7 +1975,9 @@ function TaskSummaryItem({
         >
           {task.estado === "completada"
             ? getCompletionLabel(task, assigneeOptions)
-            : `${deadline.isOverdue ? "Vencida " : "Vence "}${deadline.label}`}
+            : task.estado === "cancelada"
+              ? "Cancelada"
+              : `${deadline.isOverdue ? "Vencida " : "Vence "}${deadline.label}`}
         </span>
       </div>
     </li>
