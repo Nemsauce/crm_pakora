@@ -9,6 +9,7 @@ import {
   ClipboardList,
   DollarSign,
   ListTodo,
+  Megaphone,
   Search,
   Settings,
   Users,
@@ -82,6 +83,11 @@ const toolNavItems = [
     label: "Productividad",
     href: "/command-center/productividad",
     icon: Users,
+  },
+  {
+    label: "Campañas",
+    href: "/command-center/campanias",
+    icon: Megaphone,
   },
 ] as const satisfies readonly NavigationItem[];
 
