@@ -5,8 +5,6 @@ import {
   fetchMetaCampaigns,
   MetaCampaignsApiError,
   MetaCampaignsConfigError,
-  type MetaCampaignCountry,
-  type MetaCampaignInsight,
 } from "@/lib/meta/fetchMetaCampaigns";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
@@ -20,20 +18,25 @@ type MetaCampaignRow = {
   nombre: string;
   estado: string;
   objetivo: string | null;
-  pais: MetaCampaignCountry | null;
-  gasto: number | null;
-  impresiones: number | null;
-  clics: number | null;
-  alcance: number | null;
+  pais: string | null;
   moneda: string | null;
-  insight_desde: string | null;
-  insight_hasta: string | null;
+  producto_base: string | null;
+  actualizado_en: string;
+};
+
+type MetaCampaignInsert = {
+  id: string;
+  ad_account_id: string;
+  nombre: string;
+  estado: string;
+  objetivo: string | null;
+  moneda?: string | null;
   actualizado_en: string;
 };
 
 type MetaCampaignsTable = {
   Row: MetaCampaignRow;
-  Insert: MetaCampaignRow;
+  Insert: MetaCampaignInsert;
   Update: Partial<MetaCampaignRow>;
   Relationships: [];
 };
@@ -51,9 +54,6 @@ export type MetaCampaignSyncResult = {
   syncedAt: string;
   campaignsFetched: number;
   campaignsStored: number;
-  insightsFetched: number;
-  insightDesde: string;
-  insightHasta: string;
   currency: string | null;
   apiCalls: number;
   maxObservedUsagePercent: number | null;
@@ -105,53 +105,18 @@ export async function GET(request: NextRequest) {
 export async function runMetaCampaignsSync(): Promise<MetaCampaignSyncResult> {
   const fetched = await fetchMetaCampaigns();
   const syncedAt = new Date().toISOString();
-  const supabase = createAdminClient() as unknown as SupabaseClient<MetaCampaignDatabase>;
-  const campaignIds = fetched.campaigns.map((campaign) => campaign.id);
-  let existingById = new Map<string, MetaCampaignRow>();
-
-  if (campaignIds.length > 0) {
-    const { data: existingRows, error: existingError } = await supabase
-      .from("meta_campaigns")
-      .select("*")
-      .in("id", campaignIds);
-
-    if (existingError) {
-      throw new MetaCampaignSyncOperationError(
-        "Failed to load existing Meta campaigns",
-      );
-    }
-
-    existingById = new Map(
-      (existingRows ?? []).map((row) => [row.id, row]),
-    );
-  }
-
-  const rows = fetched.campaigns.map((campaign): MetaCampaignRow => {
-    const existing = existingById.get(campaign.id);
-    const metrics = resolveMetrics(campaign.insight, existing);
-    const hasFreshInsight = campaign.insight !== null;
-
-    return {
-      id: campaign.id,
-      ad_account_id: campaign.adAccountId,
-      nombre: campaign.nombre,
-      estado: campaign.estado,
-      objetivo: campaign.objetivo,
-      pais: campaign.pais,
-      gasto: metrics.gasto,
-      impresiones: metrics.impresiones,
-      clics: metrics.clics,
-      alcance: metrics.alcance,
-      moneda: fetched.currency ?? existing?.moneda ?? null,
-      insight_desde: hasFreshInsight
-        ? fetched.insightDesde
-        : existing?.insight_desde ?? null,
-      insight_hasta: hasFreshInsight
-        ? fetched.insightHasta
-        : existing?.insight_hasta ?? null,
-      actualizado_en: syncedAt,
-    };
-  });
+  const supabase = createAdminClient() as unknown as SupabaseClient<
+    MetaCampaignDatabase
+  >;
+  const rows: MetaCampaignInsert[] = fetched.campaigns.map((campaign) => ({
+    id: campaign.id,
+    ad_account_id: campaign.adAccountId,
+    nombre: campaign.nombre,
+    estado: campaign.estado,
+    objetivo: campaign.objetivo,
+    ...(fetched.currency ? { moneda: fetched.currency } : {}),
+    actualizado_en: syncedAt,
+  }));
 
   if (rows.length > 0) {
     const { error: upsertError } = await supabase
@@ -170,30 +135,11 @@ export async function runMetaCampaignsSync(): Promise<MetaCampaignSyncResult> {
     syncedAt,
     campaignsFetched: fetched.campaigns.length,
     campaignsStored: rows.length,
-    insightsFetched: fetched.insightsFetched,
-    insightDesde: fetched.insightDesde,
-    insightHasta: fetched.insightHasta,
     currency: fetched.currency,
     apiCalls: fetched.apiCalls,
     maxObservedUsagePercent: fetched.maxObservedUsagePercent,
     partial: fetched.partial,
     rateLimitDetected: fetched.rateLimitDetected,
     warnings: fetched.warnings,
-  };
-}
-
-function resolveMetrics(
-  fresh: MetaCampaignInsight | null,
-  existing: MetaCampaignRow | undefined,
-) {
-  if (fresh) {
-    return fresh;
-  }
-
-  return {
-    gasto: existing?.gasto ?? null,
-    impresiones: existing?.impresiones ?? null,
-    clics: existing?.clics ?? null,
-    alcance: existing?.alcance ?? null,
   };
 }

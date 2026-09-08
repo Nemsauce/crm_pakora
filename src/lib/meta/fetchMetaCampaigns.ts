@@ -3,7 +3,6 @@ import "server-only";
 const META_GRAPH_VERSION = "v21.0";
 const META_GRAPH_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 const DEFAULT_AD_ACCOUNT_ID = "act_1930695100907866";
-const DEFAULT_INSIGHT_TIME_ZONE = "America/Bogota";
 const PAGE_LIMIT = 200;
 const REQUEST_DELAY_MS = 250;
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -12,6 +11,11 @@ const RATE_LIMIT_ERROR_CODES = new Set([
   4, 17, 32, 613, 80_000, 80_001, 80_002, 80_003, 80_004, 80_005, 80_006,
   80_008, 80_009, 80_014,
 ]);
+const PURCHASE_ACTION_TYPES = [
+  "omni_purchase",
+  "purchase",
+  "offsite_conversion.fb_pixel_purchase",
+] as const;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -41,22 +45,26 @@ type MetaCampaignApiRow = {
   objective?: string;
 };
 
+type MetaActionApiRow = {
+  action_type?: unknown;
+  value?: unknown;
+};
+
 type MetaInsightApiRow = {
-  campaign_id: string;
-  spend?: string;
-  impressions?: string;
-  clicks?: string;
-  reach?: string;
+  campaign_id?: unknown;
+  spend?: unknown;
+  impressions?: unknown;
+  clicks?: unknown;
+  reach?: unknown;
+  cpc?: unknown;
+  ctr?: unknown;
+  actions?: unknown;
+  cost_per_action_type?: unknown;
+  date_start?: unknown;
+  date_stop?: unknown;
 };
 
-export type MetaCampaignCountry = "CO" | "MX";
-
-export type MetaCampaignInsight = {
-  gasto: number;
-  impresiones: number;
-  clics: number;
-  alcance: number;
-};
+export type MetaPurchaseActionType = (typeof PURCHASE_ACTION_TYPES)[number];
 
 export type MetaCampaignSnapshot = {
   id: string;
@@ -64,24 +72,43 @@ export type MetaCampaignSnapshot = {
   nombre: string;
   estado: string;
   objetivo: string | null;
-  pais: MetaCampaignCountry | null;
-  insight: MetaCampaignInsight | null;
 };
 
-export type FetchMetaCampaignsResult = {
+export type MetaCampaignMetrics = {
+  campaignId: string;
+  gasto: number;
+  impresiones: number;
+  clics: number;
+  alcance: number;
+  compras: number;
+  cpa: number | null;
+  cpc: number | null;
+  ctr: number | null;
+  purchaseActionType: MetaPurchaseActionType | null;
+  dateStart: string;
+  dateStop: string;
+};
+
+type MetaRequestResult = {
   adAccountId: string;
-  currency: string | null;
-  campaigns: MetaCampaignSnapshot[];
-  insightsFetched: number;
-  insightDesde: string;
-  insightHasta: string;
-  campaignsComplete: boolean;
-  insightsComplete: boolean;
   apiCalls: number;
   maxObservedUsagePercent: number | null;
   partial: boolean;
   rateLimitDetected: boolean;
   warnings: string[];
+};
+
+export type FetchMetaCampaignsResult = MetaRequestResult & {
+  currency: string | null;
+  campaigns: MetaCampaignSnapshot[];
+  campaignsComplete: boolean;
+};
+
+export type FetchMetaCampaignMetricsResult = MetaRequestResult & {
+  dateFrom: string;
+  dateTo: string;
+  metrics: MetaCampaignMetrics[];
+  metricsComplete: boolean;
 };
 
 export class MetaCampaignsConfigError extends Error {
@@ -98,30 +125,20 @@ export class MetaCampaignsApiError extends Error {
   }
 }
 
-export async function fetchMetaCampaigns(
-  now = new Date(),
-): Promise<FetchMetaCampaignsResult> {
-  const context: MetaRequestContext = {
-    accessToken: getAccessToken(),
-    apiCalls: 0,
-    maxObservedUsagePercent: null,
-    rateLimitDetected: false,
-    stopRequested: false,
-    warnings: [],
-  };
+/**
+ * Fetches durable campaign identity data for persistence. Metrics deliberately
+ * live in fetchMetaCampaignMetrics so the stored catalog never goes stale.
+ */
+export async function fetchMetaCampaigns(): Promise<FetchMetaCampaignsResult> {
+  const context = createRequestContext();
   const adAccountId = getAdAccountId();
-  let { desde, hasta } = getLastThirtyDays(
-    now,
-    DEFAULT_INSIGHT_TIME_ZONE,
-  );
   const campaignResult = await fetchCampaignPages(context, adAccountId);
-
   let currency: string | null = null;
   let currencyComplete = false;
 
   if (!context.stopRequested) {
     const account = await metaGet<JsonRecord>(context, adAccountId, {
-      fields: "currency,timezone_name",
+      fields: "currency",
     });
 
     if (account) {
@@ -134,27 +151,7 @@ export async function fetchMetaCampaigns(
       }
 
       currencyComplete = true;
-
-      const accountTimeZone = toNonEmptyString(account.timezone_name);
-
-      if (accountTimeZone) {
-        ({ desde, hasta } = getLastThirtyDays(now, accountTimeZone));
-      }
     }
-  }
-
-  let insights = new Map<string, MetaCampaignInsight>();
-  let insightsComplete = campaignResult.campaigns.length === 0;
-
-  if (campaignResult.campaigns.length > 0 && !context.stopRequested) {
-    const insightResult = await fetchInsightPages(
-      context,
-      adAccountId,
-      desde,
-      hasta,
-    );
-    insights = insightResult.insights;
-    insightsComplete = insightResult.complete;
   }
 
   const campaigns = campaignResult.campaigns.map((campaign) => ({
@@ -163,32 +160,16 @@ export async function fetchMetaCampaigns(
     nombre: campaign.name,
     estado: campaign.status,
     objetivo: campaign.objective ?? null,
-    pais: inferMetaCampaignCountry(campaign.name),
-    insight:
-      insights.get(campaign.id) ??
-      (insightsComplete
-        ? { gasto: 0, impresiones: 0, clics: 0, alcance: 0 }
-        : null),
   }));
-  const partial =
-    !campaignResult.complete || !currencyComplete || !insightsComplete;
+  const partial = !campaignResult.complete || !currencyComplete;
 
-  if (partial && context.rateLimitDetected) {
-    addWarning(
-      context,
-      "Meta rate limiting interrupted the sync; available data was kept and missing insights should retain their previous values.",
-    );
-  }
+  addRateLimitPartialWarning(context, partial, "campaign catalog");
 
   return {
     adAccountId,
     currency,
     campaigns,
-    insightsFetched: insights.size,
-    insightDesde: desde,
-    insightHasta: hasta,
     campaignsComplete: campaignResult.complete,
-    insightsComplete,
     apiCalls: context.apiCalls,
     maxObservedUsagePercent: context.maxObservedUsagePercent,
     partial,
@@ -197,16 +178,40 @@ export async function fetchMetaCampaigns(
   };
 }
 
-export function inferMetaCampaignCountry(
-  campaignName: string,
-): MetaCampaignCountry | null {
-  const match = campaignName.trim().match(/^(MEX|COL)(?=$|[\s_-])/i);
+/**
+ * Fetches a live, aggregate insight row per campaign for an exact inclusive
+ * date range. The result is not intended to be persisted.
+ */
+export async function fetchMetaCampaignMetrics(
+  dateFrom: string,
+  dateTo: string,
+): Promise<FetchMetaCampaignMetricsResult> {
+  validateDateRange(dateFrom, dateTo);
 
-  if (!match) {
-    return null;
-  }
+  const context = createRequestContext();
+  const adAccountId = getAdAccountId();
+  const insightResult = await fetchInsightPages(
+    context,
+    adAccountId,
+    dateFrom,
+    dateTo,
+  );
+  const partial = !insightResult.complete;
 
-  return match[1].toUpperCase() === "MEX" ? "MX" : "CO";
+  addRateLimitPartialWarning(context, partial, "campaign insights");
+
+  return {
+    adAccountId,
+    dateFrom,
+    dateTo,
+    metrics: Array.from(insightResult.metrics.values()),
+    metricsComplete: insightResult.complete,
+    apiCalls: context.apiCalls,
+    maxObservedUsagePercent: context.maxObservedUsagePercent,
+    partial,
+    rateLimitDetected: context.rateLimitDetected,
+    warnings: context.warnings,
+  };
 }
 
 async function fetchCampaignPages(
@@ -262,10 +267,10 @@ async function fetchCampaignPages(
 async function fetchInsightPages(
   context: MetaRequestContext,
   adAccountId: string,
-  desde: string,
-  hasta: string,
+  dateFrom: string,
+  dateTo: string,
 ) {
-  const insights = new Map<string, MetaCampaignInsight>();
+  const metrics = new Map<string, MetaCampaignMetrics>();
   let after: string | null = null;
   let complete = false;
 
@@ -275,8 +280,11 @@ async function fetchInsightPages(
       `${adAccountId}/insights`,
       {
         level: "campaign",
-        fields: "campaign_id,spend,impressions,clicks,reach",
-        time_range: JSON.stringify({ since: desde, until: hasta }),
+        fields:
+          "campaign_id,spend,impressions,clicks,reach,cpc,ctr,actions,cost_per_action_type,date_start,date_stop",
+        action_breakdowns: "action_type",
+        time_range: JSON.stringify({ since: dateFrom, until: dateTo }),
+        time_increment: "all_days",
         limit: String(PAGE_LIMIT),
         ...(after ? { after } : {}),
       },
@@ -287,10 +295,10 @@ async function fetchInsightPages(
     }
 
     for (const rawInsight of normalizePageData(page)) {
-      const insight = normalizeInsight(rawInsight);
+      const insight = normalizeInsight(rawInsight, dateFrom, dateTo);
 
       if (insight) {
-        insights.set(insight.campaignId, insight.metrics);
+        metrics.set(insight.campaignId, insight);
       }
     }
 
@@ -312,7 +320,7 @@ async function fetchInsightPages(
     after = pagination.after;
   }
 
-  return { insights, complete };
+  return { metrics, complete };
 }
 
 async function metaGet<T>(
@@ -359,8 +367,7 @@ async function metaGet<T>(
 
   if (
     response.status === 429 ||
-    (metaErrorCode !== null && RATE_LIMIT_ERROR_CODES.has(metaErrorCode)) ||
-    (context.rateLimitDetected && !response.ok)
+    (metaErrorCode !== null && RATE_LIMIT_ERROR_CODES.has(metaErrorCode))
   ) {
     context.rateLimitDetected = true;
     context.stopRequested = true;
@@ -396,6 +403,17 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
+function createRequestContext(): MetaRequestContext {
+  return {
+    accessToken: getAccessToken(),
+    apiCalls: 0,
+    maxObservedUsagePercent: null,
+    rateLimitDetected: false,
+    stopRequested: false,
+    warnings: [],
+  };
+}
+
 function inspectUsageHeaders(context: MetaRequestContext, headers: Headers) {
   const usagePercentages = [
     readUsagePercentage(headers.get("x-app-usage")),
@@ -418,7 +436,7 @@ function inspectUsageHeaders(context: MetaRequestContext, headers: Headers) {
     context.stopRequested = true;
     addWarning(
       context,
-      "Meta API usage is near its limit; the sync stopped before making another request.",
+      "Meta API usage is near its limit; no further API requests were made.",
     );
   }
 }
@@ -500,42 +518,74 @@ function normalizeCampaign(value: unknown): MetaCampaignApiRow {
   };
 }
 
-function normalizeInsight(value: unknown) {
+function normalizeInsight(
+  value: unknown,
+  requestedDateFrom: string,
+  requestedDateTo: string,
+): MetaCampaignMetrics | null {
   if (!isJsonRecord(value)) {
     throw new MetaCampaignsApiError("Meta returned an invalid insight row");
   }
 
-  const campaignId = toNonEmptyString(value.campaign_id);
+  const insight = value as MetaInsightApiRow;
+  const campaignId = toNonEmptyString(insight.campaign_id);
 
   if (!campaignId) {
     return null;
   }
 
-  const insight = value as MetaInsightApiRow;
+  const actions = normalizeActionValues(insight.actions);
+  const costsPerAction = normalizeActionValues(insight.cost_per_action_type);
+  const purchaseActionType = PURCHASE_ACTION_TYPES.find(
+    (actionType) => actions.has(actionType),
+  );
 
   return {
     campaignId,
-    metrics: {
-      gasto: toMetricNumber(insight.spend),
-      impresiones: toMetricNumber(insight.impressions),
-      clics: toMetricNumber(insight.clicks),
-      alcance: toMetricNumber(insight.reach),
-    },
+    gasto: toMetricNumber(insight.spend),
+    impresiones: toMetricNumber(insight.impressions),
+    clics: toMetricNumber(insight.clicks),
+    alcance: toMetricNumber(insight.reach),
+    compras: purchaseActionType ? (actions.get(purchaseActionType) ?? 0) : 0,
+    cpa: purchaseActionType
+      ? (costsPerAction.get(purchaseActionType) ?? null)
+      : null,
+    cpc: toOptionalMetricNumber(insight.cpc),
+    ctr: toOptionalMetricNumber(insight.ctr),
+    purchaseActionType: purchaseActionType ?? null,
+    dateStart: toValidDateString(insight.date_start) ?? requestedDateFrom,
+    dateStop: toValidDateString(insight.date_stop) ?? requestedDateTo,
   };
+}
+
+function normalizeActionValues(value: unknown) {
+  const values = new Map<string, number>();
+
+  if (!Array.isArray(value)) {
+    return values;
+  }
+
+  for (const rawAction of value) {
+    if (!isJsonRecord(rawAction)) {
+      continue;
+    }
+
+    const action = rawAction as MetaActionApiRow;
+    const actionType = toNonEmptyString(action.action_type);
+    const metricValue = toOptionalMetricNumber(action.value);
+
+    if (actionType && metricValue !== null) {
+      values.set(actionType, metricValue);
+    }
+  }
+
+  return values;
 }
 
 function readPagination(page: MetaPage<unknown>) {
   const hasNext =
     typeof page.paging?.next === "string" && page.paging.next.length > 0;
-  let after = toNonEmptyString(page.paging?.cursors?.after);
-
-  if (!after && hasNext) {
-    try {
-      after = new URL(page.paging!.next!).searchParams.get("after");
-    } catch {
-      after = null;
-    }
-  }
+  const after = toNonEmptyString(page.paging?.cursors?.after);
 
   return { hasNext, after };
 }
@@ -572,61 +622,58 @@ function getAdAccountId() {
   return normalized;
 }
 
-function getLastThirtyDays(now: Date, timeZone: string) {
-  if (Number.isNaN(now.getTime())) {
-    throw new MetaCampaignsConfigError("The insight reference date is invalid");
-  }
-
-  let calendarParts: Intl.DateTimeFormatPart[];
-
-  try {
-    calendarParts = new Intl.DateTimeFormat("en-CA", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(now);
-  } catch {
-    throw new MetaCampaignsApiError(
-      "Meta returned an invalid ad account timezone",
+function validateDateRange(dateFrom: string, dateTo: string) {
+  if (!toValidDateString(dateFrom) || !toValidDateString(dateTo)) {
+    throw new MetaCampaignsConfigError(
+      "Meta insight dates must use the YYYY-MM-DD format",
     );
   }
 
-  const year = getCalendarPart(calendarParts, "year");
-  const month = getCalendarPart(calendarParts, "month");
-  const day = getCalendarPart(calendarParts, "day");
-  const until = new Date(Date.UTC(year, month - 1, day));
-  const since = new Date(until);
-  since.setUTCDate(since.getUTCDate() - 29);
-
-  return {
-    desde: since.toISOString().slice(0, 10),
-    hasta: until.toISOString().slice(0, 10),
-  };
+  if (dateFrom > dateTo) {
+    throw new MetaCampaignsConfigError(
+      "Meta insight start date cannot be after the end date",
+    );
+  }
 }
 
-function getCalendarPart(
-  parts: Intl.DateTimeFormatPart[],
-  type: "year" | "month" | "day",
-) {
-  const value = Number(parts.find((part) => part.type === type)?.value);
+function toValidDateString(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
 
-  if (!Number.isInteger(value)) {
-    throw new MetaCampaignsApiError(
-      "Meta returned an invalid ad account timezone",
-    );
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
   }
 
   return value;
 }
 
 function toMetricNumber(value: unknown) {
+  return toOptionalMetricNumber(value) ?? 0;
+}
+
+function toOptionalMetricNumber(value: unknown) {
   if (typeof value !== "string" && typeof value !== "number") {
-    return 0;
+    return null;
   }
 
   const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function toNonEmptyString(value: unknown) {
@@ -635,6 +682,19 @@ function toNonEmptyString(value: unknown) {
 
 function isJsonRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function addRateLimitPartialWarning(
+  context: MetaRequestContext,
+  partial: boolean,
+  dataKind: string,
+) {
+  if (partial && context.rateLimitDetected) {
+    addWarning(
+      context,
+      `Meta rate limiting interrupted the ${dataKind}; the returned data is partial.`,
+    );
+  }
 }
 
 function addWarning(context: MetaRequestContext, warning: string) {

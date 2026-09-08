@@ -4,19 +4,13 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import {
+  refreshMetaCampaigns,
+  type RefreshMetaCampaignsResult,
+} from "@/app/(app)/command-center/campanias/actions";
 import { Button } from "@/components/ui/button";
 
-export type RefreshMetaCampaignsResult =
-  | { ok: true; message: string; partial?: boolean }
-  | { ok: false; message: string };
-
-type RefreshMetaCampaignsButtonProps = {
-  refreshAction: () => Promise<RefreshMetaCampaignsResult>;
-};
-
-export function RefreshMetaCampaignsButton({
-  refreshAction,
-}: RefreshMetaCampaignsButtonProps) {
+export function RefreshMetaCampaignsButton() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<RefreshMetaCampaignsResult | null>(null);
@@ -26,7 +20,7 @@ export function RefreshMetaCampaignsButton({
 
     startTransition(async () => {
       try {
-        const nextResult = await refreshAction();
+        const nextResult = await refreshMetaCampaigns();
         setResult(nextResult);
 
         if (nextResult.ok) {
