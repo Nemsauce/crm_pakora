@@ -1,7 +1,26 @@
 "use client";
 
-import { Activity, CheckCircle2, CircleAlert, Loader2 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import {
+  Activity,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  CircleAlert,
+  Loader2,
+  Package,
+  Unlink,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Select } from "radix-ui";
+import {
+  type SyntheticEvent,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 
 import { saveMetaCampaignProduct } from "@/app/(app)/command-center/campanias/actions";
 
@@ -17,27 +36,10 @@ export type MetaCampaignRow = {
   actualizado_en: string;
 };
 
-export type MetaCampaignMetric = {
-  campaignId: string;
-  gasto: number | null;
-  impresiones: number | null;
-  clics: number | null;
-  alcance: number | null;
-  compras: number | null;
-  cpa: number | null;
-  cpc: number | null;
-  ctr: number | null;
-};
-
 export type MetaCampaignsTableProps = {
   campaigns: MetaCampaignRow[];
-  metrics: MetaCampaignMetric[];
   productOptions: string[];
-  dateFrom: string;
-  dateTo: string;
   initialStatusFilter: string;
-  metricsComplete: boolean;
-  metricsPartialMessage?: string | null;
 };
 
 type AssignmentFeedback = {
@@ -45,29 +47,7 @@ type AssignmentFeedback = {
   message: string;
 };
 
-const countFormatter = new Intl.NumberFormat("es-CO", {
-  maximumFractionDigits: 0,
-});
-const resultCountFormatter = new Intl.NumberFormat("es-CO", {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-});
-const decimalFormatter = new Intl.NumberFormat("es-CO", {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-});
-const rangeDateFormatter = new Intl.DateTimeFormat("es-CO", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-const updatedAtFormatter = new Intl.DateTimeFormat("es-CO", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "America/Bogota",
-});
-
+const UNASSIGNED_PRODUCT = "__unassigned_product__";
 const statusPriority = ["ACTIVE", "PAUSED", "ARCHIVED", "DELETED"];
 
 const statusLabels: Record<string, string> = {
@@ -86,66 +66,11 @@ const statusClasses: Record<string, string> = {
   DELETED: "border-transparent bg-negative-bg text-negative",
 };
 
-function toFiniteNumber(value: number | string | null | undefined) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null;
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  return null;
-}
-
-function formatCurrency(value: number | null, currency: string | null) {
-  const amount = toFiniteNumber(value);
-
-  if (amount === null) {
-    return "—";
-  }
-
-  const normalizedCurrency = currency?.trim().toUpperCase();
-
-  if (!normalizedCurrency || !/^[A-Z]{3}$/.test(normalizedCurrency)) {
-    return decimalFormatter.format(amount);
-  }
-
-  try {
-    return new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: normalizedCurrency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${decimalFormatter.format(amount)} ${normalizedCurrency}`;
-  }
-}
-
-function formatCount(value: number | null) {
-  const count = toFiniteNumber(value);
-  return count === null ? "—" : countFormatter.format(count);
-}
-
-function formatResultCount(value: number | null) {
-  const count = toFiniteNumber(value);
-  return count === null ? "—" : resultCountFormatter.format(count);
-}
-
-function formatPercentage(value: number | null) {
-  const percentage = toFiniteNumber(value);
-  return percentage === null ? "—" : `${decimalFormatter.format(percentage)} %`;
-}
-
-function getMetricTone(value: number | null, isPrimary = false) {
-  return toFiniteNumber(value) === null
-    ? "text-text-secondary"
-    : isPrimary
-      ? "text-text-primary"
-      : "text-text-secondary";
-}
+const updatedAtFormatter = new Intl.DateTimeFormat("es-CO", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "America/Bogota",
+});
 
 function formatStatus(status: string) {
   const normalized = status.trim().toUpperCase();
@@ -174,24 +99,8 @@ function formatUpdatedAt(value: string) {
     : updatedAtFormatter.format(date);
 }
 
-function parseDate(value: string) {
-  const date = new Date(`${value}T00:00:00Z`);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatMetricPeriod(dateFrom: string, dateTo: string) {
-  const from = parseDate(dateFrom);
-  const to = parseDate(dateTo);
-
-  if (!from || !to) {
-    return "Rango seleccionado";
-  }
-
-  if (dateFrom === dateTo) {
-    return `Métricas del ${rangeDateFormatter.format(from)}`;
-  }
-
-  return `Métricas del ${rangeDateFormatter.format(from)} al ${rangeDateFormatter.format(to)}`;
+function stopRowNavigation(event: SyntheticEvent) {
+  event.stopPropagation();
 }
 
 function ProductAssignmentSelect({
@@ -223,8 +132,18 @@ function ProductAssignmentSelect({
     );
   }, [productOptions, selectedProduct]);
 
+  useEffect(() => {
+    if (!feedback || feedback.kind === "pending") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setFeedback(null), 3_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [feedback]);
+
   function handleChange(nextValue: string) {
-    const nextProduct = nextValue || null;
+    const nextProduct =
+      nextValue === UNASSIGNED_PRODUCT ? null : nextValue.trim() || null;
     const previousProduct = selectedProduct;
 
     if (nextProduct === previousProduct) {
@@ -256,47 +175,100 @@ function ProductAssignmentSelect({
     });
   }
 
+  const selectedLabel = selectedProduct ?? "Asignar producto";
+
   return (
-    <div className="min-w-56">
-      <label className="sr-only" htmlFor={`campaign-product-${campaignId}`}>
-        Producto asociado a {campaignName}
-      </label>
-      <div className="relative rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] p-1 shadow-sm transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-within:border-[var(--color-border-selected)] focus-within:ring-2 focus-within:ring-ring">
-        <select
-          id={`campaign-product-${campaignId}`}
-          value={selectedProduct ?? ""}
-          onChange={(event) => handleChange(event.target.value)}
-          disabled={isPending}
-          aria-busy={isPending}
+    <div
+      className="min-w-0"
+      onClick={stopRowNavigation}
+      onPointerDown={stopRowNavigation}
+      onKeyDown={stopRowNavigation}
+    >
+      <Select.Root
+        value={selectedProduct ?? UNASSIGNED_PRODUCT}
+        onValueChange={handleChange}
+        disabled={isPending}
+      >
+        <Select.Trigger
+          className="inline-flex min-h-[var(--density-row-height-compact)] w-full min-w-56 max-w-80 items-center justify-between gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] px-3 font-body text-xs font-medium text-text-primary outline-none transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:border-[var(--color-border-selected)] focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
+          aria-label={`Producto asociado a ${campaignName}`}
           aria-describedby={feedback ? feedbackId : undefined}
-          title={selectedProduct ?? "Asignar producto base"}
-          className="h-8 w-full rounded-lg bg-transparent py-1 pr-8 pl-2 font-body text-xs font-medium text-text-primary outline-none disabled:cursor-wait disabled:opacity-60"
+          aria-busy={isPending}
+          title={selectedLabel}
         >
-          <option value="">Asignar producto…</option>
-          {options.map((product) => (
-            <option key={product} value={product}>
-              {product}
-            </option>
-          ))}
-        </select>
-        {isPending ? (
-          <Loader2
-            aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 right-3 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-text-secondary"
-          />
-        ) : null}
-      </div>
-      <div className="mt-1.5 min-h-5" aria-live="polite">
+          <span className="flex min-w-0 items-center gap-2">
+            <Package
+              aria-hidden="true"
+              className="h-4 w-4 shrink-0 text-text-secondary"
+            />
+            <span className="truncate">
+              <Select.Value>{selectedLabel}</Select.Value>
+            </span>
+          </span>
+          <Select.Icon>
+            {isPending ? (
+              <Loader2
+                aria-hidden="true"
+                className="h-4 w-4 animate-spin text-text-secondary"
+              />
+            ) : (
+              <ChevronDown
+                aria-hidden="true"
+                className="h-4 w-4 text-text-secondary"
+              />
+            )}
+          </Select.Icon>
+        </Select.Trigger>
+
+        <Select.Portal>
+          <Select.Content
+            position="popper"
+            sideOffset={6}
+            className="z-[var(--z-index-dropdown-popover)] max-h-[var(--radix-select-content-available-height)] min-w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] text-text-primary shadow-md"
+          >
+            <Select.Viewport className="max-h-72 overflow-y-auto p-1">
+              <Select.Item
+                value={UNASSIGNED_PRODUCT}
+                className="relative flex min-h-[var(--density-row-height-compact)] cursor-default select-none items-center gap-2 rounded-lg py-2 pr-9 pl-3 font-body text-sm text-text-secondary outline-none data-[highlighted]:bg-[var(--color-bg-hover)] data-[highlighted]:text-text-primary data-[state=checked]:bg-[var(--color-bg-selected)] data-[state=checked]:font-semibold data-[state=checked]:text-[var(--color-accent)]"
+              >
+                <Unlink aria-hidden="true" className="h-4 w-4 shrink-0" />
+                <Select.ItemText>Sin producto asignado</Select.ItemText>
+                <Select.ItemIndicator className="absolute right-3 inline-flex items-center">
+                  <Check aria-hidden="true" className="h-4 w-4" />
+                </Select.ItemIndicator>
+              </Select.Item>
+
+              {options.map((product) => (
+                <Select.Item
+                  key={product}
+                  value={product}
+                  title={product}
+                  className="relative flex min-h-[var(--density-row-height-compact)] max-w-96 cursor-default select-none items-center rounded-lg py-2 pr-9 pl-3 font-body text-sm outline-none data-[highlighted]:bg-[var(--color-bg-hover)] data-[state=checked]:bg-[var(--color-bg-selected)] data-[state=checked]:font-semibold data-[state=checked]:text-[var(--color-accent)]"
+                >
+                  <Select.ItemText>
+                    <span className="block truncate">{product}</span>
+                  </Select.ItemText>
+                  <Select.ItemIndicator className="absolute right-3 inline-flex items-center">
+                    <Check aria-hidden="true" className="h-4 w-4" />
+                  </Select.ItemIndicator>
+                </Select.Item>
+              ))}
+            </Select.Viewport>
+          </Select.Content>
+        </Select.Portal>
+      </Select.Root>
+
+      <div className="mt-1 min-h-4" aria-live="polite">
         {feedback ? (
           <p
             id={feedbackId}
             role={feedback.kind === "error" ? "alert" : "status"}
-            className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-body text-[0.68rem] font-medium ${
+            className={`inline-flex items-center gap-1 font-body text-[0.68rem] font-medium ${
               feedback.kind === "error"
-                ? "bg-negative-bg text-negative"
+                ? "text-negative"
                 : feedback.kind === "success"
-                  ? "bg-positive-bg text-positive"
-                  : "bg-[var(--color-bg-surface-subtle)] text-text-secondary"
+                  ? "text-positive"
+                  : "text-text-secondary"
             }`}
           >
             {feedback.kind === "success" ? (
@@ -314,24 +286,28 @@ function ProductAssignmentSelect({
 
 export function MetaCampaignsTable({
   campaigns,
-  metrics,
   productOptions,
-  dateFrom,
-  dateTo,
   initialStatusFilter,
-  metricsComplete,
-  metricsPartialMessage,
 }: MetaCampaignsTableProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
   const statusOptions = useMemo(
     () =>
-      [...new Set(campaigns.map((campaign) => campaign.estado.trim().toUpperCase()))]
+      [
+        ...new Set(
+          campaigns.map((campaign) => campaign.estado.trim().toUpperCase()),
+        ),
+      ]
         .filter(Boolean)
         .sort((left, right) => {
           const leftIndex = statusPriority.indexOf(left);
           const rightIndex = statusPriority.indexOf(right);
-          const leftPriority = leftIndex === -1 ? statusPriority.length : leftIndex;
-          const rightPriority = rightIndex === -1 ? statusPriority.length : rightIndex;
+          const leftPriority =
+            leftIndex === -1 ? statusPriority.length : leftIndex;
+          const rightPriority =
+            rightIndex === -1 ? statusPriority.length : rightIndex;
 
           return leftPriority - rightPriority || left.localeCompare(right);
         }),
@@ -352,29 +328,33 @@ export function MetaCampaignsTable({
       ),
     [campaigns, effectiveStatusFilter],
   );
-  const metricsByCampaign = useMemo(
-    () => new Map(metrics.map((metric) => [metric.campaignId, metric])),
-    [metrics],
-  );
-  const hasPartialMetrics = !metricsComplete || Boolean(metricsPartialMessage);
-  const canTreatMissingMetricsAsZero = metricsComplete && !hasPartialMetrics;
+
+  function updateStatusFilter(nextStatus: string) {
+    setStatusFilter(nextStatus);
+    const params = new URLSearchParams(searchParams);
+    params.set("estado", nextStatus);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  function getCampaignHref(campaignId: string) {
+    const params = new URLSearchParams();
+    params.set("estado", effectiveStatusFilter);
+    return `/command-center/campanias/${encodeURIComponent(campaignId)}?${params.toString()}`;
+  }
 
   return (
     <section className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm sm:p-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-body text-xs uppercase text-text-secondary">
             Cuenta publicitaria configurada
           </p>
           <h2 className="mt-2 font-display text-lg font-semibold text-text-primary">
-            Rendimiento por campaña
+            Catálogo de campañas
           </h2>
-          <p className="mt-1 font-body text-sm font-medium text-text-primary">
-            {formatMetricPeriod(dateFrom, dateTo)}
-          </p>
-          <p className="mt-1 max-w-3xl font-body text-xs text-text-secondary">
-            Compras y CPA son resultados atribuidos por el píxel de Meta. Son
-            estimaciones de Meta, no ventas reales confirmadas por el CRM.
+          <p className="mt-1 max-w-2xl font-body text-xs text-text-secondary">
+            Asigna el producto base o abre una fila para ver todos sus
+            indicadores de Meta.
           </p>
         </div>
 
@@ -382,37 +362,61 @@ export function MetaCampaignsTable({
           <span className="font-body text-xs font-semibold uppercase tracking-wide text-text-secondary">
             Estado
           </span>
-          <span className="relative block">
-            <Activity
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-secondary"
-            />
-            <select
-              value={effectiveStatusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
+          <Select.Root
+            value={effectiveStatusFilter}
+            onValueChange={updateStatusFilter}
+          >
+            <Select.Trigger
+              className="inline-flex min-h-[var(--density-row-height-compact)] min-w-48 items-center justify-between gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] px-3 font-body text-sm text-text-primary outline-none transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:border-[var(--color-border-selected)] focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
               aria-label="Filtrar campañas por estado"
-              className="min-h-[var(--density-row-height-compact)] w-full min-w-44 rounded-xl border border-border bg-[var(--color-bg-surface-elevated)] py-2 pr-8 pl-9 font-body text-sm text-text-primary outline-none transition-[background-color,border-color] duration-[var(--motion-duration-hover-focus)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-hover)] focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <option value="todos">Todas las campañas</option>
-              {selectableStatusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {formatStatus(status)}
-                </option>
-              ))}
-            </select>
-          </span>
+              <span className="flex items-center gap-2">
+                <Activity
+                  aria-hidden="true"
+                  className="h-4 w-4 text-text-secondary"
+                />
+                <span className="font-semibold">
+                  <Select.Value />
+                </span>
+              </span>
+              <Select.Icon>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="h-4 w-4 text-text-secondary"
+                />
+              </Select.Icon>
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content
+                position="popper"
+                sideOffset={6}
+                className="z-[var(--z-index-dropdown-popover)] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface-elevated)] text-text-primary shadow-md"
+              >
+                <Select.Viewport className="p-1">
+                  {[
+                    { value: "todos", label: "Todas las campañas" },
+                    ...selectableStatusOptions.map((status) => ({
+                      value: status,
+                      label: formatStatus(status),
+                    })),
+                  ].map((option) => (
+                    <Select.Item
+                      key={option.value}
+                      value={option.value}
+                      className="relative flex min-h-[var(--density-row-height-compact)] cursor-default select-none items-center rounded-lg py-2 pr-9 pl-3 font-body text-sm outline-none data-[highlighted]:bg-[var(--color-bg-hover)] data-[state=checked]:bg-[var(--color-bg-selected)] data-[state=checked]:font-semibold data-[state=checked]:text-[var(--color-accent)]"
+                    >
+                      <Select.ItemText>{option.label}</Select.ItemText>
+                      <Select.ItemIndicator className="absolute right-3 inline-flex items-center">
+                        <Check aria-hidden="true" className="h-4 w-4" />
+                      </Select.ItemIndicator>
+                    </Select.Item>
+                  ))}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
         </label>
       </div>
-
-      {hasPartialMetrics ? (
-        <div
-          role="status"
-          className="mt-4 rounded-xl border border-risk-medium bg-risk-medium-bg px-3 py-2 font-body text-xs text-risk-medium"
-        >
-          {metricsPartialMessage ??
-            "Meta entregó métricas parciales para este rango. Los guiones indican datos que no estuvieron disponibles; no equivalen a cero."}
-        </div>
-      ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-2" aria-live="polite">
         <span className="font-body text-xs text-text-secondary">
@@ -428,143 +432,72 @@ export function MetaCampaignsTable({
 
       {filteredCampaigns.length > 0 ? (
         <>
-          <p className="mt-3 font-body text-xs text-text-secondary lg:hidden">
-            Desliza horizontalmente para ver todas las métricas.
+          <p className="mt-3 font-body text-xs text-text-secondary md:hidden">
+            Desliza horizontalmente para gestionar las campañas.
           </p>
           <div
             role="region"
-            aria-label="Tabla de campañas de Meta Ads"
+            aria-label="Lista de campañas de Meta Ads"
             tabIndex={0}
             className="mt-3 overflow-x-auto overscroll-x-contain rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-elevated)] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
-            <table className="w-full min-w-[116rem] border-collapse text-left">
+            <table className="w-full min-w-[54rem] border-collapse text-left">
               <caption className="sr-only">
-                Campañas con asignación de producto y métricas del píxel de Meta
-                para {formatMetricPeriod(dateFrom, dateTo).toLocaleLowerCase("es")}
+                Campañas de Meta con estado, producto asociado y fecha de
+                actualización
               </caption>
               <thead className="bg-[var(--color-bg-surface-base)]">
-                <tr className="border-b border-[var(--color-border-subtle)] font-body text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-text-secondary">
-                  <th scope="colgroup" colSpan={3} className="px-4 py-2.5">
+                <tr className="border-b border-[var(--color-border-subtle)] font-body text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-text-secondary">
+                  <th scope="col" className="w-[42%] px-4 py-3">
                     Campaña
-                  </th>
-                  <th
-                    scope="colgroup"
-                    colSpan={3}
-                    className="border-l border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] px-3 py-2.5 text-right text-text-primary"
-                  >
-                    Métricas clave
-                  </th>
-                  <th scope="colgroup" colSpan={5} className="px-3 py-2.5 text-right">
-                    Tráfico y entrega
-                  </th>
-                  <th scope="col" className="px-4 py-2.5">
-                    Catálogo
-                  </th>
-                </tr>
-                <tr className="font-body text-[0.68rem] font-semibold uppercase tracking-wide text-text-secondary">
-                  <th
-                    scope="col"
-                    className="sticky left-0 z-[var(--z-index-sticky-header)] min-w-68 bg-[var(--color-bg-surface-base)] px-4 py-3"
-                  >
-                    Nombre
                   </th>
                   <th scope="col" className="px-3 py-3">
                     Estado
                   </th>
+                  <th scope="col" className="w-[32%] px-3 py-3">
+                    Producto asociado
+                  </th>
                   <th scope="col" className="px-3 py-3">
-                    Producto base
+                    Última actualización
                   </th>
-                  <th
-                    scope="col"
-                    className="border-l border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] px-3 py-3 text-right font-mono tabular-nums text-text-primary"
-                  >
-                    Gasto
-                  </th>
-                  <th
-                    scope="col"
-                    className="bg-[var(--color-bg-surface-subtle)] px-3 py-3 text-right font-mono tabular-nums text-text-primary"
-                  >
-                    <span title="Compras atribuidas por el píxel de Meta">
-                      Compras
-                    </span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="bg-[var(--color-bg-surface-subtle)] px-3 py-3 text-right font-mono tabular-nums text-text-primary"
-                  >
-                    <abbr
-                      className="no-underline"
-                      title="Costo por compra atribuido por Meta"
-                    >
-                      CPA
-                    </abbr>
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-right font-mono tabular-nums">
-                    <abbr className="no-underline" title="Costo por clic reportado por Meta">
-                      CPC
-                    </abbr>
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-right font-mono tabular-nums">
-                    <abbr
-                      className="no-underline"
-                      title="Porcentaje de clics sobre impresiones"
-                    >
-                      CTR
-                    </abbr>
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-right font-mono tabular-nums">
-                    Impresiones
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-right font-mono tabular-nums">
-                    Clics
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-right font-mono tabular-nums">
-                    Alcance
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Actualizado
+                  <th scope="col" className="w-12 px-3 py-3">
+                    <span className="sr-only">Abrir detalle</span>
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border-subtle)]">
                 {filteredCampaigns.map((campaign) => {
-                  const metric = metricsByCampaign.get(campaign.id);
-                  const emptyMetricValue = canTreatMissingMetricsAsZero ? 0 : null;
-                  const gasto = metric ? metric.gasto : emptyMetricValue;
-                  const compras = metric ? metric.compras : emptyMetricValue;
-                  const cpa = metric?.cpa ?? null;
-                  const cpc = metric?.cpc ?? null;
-                  const ctr = metric?.ctr ?? null;
-                  const impresiones = metric
-                    ? metric.impresiones
-                    : emptyMetricValue;
-                  const clics = metric ? metric.clics : emptyMetricValue;
-                  const alcance = metric ? metric.alcance : emptyMetricValue;
+                  const detailHref = getCampaignHref(campaign.id);
 
                   return (
                     <tr
                       key={campaign.id}
-                      className="group min-h-[var(--density-row-height-comfortable)] align-middle transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)]"
+                      onClick={() => router.push(detailHref)}
+                      className="group min-h-[var(--density-row-height-comfortable)] cursor-pointer align-middle transition-colors duration-[var(--motion-duration-hover-focus)] hover:bg-[var(--color-bg-hover)] motion-reduce:transition-none"
                     >
-                      <td className="sticky left-0 z-[var(--z-index-shell)] min-w-68 bg-[var(--color-bg-surface-elevated)] px-4 py-3 group-hover:bg-[var(--color-bg-hover)]">
-                        <p
+                      <td className="px-4 py-3.5">
+                        <Link
+                          href={detailHref}
+                          onClick={stopRowNavigation}
                           title={campaign.nombre}
-                          className="max-w-76 truncate font-display text-sm font-semibold text-text-primary"
+                          className="block max-w-xl rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                          {campaign.nombre}
-                        </p>
-                        <p className="mt-1 font-mono text-[0.68rem] tabular-nums text-text-secondary">
-                          {campaign.id}
-                        </p>
+                          <span className="block truncate font-display text-sm font-semibold text-text-primary transition-colors duration-[var(--motion-duration-hover-focus)] group-hover:text-[var(--color-accent)] motion-reduce:transition-none">
+                            {campaign.nombre}
+                          </span>
+                          <span className="mt-1 block font-mono text-[0.68rem] tabular-nums text-text-secondary">
+                            {campaign.id}
+                          </span>
+                        </Link>
                       </td>
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-3 py-3.5 align-top">
                         <span
                           className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 font-body text-xs font-semibold ${getStatusClass(campaign.estado)}`}
                         >
                           {formatStatus(campaign.estado)}
                         </span>
                       </td>
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-3 py-2.5 align-top">
                         <ProductAssignmentSelect
                           key={`${campaign.id}-${campaign.producto_base ?? "none"}`}
                           campaignId={campaign.id}
@@ -573,40 +506,16 @@ export function MetaCampaignsTable({
                           productOptions={productOptions}
                         />
                       </td>
-                      <td
-                        className={`border-l border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] px-3 py-3 text-right font-mono text-base font-semibold tabular-nums whitespace-nowrap group-hover:bg-[var(--color-bg-selected)] ${getMetricTone(gasto, true)}`}
-                      >
-                        {formatCurrency(gasto, campaign.moneda)}
-                      </td>
-                      <td
-                        className={`bg-[var(--color-bg-surface-subtle)] px-3 py-3 text-right font-mono text-base font-semibold tabular-nums whitespace-nowrap group-hover:bg-[var(--color-bg-selected)] ${getMetricTone(compras, true)}`}
-                      >
-                        {formatResultCount(compras)}
-                      </td>
-                      <td
-                        className={`bg-[var(--color-bg-surface-subtle)] px-3 py-3 text-right font-mono text-base font-semibold tabular-nums whitespace-nowrap group-hover:bg-[var(--color-bg-selected)] ${getMetricTone(cpa, true)}`}
-                      >
-                        {formatCurrency(cpa, campaign.moneda)}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-sm tabular-nums whitespace-nowrap text-text-secondary">
-                        {formatCurrency(cpc, campaign.moneda)}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-sm tabular-nums whitespace-nowrap text-text-secondary">
-                        {formatPercentage(ctr)}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-sm tabular-nums whitespace-nowrap text-text-secondary">
-                        {formatCount(impresiones)}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-sm tabular-nums whitespace-nowrap text-text-secondary">
-                        {formatCount(clics)}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-sm tabular-nums whitespace-nowrap text-text-secondary">
-                        {formatCount(alcance)}
-                      </td>
-                      <td className="px-4 py-3 font-body text-xs text-text-secondary">
+                      <td className="px-3 py-3.5 align-top font-body text-xs text-text-secondary whitespace-nowrap">
                         <time dateTime={campaign.actualizado_en}>
                           {formatUpdatedAt(campaign.actualizado_en)}
                         </time>
+                      </td>
+                      <td className="px-3 py-3.5 text-right align-top">
+                        <ChevronRight
+                          aria-hidden="true"
+                          className="ml-auto h-4 w-4 text-text-secondary transition-transform duration-[var(--motion-duration-hover-focus)] group-hover:translate-x-0.5 group-hover:text-[var(--color-accent)] motion-reduce:transition-none"
+                        />
                       </td>
                     </tr>
                   );

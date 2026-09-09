@@ -80,7 +80,7 @@ export async function refreshMetaCampaigns(): Promise<RefreshMetaCampaignsResult
 
     return {
       ok: true,
-      message: `${result.campaignsStored} campañas actualizadas; recargando las métricas del rango visible.`,
+      message: `${result.campaignsStored} campañas actualizadas.`,
     };
   } catch (error) {
     console.error(
