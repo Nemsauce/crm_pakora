@@ -17,6 +17,7 @@ type SearchParams = {
   range?: string;
   from?: string;
   to?: string;
+  estado?: string;
 };
 
 type CampaignsPageProps = {
@@ -51,6 +52,7 @@ type MetaCampaignsDatabase = Omit<Database, "public"> & {
 const validRanges = new Set(["7", "30", "90"]);
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULT_RANGE = "7";
+const DEFAULT_STATUS_FILTER = "ACTIVE";
 const BUSINESS_TIME_ZONE = "America/Bogota";
 
 function getMetaCampaignsClient(
@@ -127,6 +129,16 @@ function getSelectedDateRange(params: SearchParams) {
   };
 }
 
+function getInitialStatusFilter(value: string | undefined) {
+  const normalized = value?.trim().toUpperCase();
+
+  if (!normalized) {
+    return DEFAULT_STATUS_FILTER;
+  }
+
+  return normalized === "TODOS" || normalized === "ALL" ? "todos" : normalized;
+}
+
 async function loadLiveMetrics(dateFrom: string, dateTo: string) {
   try {
     return {
@@ -169,6 +181,7 @@ export default async function CommandCenterCampaignsPage({
 }: CampaignsPageProps) {
   const params = await searchParams;
   const { currentRange, dateFrom, dateTo } = getSelectedDateRange(params);
+  const initialStatusFilter = getInitialStatusFilter(params.estado);
   const rawSupabase = await createClient();
   const supabase = getMetaCampaignsClient(rawSupabase);
   const [campaignsResult, productsResult, liveMetrics] = await Promise.all([
@@ -238,11 +251,13 @@ export default async function CommandCenterCampaignsPage({
 
       <div className="mt-6">
         <MetaCampaignsTable
+          key={initialStatusFilter}
           campaigns={campaignsResult.data ?? []}
           metrics={liveMetrics.result?.metrics ?? []}
           productOptions={productOptions}
           dateFrom={dateFrom}
           dateTo={dateTo}
+          initialStatusFilter={initialStatusFilter}
           metricsComplete={liveMetrics.result?.metricsComplete ?? false}
           metricsPartialMessage={metricsPartialMessage}
         />
