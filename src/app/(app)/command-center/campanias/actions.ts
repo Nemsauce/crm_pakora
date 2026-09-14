@@ -1,6 +1,7 @@
 "use server";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { revalidatePath } from "next/cache";
 
 import { runMetaCampaignsSync } from "@/app/api/meta/sync-campaigns/route";
 import type { Database } from "@/lib/supabase/database.types";
@@ -159,6 +160,9 @@ export async function saveMetaCampaignProduct(
       message: "No se pudo guardar la asignación del producto.",
     };
   }
+
+  revalidatePath("/command-center/campanias");
+  revalidatePath(`/command-center/campanias/${normalizedCampaignId}`);
 
   return {
     ok: true,

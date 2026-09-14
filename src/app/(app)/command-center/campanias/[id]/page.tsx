@@ -9,6 +9,7 @@ import {
   fetchMetaCampaignMetrics,
   type FetchMetaCampaignMetricsResult,
 } from "@/lib/meta/fetchMetaCampaigns";
+import { getCampaignRealResults } from "@/lib/meta/getCampaignRealResults";
 import type { Database } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -155,6 +156,45 @@ async function loadLiveMetrics(dateFrom: string, dateTo: string) {
   }
 }
 
+async function loadRealResults(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  productBase: string | null,
+  dateFrom: string,
+  dateTo: string,
+) {
+  if (!productBase?.trim()) {
+    return { results: null, sharedCampaignCount: null, errorMessage: null };
+  }
+
+  try {
+    const [results, campaigns] = await Promise.all([
+      getCampaignRealResults(supabase, productBase, dateFrom, dateTo),
+      getMetaCampaignsClient(supabase)
+        .from("meta_campaigns")
+        .select("id", { count: "exact", head: true })
+        .eq("producto_base", productBase),
+    ]);
+
+    return {
+      results,
+      sharedCampaignCount: campaigns.error ? null : campaigns.count,
+      errorMessage: null,
+    };
+  } catch (error) {
+    console.error(
+      "Failed to load campaign CRM results",
+      error instanceof Error ? error.name : "DatabaseError",
+    );
+
+    return {
+      results: null,
+      sharedCampaignCount: null,
+      errorMessage:
+        "No se pudieron consultar los resultados reales. Volvé a cargar la página para reintentar.",
+    };
+  }
+}
+
 function getMetricsPartialMessage(
   metrics: FetchMetaCampaignMetricsResult | null,
   loadError: string | null,
@@ -217,7 +257,10 @@ export default async function CampaignDetailPage({
 
   const { currentRange, dateFrom, dateTo } =
     getSelectedDateRange(resolvedSearchParams);
-  const liveMetrics = await loadLiveMetrics(dateFrom, dateTo);
+  const [liveMetrics, realResults] = await Promise.all([
+    loadLiveMetrics(dateFrom, dateTo),
+    loadRealResults(rawSupabase, campaign.producto_base, dateFrom, dateTo),
+  ]);
   const metric =
     liveMetrics.result?.metrics.find(
       (candidate) => candidate.campaignId === campaignId,
@@ -268,6 +311,9 @@ export default async function CampaignDetailPage({
           dateTo={dateTo}
           metricsComplete={liveMetrics.result?.metricsComplete ?? false}
           metricsPartialMessage={metricsPartialMessage}
+          realResults={realResults.results}
+          realResultsError={realResults.errorMessage}
+          sharedCampaignCount={realResults.sharedCampaignCount}
         />
       </div>
     </section>

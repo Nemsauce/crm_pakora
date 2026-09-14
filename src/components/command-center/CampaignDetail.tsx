@@ -14,8 +14,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 import { AnimatedNumber } from "@/components/motion/AnimatedNumber";
+import type { CampaignRealResults } from "@/lib/meta/getCampaignRealResults";
 
 export type CampaignDetailCampaign = {
   id: string;
@@ -48,6 +50,9 @@ export type CampaignDetailProps = {
   dateTo: string;
   metricsComplete: boolean;
   metricsPartialMessage?: string | null;
+  realResults: CampaignRealResults | null;
+  realResultsError: string | null;
+  sharedCampaignCount: number | null;
 };
 
 type MetricCardProps = {
@@ -256,6 +261,169 @@ function MetricGroup({
   );
 }
 
+function RealResultsSection({
+  campaign,
+  results,
+  errorMessage,
+  sharedCampaignCount,
+  compras,
+  gasto,
+  metricsComplete,
+  metricRange,
+}: {
+  campaign: CampaignDetailCampaign;
+  results: CampaignRealResults | null;
+  errorMessage: string | null;
+  sharedCampaignCount: number | null;
+  compras: number | null;
+  gasto: number | null;
+  metricsComplete: boolean;
+  metricRange: string;
+}) {
+  const spend = toFiniteNumber(gasto);
+  const currency = normalizeCurrency(campaign.moneda);
+  const missingProfit = results?.countries.some(
+    (country) => country.entregadosSinGanancia > 0,
+  );
+  // Zero profit is zero in any currency. Nonzero amounts require the same
+  // currency as Meta; never add COP and MXN or invent an exchange rate.
+  const incompatibleCurrencies = results?.countries.some(
+    (country) => country.gananciaEntregados !== 0 && country.moneda !== currency,
+  );
+  const roasUnavailable = !metricsComplete || spend === null
+    ? "Gasto de Meta incompleto o no disponible."
+    : spend <= 0
+      ? "Sin gasto de Meta en el período."
+      : missingProfit
+        ? "Falta la ganancia de algunos pedidos entregados."
+        : incompatibleCurrencies
+          ? `La ganancia y el gasto (${currency ?? "moneda desconocida"}) tienen monedas distintas. Hace falta una conversión para calcular el ROAS.`
+          : null;
+  const realRoas = results && !roasUnavailable && spend !== null && spend > 0
+    ? results.countries.reduce((sum, country) => sum + country.gananciaEntregados, 0) / spend
+    : null;
+
+  return (
+    <section
+      aria-labelledby="campaign-real-results"
+      className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-subtle)] p-4 shadow-sm sm:p-5"
+    >
+      <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
+        Píxel vs. pedidos del producto
+      </p>
+      <h2 id="campaign-real-results" className="mt-1 font-display text-lg font-semibold text-text-primary">
+        Resultados reales (CRM)
+      </h2>
+      <p className="mt-1 font-body text-xs text-text-secondary">{metricRange}</p>
+
+      {!campaign.producto_base?.trim() ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-[var(--color-border)] p-5">
+          <p className="font-body text-sm text-text-primary">
+            Asigná un producto a esta campaña para ver resultados reales
+          </p>
+          <Link href="/command-center/campanias" className="mt-3 inline-flex rounded-lg font-body text-sm font-semibold text-[var(--color-accent)] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+            Ir a asignar producto
+          </Link>
+        </div>
+      ) : errorMessage || !results ? (
+        <p role="status" className="mt-4 rounded-xl border border-risk-medium bg-risk-medium-bg px-4 py-3 font-body text-sm text-risk-medium">
+          {errorMessage ?? "Los resultados reales no están disponibles."}
+        </p>
+      ) : (
+        <>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_2fr]">
+            <article className="rounded-2xl bg-[var(--color-badge-nuevo-bg)] p-5 text-[var(--color-badge-nuevo)]">
+              <h3 className="font-body text-sm font-semibold">Meta reporta</h3>
+              <p className="mt-3 font-mono text-3xl font-semibold tabular-nums">
+                <MetricValue value={compras} format="count" currency={null} />
+              </p>
+              <p className="mt-1 font-body text-sm">compras atribuidas por el píxel</p>
+            </article>
+            <article className="rounded-2xl bg-[var(--color-bg-surface-elevated)] p-5 shadow-sm">
+              <h3 className="font-body text-sm font-semibold text-text-primary">Realidad (CRM)</h3>
+              <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+                {[
+                  { label: "Pedidos reales", value: results.total, color: "text-text-primary" },
+                  { label: "Confirmados", value: results.confirmados, color: "text-[var(--color-accent-blue)]" },
+                  { label: "Entregados", value: results.entregados, color: "text-positive" },
+                  { label: "Devoluciones", value: results.devoluciones, color: "text-negative" },
+                  { label: "En proceso / otros", value: results.enProceso, color: "text-text-secondary" },
+                ].map((item) => (
+                  <div key={item.label}>
+                    <dt className="font-body text-xs text-text-secondary">{item.label}</dt>
+                    <dd className={`mt-2 font-mono text-2xl font-semibold tabular-nums ${item.color}`}>
+                      <AnimatedNumber value={item.value} locale="es-CO" maximumFractionDigits={0} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </article>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <article className="rounded-2xl bg-[var(--color-bg-surface-elevated)] p-5 shadow-sm">
+              <h3 className="font-body text-sm font-semibold text-text-primary">Ganancia real de entregados</h3>
+              {results.countries.length === 0 ? (
+                <p className="mt-3 font-mono text-2xl font-semibold tabular-nums text-text-primary">
+                  <AnimatedNumber value={0} />
+                </p>
+              ) : results.countries.map((country) => (
+                <div key={country.pais} className="mt-3">
+                  <p className="font-body text-xs text-text-secondary">{country.pais} · {country.moneda}</p>
+                  <p className={`mt-1 break-words font-mono text-2xl font-semibold tabular-nums ${country.gananciaEntregados < 0 ? "text-negative" : "text-positive"}`}>
+                    <MetricValue value={country.gananciaEntregados} format="currency" currency={country.moneda} />
+                  </p>
+                  {country.entregadosSinGanancia > 0 ? (
+                    <p className="mt-1 font-body text-xs text-risk-medium">
+                      Suma parcial: {country.entregadosSinGanancia} entregados sin ganancia informada.
+                    </p>
+                  ) : null}
+                </div>
+              ))}
+              <p className="mt-3 font-body text-xs leading-relaxed text-text-secondary">
+                Ganancia informada por Dropi en los pedidos entregados. No descuenta el gasto de Meta ni las devoluciones.
+              </p>
+            </article>
+            <article className="rounded-2xl border border-[var(--color-border-selected)] bg-[var(--color-bg-selected)] p-5 shadow-sm">
+              <h3 className="font-body text-sm font-semibold text-text-primary">ROAS real · CRM</h3>
+              <p className="crm-financial-glow mt-3 font-mono text-3xl font-semibold tabular-nums text-[var(--color-accent)]">
+                {realRoas === null ? <span aria-label="ROAS real no disponible">—</span> : (
+                  <AnimatedNumber value={realRoas} locale="es-CO" maximumFractionDigits={2} suffix="×" />
+                )}
+              </p>
+              <p className="mt-3 font-body text-xs leading-relaxed text-text-secondary">
+                Ganancia real de entregados ÷ gasto de esta campaña en Meta. Es una comparación del producto; no es el ROAS atribuido por Meta.
+              </p>
+              {roasUnavailable ? <p className="mt-2 font-body text-xs text-risk-medium">{roasUnavailable}</p> : null}
+            </article>
+          </div>
+
+          <div className="mt-4 space-y-2 font-body text-xs leading-relaxed text-text-secondary">
+            <p>
+              {sharedCampaignCount !== null && sharedCampaignCount > 1
+                ? `${sharedCampaignCount} campañas comparten este producto. `
+                : ""}
+              Estos son los pedidos del producto en el período, no ventas atribuibles exclusivamente a esta campaña.
+              {sharedCampaignCount === null ? " No se pudo verificar cuántas campañas comparten el producto." : ""}
+            </p>
+            <p>
+              Sin filtro de país. {results.countries.length > 0
+                ? `Se incluyen ${results.countries.map((country) => `${country.pais}: ${country.total} pedidos`).join(" · ")}.`
+                : "No hay pedidos coincidentes en este período."}
+              {results.countries.length > 1 ? " Las ganancias se muestran por moneda, sin sumarlas entre países." : ""}
+            </p>
+            <p>
+              Se usa la fecha de creación del pedido y su estado actual. Confirmados cuenta los pedidos con confirmación registrada en el historial; puede faltar en pedidos antiguos.
+              {" "}En proceso / otros agrupa todo lo que no está entregado o devuelto
+              {results.cancelados > 0 ? `, incluidos ${results.cancelados} cancelados` : ""}.
+            </p>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 export function CampaignDetail({
   campaign,
   metric,
@@ -263,6 +431,9 @@ export function CampaignDetail({
   dateTo,
   metricsComplete,
   metricsPartialMessage,
+  realResults,
+  realResultsError,
+  sharedCampaignCount,
 }: CampaignDetailProps) {
   const canUseZero = metricsComplete && !metricsPartialMessage;
   const volumeFallback = canUseZero ? 0 : null;
@@ -337,8 +508,8 @@ export function CampaignDetail({
           <p className="font-body text-xs leading-relaxed text-text-secondary">
             Datos consultados en vivo a Meta para este período. Compras y CPA
             son conversiones que el píxel de Meta atribuye; no son ventas reales
-            confirmadas por el CRM. La comparación con ventas reales llegará en
-            la siguiente capa.
+            confirmadas por el CRM. El cruce con los pedidos del producto se
+            muestra en Resultados reales (CRM).
           </p>
         </div>
       </div>
@@ -394,6 +565,17 @@ export function CampaignDetail({
           />
         </div>
       </section>
+
+      <RealResultsSection
+        campaign={campaign}
+        results={realResults}
+        errorMessage={realResultsError}
+        sharedCampaignCount={sharedCampaignCount}
+        compras={compras}
+        gasto={gasto}
+        metricsComplete={canUseZero}
+        metricRange={metricRange}
+      />
 
       <div className="grid gap-5 xl:grid-cols-3">
         <MetricGroup eyebrow="Eficiencia" title="Costos">
