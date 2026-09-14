@@ -58,6 +58,23 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  // TEMPORARY [UTM-DIAGNOSTIC]: remove this block after capturing a few real
+  // CO and MX orders. Log only attribution fields and order identifiers.
+  if (rawOrder && typeof rawOrder === "object" && !Array.isArray(rawOrder)) {
+    const diagnosticOrder = rawOrder as Record<string, unknown>;
+    console.info(
+      "[UTM-DIAGNOSTIC]",
+      JSON.stringify({
+        country,
+        name: diagnosticOrder.name ?? null,
+        order_number: diagnosticOrder.order_number ?? null,
+        landing_site: diagnosticOrder.landing_site ?? null,
+        referring_site: diagnosticOrder.referring_site ?? null,
+        note_attributes: diagnosticOrder.note_attributes ?? null,
+      }),
+    );
+  }
+
   const webhookId = request.headers.get("x-shopify-webhook-id")?.trim();
 
   if (!webhookId) {
