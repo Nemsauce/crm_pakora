@@ -5,18 +5,24 @@ import {
   CircleDollarSign,
   Eye,
   Gauge,
+  Loader2,
   MousePointerClick,
   PackageCheck,
+  Pause,
   Percent,
+  Play,
   ShoppingBag,
   Target,
   Users,
   type LucideIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
+import { changeMetaCampaignStatus } from "@/app/(app)/command-center/campanias/actions";
 import { AnimatedNumber } from "@/components/motion/AnimatedNumber";
+import { Button } from "@/components/ui/button";
 import type { CampaignRealResults } from "@/lib/meta/getCampaignRealResults";
 
 export type CampaignDetailCampaign = {
@@ -151,6 +157,90 @@ function getStatusClass(value: string) {
   return (
     statusClasses[value.trim().toUpperCase()] ??
     "border-transparent bg-[var(--color-badge-nuevo-bg)] text-[var(--color-badge-nuevo)]"
+  );
+}
+
+function CampaignStatusControl({ campaign }: { campaign: CampaignDetailCampaign }) {
+  const router = useRouter();
+  const [estado, setEstado] = useState(campaign.estado);
+  const [feedback, setFeedback] = useState<{ error: boolean; message: string } | null>(null);
+  const [needsSync, setNeedsSync] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const requestInFlight = useRef(false);
+  const canChange = estado === "ACTIVE" || estado === "PAUSED";
+  const nextStatus = estado === "ACTIVE" ? "PAUSED" : "ACTIVE";
+  const disabledReason = needsSync
+    ? "Sincronizá el estado desde el listado de campañas antes de volver a cambiarlo."
+    : estado === "ARCHIVED"
+      ? "Las campañas archivadas no se pueden reactivar desde aquí."
+      : !canChange
+        ? "Este estado no permite pausar o reactivar la campaña desde el CRM."
+        : null;
+
+  function handleStatusChange() {
+    if (requestInFlight.current || isPending || !canChange || needsSync) return;
+
+    // Same native confirmation dialog used by CosteoList for deletion.
+    if (!window.confirm(
+      `¿Seguro que querés ${nextStatus === "PAUSED" ? "pausar" : "reactivar"} la campaña “${campaign.nombre}”?`,
+    )) return;
+
+    requestInFlight.current = true;
+    setFeedback(null);
+    startTransition(async () => {
+      try {
+        const result = await changeMetaCampaignStatus(campaign.id, nextStatus);
+        if (!result.ok) {
+          if (result.metaEstado) {
+            // Meta succeeded but persistence failed: show its known live state
+            // and prevent further writes until the catalog is synchronized.
+            setEstado(result.metaEstado);
+            setNeedsSync(true);
+          }
+          setFeedback({ error: true, message: result.message });
+          return;
+        }
+        setEstado(result.estado);
+        setFeedback({ error: false, message: result.message });
+        router.refresh();
+      } catch {
+        setFeedback({
+          error: true,
+          message: "No se pudo confirmar el resultado. Verificá el estado en Meta y actualizá las campañas antes de reintentar.",
+        });
+      } finally {
+        requestInFlight.current = false;
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className={`inline-flex rounded-full border px-2.5 py-1 font-body text-xs font-semibold ${getStatusClass(estado)}`}>
+        {formatStatus(estado)}
+      </span>
+      <Button
+        type="button"
+        variant="outline"
+        className="min-h-[var(--density-row-height-compact)] rounded-full px-4 font-body text-xs font-semibold"
+        onClick={handleStatusChange}
+        disabled={isPending || !canChange || needsSync}
+        aria-busy={isPending}
+        title={disabledReason ?? undefined}
+      >
+        {isPending ? <Loader2 className="crm-loader-orbit size-4" aria-hidden="true" />
+          : estado === "ACTIVE" ? <Pause className="size-4" aria-hidden="true" />
+            : <Play className="size-4" aria-hidden="true" />}
+        {isPending ? (nextStatus === "PAUSED" ? "Pausando…" : "Reactivando…")
+          : estado === "ACTIVE" ? "Pausar campaña" : "Reactivar campaña"}
+      </Button>
+      {disabledReason ? <p className="w-full font-body text-xs text-text-secondary">{disabledReason}</p> : null}
+      {feedback ? (
+        <p role={feedback.error ? "alert" : "status"} className={`w-full font-body text-xs ${feedback.error ? "text-negative" : "text-positive"}`}>
+          {feedback.message}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -503,11 +593,10 @@ export function CampaignDetail({
               <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
                 Producto asociado
               </p>
-              <span
-                className={`inline-flex rounded-full border px-2.5 py-1 font-body text-xs font-semibold ${getStatusClass(campaign.estado)}`}
-              >
-                {formatStatus(campaign.estado)}
-              </span>
+              <CampaignStatusControl
+                key={`${campaign.id}:${campaign.estado}:${campaign.actualizado_en}`}
+                campaign={campaign}
+              />
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-badge-nuevo-bg)] text-[var(--color-badge-nuevo)]">
