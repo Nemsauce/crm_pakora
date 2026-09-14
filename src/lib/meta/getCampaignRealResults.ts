@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { GET as getMxnCopExchangeRate } from "@/app/api/fx/mxn-cop/route";
 import type { Database, Tables } from "@/lib/supabase/database.types";
 
 type Category = Database["public"]["Enums"]["categoria_estado_enum"];
@@ -19,6 +20,10 @@ export type CampaignRealResults = {
   devoluciones: number;
   enProceso: number;
   cancelados: number;
+  gananciaEntregadosCop: number | null;
+  gananciaMxCop: number | null;
+  exchangeRate: { rate: number; timestamp: string } | null;
+  exchangeRateError: string | null;
   countries: Array<{
     pais: Country;
     moneda: "COP" | "MXN";
@@ -31,6 +36,52 @@ export type CampaignRealResults = {
 const PAGE_SIZE = 1000;
 const HISTORY_BATCH_SIZE = 200;
 const CURRENCY_BY_COUNTRY = { CO: "COP", MX: "MXN" } as const;
+
+async function convertProfitToCop(result: CampaignRealResults) {
+  const coProfit = result.countries.find((country) => country.pais === "CO")
+    ?.gananciaEntregados ?? 0;
+  const mxCountry = result.countries.find((country) => country.pais === "MX");
+
+  if (mxCountry) {
+    try {
+      // Reuse the Finanzas endpoint's handler, including its validated rate and
+      // fetch revalidate: 3600 cache, without an internal HTTP request.
+      const response = await getMxnCopExchangeRate();
+      const payload = (await response.json()) as {
+        rate?: number;
+        timestamp?: string;
+      };
+
+      if (
+        !response.ok ||
+        payload.rate === undefined ||
+        !Number.isFinite(payload.rate) ||
+        payload.rate <= 0
+      ) {
+        throw new Error("Exchange rate unavailable");
+      }
+
+      result.exchangeRate = {
+        rate: payload.rate,
+        timestamp: payload.timestamp ?? new Date().toISOString(),
+      };
+      result.gananciaMxCop = mxCountry.gananciaEntregados * payload.rate;
+    } catch {
+      // Keep native profits and order counts available; never treat an FX
+      // failure as zero Mexican profit or show a partial combined ROAS.
+      result.exchangeRateError =
+        "No se pudo obtener la tasa MXN → COP. Volvé a cargar la página para reintentar.";
+      return;
+    }
+  }
+
+  if (result.countries.some((country) => country.entregadosSinGanancia > 0)) {
+    return;
+  }
+
+  // Meta spend is already COP. Only Mexican order profit needs conversion.
+  result.gananciaEntregadosCop = coProfit + (result.gananciaMxCop ?? 0);
+}
 
 function getProductBase(name: string | null) {
   // product_order_summary(): trim(split_part(trim(nombre_producto), ':', 1)).
@@ -193,6 +244,10 @@ export async function getCampaignRealResults(
     devoluciones: 0,
     enProceso: 0,
     cancelados: 0,
+    gananciaEntregadosCop: null,
+    gananciaMxCop: null,
+    exchangeRate: null,
+    exchangeRateError: null,
     countries: [],
   };
 
@@ -237,6 +292,8 @@ export async function getCampaignRealResults(
       ...country,
       gananciaEntregados: (profitCents.get(country.pais) ?? 0) / 100,
     }));
+
+  await convertProfitToCop(result);
 
   return result;
 }

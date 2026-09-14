@@ -72,6 +72,16 @@ const rangeDateFormatter = new Intl.DateTimeFormat("es-CO", {
   timeZone: "UTC",
 });
 
+const exchangeRateDateFormatter = new Intl.DateTimeFormat("es-CO", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "America/Bogota",
+});
+
+const exchangeRateFormatter = new Intl.NumberFormat("es-CO", {
+  maximumFractionDigits: 6,
+});
+
 const statusLabels: Record<string, string> = {
   ACTIVE: "Activa",
   PAUSED: "Pausada",
@@ -281,14 +291,12 @@ function RealResultsSection({
   metricRange: string;
 }) {
   const spend = toFiniteNumber(gasto);
-  const currency = normalizeCurrency(campaign.moneda);
+  const profitCop = toFiniteNumber(results?.gananciaEntregadosCop);
+  const exchangeRateDate = results?.exchangeRate
+    ? new Date(results.exchangeRate.timestamp)
+    : null;
   const missingProfit = results?.countries.some(
     (country) => country.entregadosSinGanancia > 0,
-  );
-  // Zero profit is zero in any currency. Nonzero amounts require the same
-  // currency as Meta; never add COP and MXN or invent an exchange rate.
-  const incompatibleCurrencies = results?.countries.some(
-    (country) => country.gananciaEntregados !== 0 && country.moneda !== currency,
   );
   const roasUnavailable = !metricsComplete || spend === null
     ? "Gasto de Meta incompleto o no disponible."
@@ -296,11 +304,11 @@ function RealResultsSection({
       ? "Sin gasto de Meta en el período."
       : missingProfit
         ? "Falta la ganancia de algunos pedidos entregados."
-        : incompatibleCurrencies
-          ? `La ganancia y el gasto (${currency ?? "moneda desconocida"}) tienen monedas distintas. Hace falta una conversión para calcular el ROAS.`
-          : null;
-  const realRoas = results && !roasUnavailable && spend !== null && spend > 0
-    ? results.countries.reduce((sum, country) => sum + country.gananciaEntregados, 0) / spend
+        : results?.exchangeRateError ?? (profitCop === null
+          ? "Ganancia total en COP no disponible."
+          : null);
+  const realRoas = !roasUnavailable && profitCop !== null && spend !== null && spend > 0
+    ? profitCop / spend
     : null;
 
   return (
@@ -363,16 +371,29 @@ function RealResultsSection({
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <article className="rounded-2xl bg-[var(--color-bg-surface-elevated)] p-5 shadow-sm">
               <h3 className="font-body text-sm font-semibold text-text-primary">Ganancia real de entregados</h3>
-              {results.countries.length === 0 ? (
-                <p className="mt-3 font-mono text-2xl font-semibold tabular-nums text-text-primary">
-                  <AnimatedNumber value={0} />
+              <p className="mt-3 font-body text-xs text-text-secondary">Total combinado · COP</p>
+              <p className={`crm-financial-glow mt-1 font-mono text-2xl font-semibold tabular-nums ${profitCop !== null && profitCop < 0 ? "text-negative" : "text-positive"}`}>
+                <MetricValue value={profitCop} format="currency" currency="COP" />
+              </p>
+              {results.exchangeRateError ? (
+                <p role="status" className="mt-2 font-body text-xs text-risk-medium">
+                  {results.exchangeRateError}
                 </p>
-              ) : results.countries.map((country) => (
+              ) : null}
+              {results.countries.map((country) => (
                 <div key={country.pais} className="mt-3">
                   <p className="font-body text-xs text-text-secondary">{country.pais} · {country.moneda}</p>
                   <p className={`mt-1 break-words font-mono text-2xl font-semibold tabular-nums ${country.gananciaEntregados < 0 ? "text-negative" : "text-positive"}`}>
                     <MetricValue value={country.gananciaEntregados} format="currency" currency={country.moneda} />
                   </p>
+                  {country.pais === "MX" && results.gananciaMxCop !== null ? (
+                    <p className="mt-1 font-body text-xs text-text-secondary">
+                      Equivalente en COP:{" "}
+                      <span className="font-mono tabular-nums">
+                        <MetricValue value={results.gananciaMxCop} format="currency" currency="COP" />
+                      </span>
+                    </p>
+                  ) : null}
                   {country.entregadosSinGanancia > 0 ? (
                     <p className="mt-1 font-body text-xs text-risk-medium">
                       Suma parcial: {country.entregadosSinGanancia} entregados sin ganancia informada.
@@ -392,11 +413,24 @@ function RealResultsSection({
                 )}
               </p>
               <p className="mt-3 font-body text-xs leading-relaxed text-text-secondary">
-                Ganancia real de entregados ÷ gasto de esta campaña en Meta. Es una comparación del producto; no es el ROAS atribuido por Meta.
+                Ganancia real de entregados en COP ÷ gasto de esta campaña en Meta, ya expresado en COP. Es una comparación del producto; no es el ROAS atribuido por Meta.
               </p>
               {roasUnavailable ? <p className="mt-2 font-body text-xs text-risk-medium">{roasUnavailable}</p> : null}
             </article>
           </div>
+
+          {results.exchangeRate ? (
+            <p className="mt-4 border-t border-[var(--color-border-subtle)] pt-3 font-body text-xs leading-relaxed text-text-secondary">
+              Conversión aplicada: 1 MXN ={" "}
+              <span className="font-mono tabular-nums">
+                {exchangeRateFormatter.format(results.exchangeRate.rate)} COP
+              </span>
+              {exchangeRateDate && !Number.isNaN(exchangeRateDate.getTime())
+                ? ` · tasa actualizada ${exchangeRateDateFormatter.format(exchangeRateDate)}`
+                : null}.
+              {" "}La ganancia MXN se convirtió a COP con la tasa actual, no una tasa histórica del período. El gasto de Meta permanece en COP, sin conversión.
+            </p>
+          ) : null}
 
           <div className="mt-4 space-y-2 font-body text-xs leading-relaxed text-text-secondary">
             <p>
@@ -410,7 +444,7 @@ function RealResultsSection({
               Sin filtro de país. {results.countries.length > 0
                 ? `Se incluyen ${results.countries.map((country) => `${country.pais}: ${country.total} pedidos`).join(" · ")}.`
                 : "No hay pedidos coincidentes en este período."}
-              {results.countries.length > 1 ? " Las ganancias se muestran por moneda, sin sumarlas entre países." : ""}
+              {results.countries.length > 1 ? " El total en COP suma la ganancia de CO y la ganancia de MX convertida a COP." : ""}
             </p>
             <p>
               Se usa la fecha de creación del pedido y su estado actual. Confirmados cuenta los pedidos con confirmación registrada en el historial; puede faltar en pedidos antiguos.
