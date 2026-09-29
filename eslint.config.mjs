@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "whatsapp-bridge/**",
+    "mcp-server/**",
   ]),
 ]);
 
