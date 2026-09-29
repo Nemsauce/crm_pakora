@@ -4,3 +4,5 @@ allowBuilds:
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+minimumReleaseAgeExclude:
+  - '@modelcontextprotocol/sdk@1.31.0'

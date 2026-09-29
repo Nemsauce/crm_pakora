@@ -4,13 +4,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/supabase/database.types";
 
 export async function middleware(request: NextRequest) {
-  // These routes are called server-to-server (n8n, Vercel Cron) and never
+  // These routes are called server-to-server (n8n, Vercel Cron, MCP) and never
   // carry a Supabase session cookie. They authenticate themselves via
-  // shared-secret headers (x-webhook-secret, CRON_SECRET), so session
+  // shared-secret headers (x-webhook-secret, CRON_SECRET, MCP bearer), so session
   // refresh/redirect must be skipped or every call gets bounced to /login.
   if (
     request.nextUrl.pathname.startsWith("/api/webhooks/") ||
-    request.nextUrl.pathname.startsWith("/api/cron/")
+    request.nextUrl.pathname.startsWith("/api/cron/") ||
+    request.nextUrl.pathname === "/api/mcp"
   ) {
     return NextResponse.next();
   }
