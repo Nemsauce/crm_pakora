@@ -32,14 +32,6 @@ Fuera de estabilización salvo aprobación explícita de Alejo:
 
 MCP Tanda 1 permanece implementado; su aprovisionamiento y validación en producción quedan diferidos intencionalmente hasta completar la estabilización del core. No se elimina ni se rediseña su funcionalidad.
 
-## Aclaración temporal de arquitectura — n8n legacy
-
-- Los scripts relacionados con n8n y su documentación histórica permanecen en el repositorio.
-- El dueño del proyecto confirmó que n8n ya no se usa como parte del runtime activo del CRM.
-- Los agentes deben tratar `scripts/n8n/` como material legacy/de referencia, salvo que se demuestre de forma independiente una dependencia activa específica.
-- Esta aclaración tiene precedencia sobre las descripciones antiguas de n8n que se conservan más abajo. La documentación completa de arquitectura se reconciliará con la realidad en la próxima fase de estabilización; esta fase no hace la limpieza completa ni elimina archivos legacy.
-- Las entradas históricas sobre n8n en `DEVELOPMENT_LOG.md` no deben interpretarse como prueba de la arquitectura actual de producción.
-
 ## Core stabilization invariants
 
 Estos diez invariantes son objetivos de estabilización y el marco de aceptación de las próximas fases, no afirmaciones de corrección actual. Ninguno se considera satisfecho sin evidencia verificable en el repositorio.
@@ -75,35 +67,56 @@ El desarrollo de features solo puede reanudarse como trabajo habitual cuando se 
 - Supabase (Postgres) como base de datos
 - Vercel para hosting/deploy (auto-deploy on push a main)
 - Dominio: crm.pakora.online
-- n8n (self-hosted, fuera de este repo) para extracción de datos de Dropi y Shopify
 - Gestor de paquetes: pnpm
 
-## Regla de arquitectura no negociable
-**n8n solo extrae datos. Toda la lógica de negocio (tareas automáticas, clasificación de estados, reglas COD) vive en este backend, en TypeScript.**
-n8n hace: login a Dropi (con 2FA/TOTP), consulta pedidos y wallet, escribe/actualiza en Supabase (`orders`, `status_history`, `wallet_movements`), y notifica cambios a un webhook de este backend.
-Este backend hace: decide qué tarea crear, cuándo, con qué prioridad, y toda regla de negocio COD.
-Nunca meter lógica de decisión de negocio en un nodo de n8n. Si aparece la tentación, es señal de que la lógica debe moverse acá.
+## Current architecture summary
+
+**VERIFIED IN REPO — capacidades y responsabilidades implementadas; su ejecución automática en producción se distingue más abajo.**
+
+```text
+Shopify ──────────────> Next.js backend ──> Supabase
+Dropi CO/MX ──────────> Next.js backend ──> Supabase
+Backend sync/events ───> TypeScript Task Engine ──> Supabase
+Supabase ─────────────> CRM UI
+Supabase ─────────────> capa MCP de solo lectura
+```
+
+Shopify es la fuente de origen comercial de pedidos en el diseño actual. Los webhooks llegan directamente al backend mediante `POST /api/webhooks/shopify/co` y `POST /api/webhooks/shopify/mx`. La ruta verifica el HMAC de Shopify, mapea el pedido, lo persiste en Supabase y, tras registrarlo, ejecuta la creación/verificación de la tarea inicial de confirmación, guarda comentarios cuando existen y dispara notificaciones de pedido nuevo. Esas operaciones posteriores se ejecutan de forma asíncrona y pueden fallar; su presencia en el código no demuestra una garantía de entrega.
+
+El backend integra Dropi directamente para CO y MX: autenticación y reutilización de sesión, consulta paginada de pedidos, conciliación con pedidos CRM existentes, procesamiento de historial de estados faltante, enriquecimiento logístico, riesgo, costos, monto esperado a ganar, guía/transportadora y consulta de wallet. Los entrypoints son `runDropiSyncCO()` y `runDropiSyncMX()`; el repositorio expone `GET /api/cron/dropi-sync-co` y `GET /api/cron/dropi-sync-mx`, protegidos con `CRON_SECRET`. La acción autenticada de `/pedidos` permite una sincronización manual que ejecuta CO y luego MX.
+
+**PRODUCTION UNKNOWN / TO VERIFY:** `vercel.json` no agenda `dropi-sync-co` ni `dropi-sync-mx`. El repositorio demuestra que existe la capacidad de sincronización directa, pero no demuestra qué mecanismo la ejecuta automáticamente en producción. No asumir que la sincronización es solo manual ni que existe un programador externo.
+
+Supabase/Postgres persiste el estado operativo del CRM: pedidos, historial de estados, tareas, comentarios, perfiles, notificaciones, wallet, catálogos y registros específicos de otras funciones. El schema, las políticas, funciones y los datos de catálogo de la base live aún no son completamente reconstruibles desde artefactos versionados del repositorio; capturarlos y verificarlos sigue pendiente durante la estabilización. No inferir objetos live adicionales a partir de documentación histórica.
+
+Las reglas de negocio viven en el backend Next.js/TypeScript. El Task Engine bajo `src/lib/tasks/` toma las decisiones operativas: `processOrderEvent.ts` clasifica el estado actual y aplica efectos de tareas; `processOrderHistory.ts` procesa eventos históricos faltantes; `checkStaleOrders.ts` detecta pedidos sin progreso logístico; `checkConfirmationFollowups.ts` gestiona seguimientos repetidos de confirmación. `estado_dropi` conserva el estado logístico externo en bruto. `status_catalog` mapea la combinación estado/transportadora a categorías operativas estables; `status_catalog.categoria` es la clasificación actual consumida por el Task Engine. `estado_crm` todavía existe y algunas partes de la aplicación lo consumen, pero su papel arquitectónico final está bajo revisión. La existencia de estos componentes no prueba procesamiento completamente dirigido por eventos ni efectos exactamente una vez: esos son objetivos de estabilización.
+
+Dirección de responsabilidades, aún sin contrato completo por campo: Shopify aporta datos comerciales y de origen del pedido; Dropi aporta logística, estados, seguimiento y estadísticas financieras/de cliente derivadas de Dropi; el backend clasifica y decide efectos operativos y derivados de negocio; Supabase persiste el estado operativo. La titularidad exacta de cada campo se formalizará en una fase posterior.
+
+## n8n — material legacy y de referencia
+
+El dueño del proyecto confirmó que n8n ya no forma parte del runtime activo del CRM. `scripts/n8n/` conserva herramientas históricas de migración, parcheo e integración; las entradas antiguas de `DEVELOPMENT_LOG.md` describen etapas en que n8n sí estuvo activo. Estos materiales aportan contexto y conocimiento de Dropi obtenido por ingeniería inversa, pero no prueban la arquitectura actual de producción. No diseñar nuevo comportamiento de producción alrededor de n8n salvo instrucción explícita de Alejo.
+
+## Known architecture unknowns during stabilization
+
+- **PRODUCTION UNKNOWN / TO VERIFY:** mecanismo que agenda automáticamente las sincronizaciones directas Dropi CO/MX; no figura en `vercel.json`.
+- **PRODUCTION UNKNOWN / TO VERIFY:** estructura, RLS, funciones y datos de catálogos exactos de Supabase live hasta capturarlos y contrastarlos con el repositorio.
+- **PRODUCTION UNKNOWN / TO VERIFY:** papel arquitectónico final de `estado_crm` frente a `estado_dropi` y `status_catalog.categoria`.
+- **PRODUCTION UNKNOWN / TO VERIFY:** contrato exacto de titularidad y escritura por campo entre Shopify, Dropi y backend.
+- **PRODUCTION UNKNOWN / TO VERIFY:** aprovisionamiento y preparación real de MCP Tanda 1 en producción; la validación permanece diferida durante la estabilización.
 
 ## Repos y sistemas relacionados
 - Repo de este CRM: https://github.com/Nemsauce/crm_pakora
-- n8n corre en instancia self-hosted separada, gestionada vía su API REST (`N8N_BASE_URL` + `N8N_API_KEY`)
-- Workflows de n8n (IDs de referencia):
-  - Dropi Polling (CO): 9p1gvbDxdYqugkMT
-  - Dropi Polling MX: BQ7G5rSntIoszmJ3
-  - Dropi migracion (CO, histórico, inactivo): YrWPu8mLMLCalkFa
-  - Dropi migracion MEX (histórico, inactivo): EBAU2dcasgMNFHDV
-  - Shopify Orders (CO): R6yGZIKxVCWfJaq9
-  - Shopify Orders MX: oYYHzqRXCjNfPGks
+- n8n y sus workflows antiguos se conservan solo como referencia histórica en `scripts/n8n/` y `DEVELOPMENT_LOG.md`.
 
 ## Contexto de negocio clave
 - Venta 100% COD: cada pedido puede terminar en no-pago/no-recibido, de ahí la necesidad de tareas de seguimiento activo.
-- Dropi no ofrece API pública — todo el acceso es vía ingeniería inversa (login manual + inspección de red), documentado en archivos .HAR.
+- Este proyecto no usa una API pública oficial de Dropi: la integración directa se apoya en endpoints obtenidos por ingeniería inversa, documentados también en archivos .HAR. CO y MX usan hosts y cuentas Dropi separados.
 - Dropi expone ~205 estados de pedido posibles, repartidos en ~10 transportadoras distintas, cada una con su propio vocabulario. Se clasifican en categorías internas (`categoria_estado_enum`) vía la tabla editable `status_catalog`.
 - Wallet de Dropi tiene ~74 tipos de movimiento identificados por código fijo (`identification_code`), catalogados en `wallet_movement_catalog`. Clasificar por ese código, nunca por texto libre de `description` (es inestable).
 - Países: CO y MX conviven en las mismas tablas, diferenciados por columna `pais`. No hay separación de schema.
 
 ## Seguridad (fase de desarrollo actual)
-- Está aceptado exponer keys en n8n (self-hosted, entorno controlado) mientras se desarrolla. Se hará un sweep de seguridad antes de ir a producción real.
 - En este repo (Next.js/Vercel) NUNCA se expone `SUPABASE_SERVICE_ROLE_KEY` al cliente. Server-only, siempre.
 - Roles/usuarios: el CRM soportará múltiples usuarios con roles desde el inicio (no es de un solo usuario).
 
