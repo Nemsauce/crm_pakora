@@ -396,3 +396,11 @@ Pendiente cuando se retome 'notis':
 - Producción es brownfield: el baseline no debe ejecutarse contra el schema ya poblado. La documentación oficial confirma mecanismos para registrar una migración como aplicada sin ejecutar su SQL; la elección del procedimiento específico para este proyecto y su recuperación siguen pendientes para Fase 3F, después de validar equivalencia.
 - Esta fase solo cambia documentación: no generó SQL ni modificó runtime, tipos, schema o configuración. No hubo ninguna operación, consulta ni mutación de Supabase; no se creó migración ni seed.
 - Próxima fase: Fase 3B, implementación del baseline estructural tras revisión del plan y resolución de los metadatos pendientes. Fase 3A no declara satisfecho el invariante de reproducibilidad ni ningún otro invariante del core.
+
+### [Stabilization] Fase 3B-1 — cierre de metadata y toolchain del baseline — COMPLETADO
+- Fecha: 2026-10-01.
+- La revisión de producción se limitó a consultas `SELECT`; no hubo mutación de schema, datos, ACL, roles ni historial de migraciones. No se creó migración ni baseline, y no se instaló o cambió configuración, herramienta o paquete.
+- Se documentaron propietarios, SECURITY DEFINER, 18 secuencias/identidades, ACL/default ACL, configuración de resolución de nombres, historial remoto ausente y comprobación de catálogos en `docs/stabilization/SUPABASE_BASELINE_METADATA.md`.
+- Se recomienda fijar Supabase CLI estable `2.119.0` y `pg-delta` para el flujo posterior. El entorno local no tiene CLI ni Docker/daemon disponibles; por tanto la ejecución local requerirá provisionar un destino compatible. No se creó `supabase/config.toml`.
+- No se detectó drift estructural por recuentos o identidades de objetos respecto a Phase 2. Se precisó que el ACL crudo de PostgreSQL también concede `MAINTAIN` en las tablas y que `information_schema.table_privileges`, usado en el resumen anterior, no lo expone; no hay evidencia de cambio live de ese permiso.
+- La metadata estructural está cerrada y Phase 3B-2 puede iniciar tras revisar el informe y disponer de un destino no productivo compatible; la cobertura del trigger de `auth.users` debe probarse allí. La ausencia de historial remoto y el procedimiento exacto de adopción permanecen para Phase 3F.
