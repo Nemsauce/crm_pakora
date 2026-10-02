@@ -1,0 +1,437 @@
+-- CRM Pakora — T1 operational-catalog portion of the initial Supabase baseline.
+-- T1 = 20261001150001; prerequisite T0 structural baseline = 20261001150000.
+-- Preserves the verified production catalog state exactly as captured in the
+-- Phase 2 JSONL evidence in docs/stabilization/SUPABASE_LIVE_AUDIT.md (2026-09-30).
+-- Source/review HEAD: e5519b76e8a062adfa77c3c84371b23840d20180.
+--
+-- FOR RECONSTRUCTION OF A FRESH SUPABASE ENVIRONMENT ONLY.
+-- MUST NOT BE EXECUTED AGAINST THE EXISTING POPULATED PRODUCTION DATABASE.
+-- Brownfield migration-history adoption remains deferred to Phase 3F.
+-- No transactional/business records are included; only the two operational
+-- catalogs explicitly authorized for this baseline are loaded.
+-- Catalog cleanup/corrections require later migrations; preserve this baseline.
+-- No normalization, recategorization, deduplication or replay/upsert behavior.
+--
+-- Authoring and reconciliation were static only. THIS SQL HAS NOT BEEN EXECUTED.
+-- Actual clean reconstruction remains deferred to Phase 3E.
+
+BEGIN;
+
+-- T0 must already exist. Serialize this fresh reconstruction's catalog load;
+-- the guards fail on any existing catalog row rather than merging/replacing it.
+LOCK TABLE public.status_catalog, public.wallet_movement_catalog
+  IN ACCESS EXCLUSIVE MODE;
+
+DO $empty_catalogs$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.status_catalog)
+     OR EXISTS (SELECT 1 FROM public.wallet_movement_catalog) THEN
+    RAISE EXCEPTION 'T1 requires both operational catalogs to be empty';
+  END IF;
+END;
+$empty_catalogs$;
+
+-- status_catalog: 185 rows, in numeric ID order, all eight captured fields.
+-- OVERRIDING SYSTEM VALUE preserves explicit IDs under T0's ALWAYS identity.
+-- In particular, ID 174 remains NO ENTREGADO / SUPPLI-EXPRESS-ESM / entregado.
+-- NULL-carrier pairs 259/261 and 260/262, and all carrier casing variants,
+-- retain their original IDs, categories, notes and separate timestamps.
+
+INSERT INTO public.status_catalog (
+  id, estado, transportadora, categoria, activo, notas, created_at, updated_at
+)
+OVERRIDING SYSTEM VALUE
+VALUES
+  (1, 'PENDIENTE CONFIRMACION', NULL, 'nuevo', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (2, 'PENDIENTE', NULL, 'confirmado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (3, 'GUIA_GENERADA', NULL, 'guia_generada', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (4, 'GUIA_ANULADA', NULL, 'novedad', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (5, 'CANCELADO', NULL, 'cancelado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (6, 'RECHAZADO', NULL, 'cancelado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (7, 'ENTREGADO', NULL, 'entregado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (8, 'DEVOLUCION', NULL, 'devolucion', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (9, 'NOVEDAD SOLUCIONADA', NULL, 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (10, 'PREPARADO PARA TRANSPORTADORA', NULL, 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (11, 'INDEMNIZADA POR DROPI', NULL, 'devolucion', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (12, 'DEVOLUCION EN TRANSITO', NULL, 'devolucion', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (13, 'ENTREGADO A TRANSPORTADORA', NULL, 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (14, 'EN BODEGA DROPI', NULL, 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (15, 'RECOGIDO POR DROPI', NULL, 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (16, 'RECIBIDO PAU', NULL, 'recoger_oficina', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (17, 'RECIBIDO POR DROPI', NULL, 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (18, 'FINALIZADO POR RETENCION', NULL, 'devolucion', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (19, 'PROCESO FINALIZADO', NULL, 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (20, 'INGRESO AL CENTRO LOGISTICO', 'Servientrega', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (21, 'EN ZONA DE DISTRIBUCION', 'Servientrega', 'en_reparto', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (22, 'ENTREGA VERIFICADA', 'Servientrega', 'entregado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (23, 'SALIO A CIUDAD DESTINO', 'Servientrega', 'proximo_a_llegar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (24, 'REPORTADO ENTREGADO', 'Servientrega', 'entregado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (56, 'GUIA NO EXISTE', 'Coordinadora', 'novedad', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (57, 'A RECIBIR POR COORDINADORA', 'Coordinadora', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (58, 'EN TERMINAL ORIGEN', 'Coordinadora', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (59, 'EN TRANSPORTE', 'Coordinadora', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (60, 'EN TERMINAL DESTINO', 'Coordinadora', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (61, 'EN REPARTO', 'Coordinadora', 'en_reparto', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (62, 'ENTREGADA', 'Coordinadora', 'entregado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (63, 'CERRADO POR INCIDENCIA, VER CAUSA', 'Coordinadora', 'novedad', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (64, 'EN PUNTO DROOP', 'Coordinadora', 'recoger_oficina', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (65, 'ENVÍO ADMITIDO', 'Interrapidisimo', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (66, 'INGRESADO A BODEGA', 'Interrapidisimo', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (67, 'VIAJANDO EN RUTA NACIONAL', 'Interrapidisimo', 'proximo_a_llegar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (68, 'VIAJANDO EN RUTA REGIONAL', 'Interrapidisimo', 'proximo_a_llegar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (69, 'PARA RECLAMAR EN OFICINA', 'Interrapidisimo', 'recoger_oficina', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (70, 'EN DISTRIBUCIÓN URBANA', 'Interrapidisimo', 'en_reparto', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (71, 'EN PROCESO DE DEVOLUCIÓN', 'Interrapidisimo', 'devolucion', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (72, 'EN CONFIRMACIÓN TELEFÓNICA', 'Interrapidisimo', 'intento_fallido', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (73, 'DEVUELTO AL REMITENTE', 'Interrapidisimo', 'devolucion', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (74, 'ENTREGA EXITOSA', 'Interrapidisimo', 'entregado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (75, 'PARA NUEVO INTENTO ENTREGA', 'Interrapidisimo', 'intento_fallido', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (76, 'PRUEBA DE ENTREGA DIGITALIZADA', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (77, 'EN INVESTIGACIÓN', 'Interrapidisimo', 'novedad', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (78, 'DOCUMENTO ANULADA', 'Interrapidisimo', 'cancelado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (79, 'PRUEBA DE ENTREGA ARCHIVADA', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (80, 'DISPOSICIÓN FINAL', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (81, 'DESPACHADO PARA BODEGA', 'Interrapidisimo', 'proximo_a_llegar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (82, 'INCAUTADO POR AUTORIDADES', 'Interrapidisimo', 'novedad', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (83, 'PARA BODEGA FINAL/CUSTODIA', 'Interrapidisimo', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (84, 'NO LLEGO EL ENVÍO FÍSICO', 'Interrapidisimo', 'novedad', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (85, 'FACTURADO', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (86, 'NOTA CRÉDITO', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (87, 'EN AUDITORIA EN TERRENO', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (88, 'DEVOLUCIÓN POR CONFIRMACIÓN DEL CLIENTE', 'Interrapidisimo', 'devolucion', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (89, 'EN DISTRIBUCION URBANA AGENCIA', 'Interrapidisimo', 'en_reparto', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (90, 'PARA DEVOLVER AL REMITENTE', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (91, 'EN BODEGA FINAL/CUSTODIA', 'Interrapidisimo', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (92, 'ADMITIDA', 'Interrapidisimo', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (93, 'CENTRO ACOPIO', 'Interrapidisimo', 'recoger_oficina', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (94, 'TRANSITO NACIONAL', 'Interrapidisimo', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (95, 'TRANSITO REGIONAL', 'Interrapidisimo', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (96, 'TELEMERCADEO', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (97, 'DEVOLUCIÓN RATIFICADA', 'Interrapidisimo', 'devolucion', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (98, 'ENTREGADA', 'Interrapidisimo', 'entregado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (99, 'ANULADA', 'Interrapidisimo', 'cancelado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (100, 'TRANSITO URBANO', 'Interrapidisimo', 'en_reparto', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (101, 'INCAUTADO', 'Interrapidisimo', 'novedad', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (102, 'DISTRIBUCIÓN', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (103, 'ARCHIVADA', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (104, 'DIGITALIZADA', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (105, 'RECLAME EN OFICINA', 'Interrapidisimo', 'recoger_oficina', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (106, 'REPARTO', 'Interrapidisimo', 'en_reparto', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (107, 'REENVIO', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (108, 'INTENTO DE ENTREGA', 'Interrapidisimo', 'intento_fallido', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T23:27:41.014834+00:00'),
+  (109, 'ENVO ADMITIDO', 'Interrapidisimo', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (110, 'EN DISTRIBUCIN URBANA', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (111, 'EN PROCESO DE DEVOLUCIN', 'Interrapidisimo', 'devolucion', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (112, 'EN CONFIRMACIN TELEFNICA', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (113, 'DISPOSICIN FINAL', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (114, 'NO LLEGO EL ENVO FSICO', 'Interrapidisimo', 'novedad', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (115, 'NOTA CRDITO', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (116, 'DEVOLUCIN RATIFICADA', 'Interrapidisimo', 'devolucion', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (117, 'DISTRIBUCIN', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (118, 'DISTRIBUCION', 'Interrapidisimo', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (166, 'GUIA GENERADA', 'SUPPLI-EXPRESS-ESM', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (167, 'AGENDADO', 'SUPPLI-EXPRESS-ESM', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (168, 'EN ALISTAMIENTO EN OFICINA DE ORIGEN', 'SUPPLI-EXPRESS-ESM', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (169, 'EN DISTRIBUCION', 'SUPPLI-EXPRESS-ESM', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (170, 'EN TRANSITO A CIUDAD DESTINO', 'SUPPLI-EXPRESS-ESM', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (171, 'LLEGO A OFICINA DE DESTINO', 'SUPPLI-EXPRESS-ESM', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (172, 'REAGENDADO', 'SUPPLI-EXPRESS-ESM', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (173, 'ENTREGADO', 'SUPPLI-EXPRESS-ESM', 'entregado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (174, 'NO ENTREGADO', 'SUPPLI-EXPRESS-ESM', 'entregado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (175, 'CASO CERRADO', 'SUPPLI-EXPRESS-ESM', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (176, 'ANULADA', 'SUPPLI-EXPRESS-ESM', 'cancelado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (177, 'DEVUELTA A REMITENTE', 'SUPPLI-EXPRESS-ESM', 'devolucion', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (178, 'EN AEROLINEA DE MIAMI', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (179, 'EN AEROLINEA DE COLOMBIA', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (180, 'EN PROCESO DE INSPECCION ADUANERA', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (181, 'MERCANCIA NACIONALIZADA', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (182, 'EN DESPACHO', 'TCC', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (183, 'CARGADA', 'TCC', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (184, 'DIGITADA', 'TCC', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (185, 'MERCANCIA RECOGIDA', 'TCC', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (186, 'EN TRASLADO NACIONAL', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (187, 'EN RECIBO', 'TCC', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (188, 'EN DISTRIBUCION', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (189, 'ENTREGADA A CONEXIONES', 'TCC', 'entregado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (190, 'ENTREGADA', 'TCC', 'entregado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (191, 'ENTREGADA CON BOOMERANG', 'TCC', 'entregado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (192, 'RELACIONADA PARA DEVOLVER BOOMERANG', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (193, 'EN TRASLADO NACIONAL CON BOOMERANG', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (194, 'EN BODEGA ORIGEN CON BOOMERANG', 'TCC', 'en_ruta', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (195, 'EN DISTRIBUCION CON BOOMERANG', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (196, 'CUMPLIDO CON DEVOLUCION PARCIAL', 'TCC', 'devolucion', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (197, 'MERCANCÍA EN PROCESO DE INDEMNIZACIÓN', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (198, 'INDEMNIZACIÓN PAGADA', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (199, 'INDEMNIZACIÓN NEGADA', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (200, 'ENTREGADA PARCIALMENTE', 'TCC', 'entregado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (201, 'MERCANCÍA RETENIDA POR LA DIAN', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (202, 'EN DEVOLUCIÓN', 'TCC', 'devolucion', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (203, 'EN CONTINUACION', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (204, 'REEMPLAZADA', 'TCC', 'sin_clasificar', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (205, 'ANULADA', 'TCC', 'cancelado', true, NULL, '2026-07-01T20:57:10.86368+00:00', '2026-07-01T20:57:10.86368+00:00'),
+  (206, 'ENTREGADO', 'QUALITY-POST', 'entregado', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (207, 'SALIDA DE CENTRO DE DISTRIBUCION', 'QUALITY-POST', 'en_ruta', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (208, 'CANCELADO', 'QUALITY-POST', 'cancelado', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (209, 'ENTREGADO', 'COORDINADORA', 'entregado', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (210, 'PENDIENTE CONFIRMACION', 'QUALITY-POST', 'nuevo', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (211, 'ENTREGADO', 'ENVIA', 'entregado', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (212, 'ASIGNADO A MENSAJERO', 'QUALITY-POST', 'en_reparto', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (213, 'CANCELADO', 'COORDINADORA', 'cancelado', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (214, 'RECEPCION CENTRO DE ENTREGA', 'QUALITY-POST', 'en_ruta', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (215, 'NOVEDAD SOLUCIONADA', 'QUALITY-POST', 'en_ruta', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (216, 'RECLAME EN OFICINA', 'INTERRAPIDISIMO', 'recoger_oficina', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (217, 'ENTREGADO', 'INTERRAPIDISIMO', 'entregado', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (218, 'NOVEDAD', 'QUALITY-POST', 'novedad', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (219, 'NOVEDAD SOLUCIONADA', 'COORDINADORA', 'en_ruta', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (220, 'CANCELADO', 'INTERRAPIDISIMO', 'cancelado', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (221, 'CANCELADO', 'ENVIA', 'cancelado', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (222, 'DEVOLUCION', 'INTERRAPIDISIMO', 'devolucion', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (223, 'ENTREGADO', 'VELOCES', 'entregado', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (224, 'CANCELADO', 'VELOCES', 'cancelado', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (225, 'SALIDA DE INSTALACIONES CIRCUITO', 'AMPM', 'en_reparto', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (226, 'PENDIENTE CONFIRMACION', 'VELOCES', 'nuevo', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (227, 'PENDIENTE CONFIRMACION', 'AMPM', 'nuevo', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (228, 'EMBARQUE DE CARGA', 'AMPM', 'en_ruta', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (229, 'EN TERMINAL DESTINO', 'COORDINADORA', 'proximo_a_llegar', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (230, 'PENDIENTE CONFIRMACION', 'COORDINADORA', 'nuevo', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (231, 'NOVEDAD', 'VELOCES', 'novedad', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (232, 'ENTREGADO', 'AMPM', 'entregado', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (233, 'EN REPARTO', 'COORDINADORA', 'en_reparto', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (234, 'EN BODEGA ORIGEN', 'VELOCES', 'en_ruta', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (235, 'NOVEDAD', 'ENVIA', 'novedad', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (236, 'DESPACHADA', 'ENVIA', 'en_ruta', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (237, 'DEVOLUCION', 'ENVIA', 'devolucion', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (238, 'DEVOLUCION', 'AFIMEX', 'devolucion', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (239, 'EN RUTA', 'VELOCES', 'en_ruta', true, 'clasificado con datos reales de producción', '2026-07-02T15:09:17.352282+00:00', '2026-07-02T15:09:17.352282+00:00'),
+  (240, 'PAQUETE EN DEVOLUCION', 'QUALITY-POST', 'devolucion', true, 'clasificado con datos reales MX', '2026-07-06T03:27:40.429834+00:00', '2026-07-06T03:27:40.429834+00:00'),
+  (241, 'EN PROCESO DE DEVOLUCION', 'VELOCES', 'devolucion', true, 'clasificado con datos reales MX', '2026-07-06T03:27:40.429834+00:00', '2026-07-06T03:27:40.429834+00:00'),
+  (242, 'RECEPCION', 'QUALITY-POST', 'en_ruta', true, 'clasificado con datos reales MX', '2026-07-06T03:27:40.429834+00:00', '2026-07-06T03:27:40.429834+00:00'),
+  (243, 'DESEMBARQUE DE CARGA', 'AMPM', 'en_ruta', true, 'clasificado con datos reales MX', '2026-07-06T03:27:40.429834+00:00', '2026-07-06T03:27:40.429834+00:00'),
+  (244, 'BODEGA DESTINO', 'VELOCES', 'proximo_a_llegar', true, 'clasificado con datos reales MX', '2026-07-06T03:27:40.429834+00:00', '2026-07-06T03:27:40.429834+00:00'),
+  (245, 'EN REPARTO', 'AMPM', 'en_reparto', true, 'clasificado con datos reales MX', '2026-07-06T03:27:40.429834+00:00', '2026-07-06T03:27:40.429834+00:00'),
+  (246, 'DEVOLUCION', 'COORDINADORA', 'devolucion', true, 'clasificado con datos reales CO — encontrado vía reporte por producto', '2026-07-10T00:53:59.884086+00:00', '2026-07-10T00:53:59.884086+00:00'),
+  (247, 'DEVOLUCION', 'AMPM', 'devolucion', true, 'clasificado con datos reales — reporte por producto', '2026-07-10T00:55:18.618395+00:00', '2026-07-10T00:55:18.618395+00:00'),
+  (248, 'DEVOLUCION EN PROCESO', 'QUALITY-POST', 'devolucion', true, 'clasificado con datos reales — reporte por producto', '2026-07-10T00:55:18.618395+00:00', '2026-07-10T00:55:18.618395+00:00'),
+  (249, 'PREPARADO PARA TRANSPORTADORA', 'QUALITY-POST', 'en_ruta', true, 'clasificado con datos reales — reporte por producto', '2026-07-10T00:55:18.618395+00:00', '2026-07-10T00:55:18.618395+00:00'),
+  (250, 'PENDIENTE', 'QUALITY-POST', 'confirmado', true, 'clasificado con datos reales — reporte por producto', '2026-07-10T00:55:18.618395+00:00', '2026-07-10T00:55:18.618395+00:00'),
+  (251, 'EN PUNTO DROOP', 'COORDINADORA', 'recoger_oficina', true, 'clasificado con datos reales — reporte por producto', '2026-07-10T00:55:18.618395+00:00', '2026-07-10T00:55:18.618395+00:00'),
+  (252, 'CANCELADO', 'AMPM', 'cancelado', true, 'clasificado con datos reales — reporte por producto', '2026-07-10T00:55:18.618395+00:00', '2026-07-10T00:55:18.618395+00:00'),
+  (253, 'EN CIUDAD DE ORIGEN', 'TIUI', 'en_ruta', true, 'clasificado con datos reales — transportadora TIUI nunca vista antes', '2026-07-10T00:55:18.618395+00:00', '2026-07-10T00:55:18.618395+00:00'),
+  (254, 'EN BODEGA DESTINO', 'ENVIA', 'proximo_a_llegar', true, 'clasificado con datos reales — reporte por producto', '2026-07-10T00:55:18.618395+00:00', '2026-07-10T00:55:18.618395+00:00'),
+  (255, 'NOVEDAD', 'COORDINADORA', 'novedad', true, 'clasificado con datos reales — reporte por producto', '2026-07-10T00:55:18.618395+00:00', '2026-07-10T00:55:18.618395+00:00'),
+  (256, 'EN PROCESO DE DEVOLUCION', 'AMPM', 'devolucion', true, 'clasificado con datos reales — reporte por producto', '2026-07-10T00:55:18.618395+00:00', '2026-07-10T00:55:18.618395+00:00'),
+  (257, 'EN CAMINO A CIUDAD DE DESTINO', 'TIUI', 'en_ruta', true, 'clasificado con datos reales — transportadora TIUI nunca vista antes', '2026-07-10T00:55:18.618395+00:00', '2026-07-10T00:55:18.618395+00:00'),
+  (258, 'DEVOLUCION EN BODEGA', 'VELOCES', 'devolucion', true, 'clasificado con datos reales — reporte por producto', '2026-07-10T00:55:18.618395+00:00', '2026-07-10T00:55:18.618395+00:00'),
+  (259, 'EN CIUDAD DE ORIGEN DEVOLUCIÓN', NULL, 'devolucion', true, 'clasificado con datos reales MX', '2026-07-26T16:40:52.29423+00:00', '2026-07-26T16:40:52.29423+00:00'),
+  (260, 'ENTRADA A CENTRO DE DISTRIBUCION', NULL, 'en_ruta', true, 'clasificado con datos reales MX', '2026-07-26T16:40:52.29423+00:00', '2026-07-26T16:40:52.29423+00:00'),
+  (261, 'EN CIUDAD DE ORIGEN DEVOLUCIÓN', NULL, 'devolucion', true, 'clasificado con datos reales MX', '2026-07-26T16:43:20.854802+00:00', '2026-07-26T16:43:20.854802+00:00'),
+  (262, 'ENTRADA A CENTRO DE DISTRIBUCION', NULL, 'en_ruta', true, 'clasificado con datos reales MX', '2026-07-26T16:43:20.854802+00:00', '2026-07-26T16:43:20.854802+00:00'),
+  (263, 'NOVEDAD', 'AMPM', 'novedad', true, 'clasificado con datos reales MX', '2026-07-26T16:45:58.814266+00:00', '2026-07-26T16:45:58.814266+00:00');
+
+-- wallet_movement_catalog: 75 rows, in UTF-8 byte/code order, all five fields.
+-- Identification codes remain text. Code 1068 and its inferred label are retained.
+
+INSERT INTO public.wallet_movement_catalog (
+  identification_code, nombre, categoria, created_at, updated_at
+)
+VALUES
+  ('1000', 'SALIDA POR NUEVA ORDEN', 'costo_flete', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1001', 'ENTRADA POR CAMBIO DE ESTATUS', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1002', 'ENTRADA POR GANANCIA EN LA ORDEN COMO DROPSHIPPER', 'ganancia', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1003', 'DEVOLUCION DE FLETE ORDEN ENTREGADA', 'devolucion_flete', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1004', 'SALIDA POR CORRECCION DE ESTADO DE GUIA PAGO POR COMISION DE REFERIDOS', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1005', 'PAGO POR COMISION DE REFERIDOS', 'comision_referido', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1006', 'ENTRADA POR GANANCIA EN LA ORDEN COMO PROVEEDOR', 'ganancia', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1007', 'PAGO POR GANANCIA FLETE DE MARCA BLANCA', 'ganancia', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1008', 'PAGO POR GANANCIA COMISION DROPSHIPPER DE MARCA BLANCA', 'ganancia', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1009', 'SALIDA POR CORRECCION DE ESTADO DE GUIA COMO PROVEEDOR', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1010', 'SALIDA POR CORRECCION DE ESTADO DE GUIA COMO DROPSHIPPER', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1011', 'SALIDA POR CORRECCION DE ESTADO DE GUIA, FLETE', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1012', 'SALIDA POR CORRECCION DE ESTADO DE GUIA, MONTO INICIAL COBRADO', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1013', 'DEVOLUCION DE FLETE POR ENTREGA NO EFECTIVA', 'devolucion_flete', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1014', 'SALIDA DE COBRO DE DEVOLUCION POR ENTREGA NO EFECTIVA', 'devolucion_flete', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1015', 'SALIDA DE COBRO DE DEVOLUCION POR ENTREGA NO EFECTIVA, MARCA BLANCA', 'devolucion_flete', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1016', 'SALIDA POR CORRECCION, ORDEN RECHAZADO A ENTREGADO', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1017', 'CORRECCION DE SALDO DE CARTERA COMO DROPSHIPPER', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1018', 'CORRECCION DE SALDO DE CARTERA DE FLETE', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1019', 'CORRECCION DE SALDO DE CARTERA COMO PROVEEDOR', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1020', 'SALIDA POR PETICION DE RETIRO DE SALDO EN CARTERA', 'retiro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1021', 'ENTRADA POR SOLICITUD DE RETIRO DE CARTERA NEGADA', 'retiro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1022', 'ENTRADA POR RECARGA DE SALDO EN CARTERA, POR ADMIN', 'recarga', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1023', 'SALIDA POR RECARGA DE SALDO EN CARTERA AL USUARIO POR SUPER ADMIN', 'recarga', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1024', 'ENTRADA POR RETIRO DE SALDO EN CARTERA AL USUARIO', 'retiro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1025', 'ENTRADA POR RETIRO ADMIN EN USER', 'retiro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1026', 'RET. ADMIN', 'retiro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1027', 'ENVÍO DE SMS', 'software', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1028', 'ENVÍO DE VOICE', 'software', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1029', 'DEVOLUCIÓN POR FALLO DE ENVÍO DE SMS', 'software', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1030', 'ENTRADA POR TRANSFERENCIA', 'recarga', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1031', 'SALIDA POR TRANSFERENCIA', 'retiro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1034', 'SALIDA POR DEVOLUCION DE FLETE, CAMBIO DE TRANSPORTADORA', 'devolucion_flete', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1036', 'PAGO POR INCREMENTO PRECIO PRODUCTO PROVEEDOR', 'ganancia', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1038', 'SALIDA POR RECARGA DE TARJETA DE CREDITO', 'recarga', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1039', 'ENTRADA POR RETIRO DE TARJETA DE CREDITO', 'retiro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1040', 'COBRO DE FLETE POR ORDEN(GARANTIA)', 'indemnizacion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1041', 'INDEMNIZACION POR INCUMPLIMIENTO DE GARANTIA', 'indemnizacion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1042', 'COBRO DE DEVOLUCION DE DINERO POR ORDEN(GARANTIA)', 'indemnizacion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1043', 'DEVOLUCION DE DINERO AL DROPSHIPPER POR UNA ORDEN(GARANTIA)', 'indemnizacion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1044', 'ENTRADA POR INDEMNIZACION DE ORDEN', 'indemnizacion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1045', 'SALIDA POR COBRO MANTENIMIENTO TARJETA DE CREDITO MENSUAL', 'otro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1046', 'DEVOLUCION DE DINERO POR GARANTIA INDEMINZADA POR PARTE DEL PROVEEDOR', 'indemnizacion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1047', 'COBRO DE FLETE POR RECOLECCION DE GARANTIA', 'indemnizacion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1051', 'SALIDA POR CORRECCION DE ORDEN', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1052', 'SALIDA POR INDEMNIZACION DE ORDEN', 'indemnizacion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1053', 'CORRECCION POR COBRO DE DEVOLUCION', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1054', 'PAGO POR INCREMENTO DE FLETE DUEÑO DE COMUNIDAD', 'costo_flete', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1055', 'PAGO POR FULFILLMENT, ORDEN ID:', 'fulfillment', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1056', 'REVERSION DE INDEMNIZACION POR INCUMPLIMIENTO DE GARANTIA', 'indemnizacion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1057', 'REVERSION DE INDEMNIZACION POR GARANTIA INDEMINZADA', 'indemnizacion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1058', 'REVERSION POR CORRECCION DROPI CARD', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1068', 'RECARGA DE WALLET A TRAVES DE PASARELA DE PAGO (INFERIDO, no está en la lista oficial de Dropi)', 'recarga', '2026-07-14T19:18:48.157209+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1069', 'SALIDA POR FULFILLMENT, ORDEN ID:', 'fulfillment', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1081', 'CORRECCION DE PAGO POR INCREMENTO DE FLETE DUEÑO DE COMUNIDAD', 'correccion', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1084', 'ACUMULADO PARA PAGO A TRANSPORTADORA', 'costo_flete', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1085', 'GANANCIA DROPI POR FLETE', 'costo_flete', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1086', 'GANANCIA DROPI COMISION DROPSHIPPER POR PRODUCTO', 'otro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1087', 'GANANCIA DROPI INCREMENTO AL PRECIO DE PROVEEDOR', 'otro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1088', 'PAGO DE FLETE POR MERCANCIA EN DISPOSICION DEFINITIVA DE LA AUTORIDAD COMPETENTE (FINALIZADO POR RETENCION)', 'costo_flete', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1089', 'DEBITO AL PROVEEDOR: Descuento de comision generada por negociacion exitosa con lider de comunidad', 'otro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1090', 'CREDITO AL LIDER: Abono de comision recibida por negociacion exitosa como lider de comunidad', 'otro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1091', 'DEBITO AL LIDER: Reversion de comision abonada al lider por anulacion de negociacion', 'otro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1092', 'CREDITO AL PROVEEDOR: Devolucion del monto debitado por comision ante anulacion de negociacion', 'otro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1093', 'GANANCIA DROPI LLC', 'otro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1094', 'COBRO POR CREACION DE PAGINA DE PRODUCTO (PAGE BUILDER)', 'software', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1095', 'REEMBOLSO POR FALLO EN CREACION DE PAGINA DE PRODUCTO (PAGE BUILDER)', 'software', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1096', 'COBRO POR IMPORTACION DE PAGINA A TIENDA SHOPIFY (PAGE BUILDER)', 'software', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1097', 'REEMBOLSO POR FALLO EN IMPORTACION A TIENDA SHOPIFY (PAGE BUILDER)', 'software', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1098', 'USO DE SOFTWARE FENIX VENTURE - ENTREGA', 'software', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1099', 'PAGO POR USO DE SOFTWARE - ENTREGA', 'software', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1100', 'DEVOLUCION USO DE SOFTWARE FENIX VENTURE - ENTREGA', 'software', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1101', 'DEVOLUCION RETIRO POR USO DE SOFTWARE - ENTREGA', 'software', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('1102', 'COBRO 4X1000', 'otro', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00'),
+  ('3001', 'ENTRADA POR INGRESO DE CREDITO, POR ADMIN', 'recarga', '2026-07-01T20:57:10.86368+00:00', '2026-07-14T19:18:48.157209+00:00');
+
+-- Advance only the identity attached to public.status_catalog.id.
+-- Max captured ID = 263; increment = 1; the next generated value must be 264.
+-- Identity RESTART is transactional: a later assertion failure rolls this change
+-- back with the inserts. No setval/nextval, guessed sequence name, or unrelated
+-- sequence position is used or modified.
+ALTER TABLE public.status_catalog ALTER COLUMN id RESTART WITH 264;
+
+-- Safe assertions inspect only the two catalogs loaded above. They do not
+-- inspect business/transactional tables, invoke application RPCs, or consume IDs.
+DO $catalog_validation$
+DECLARE
+  status_fingerprint text;
+  wallet_fingerprint text;
+BEGIN
+  IF (SELECT count(*) FROM public.status_catalog) <> 185 THEN
+    RAISE EXCEPTION 'status_catalog must contain exactly 185 baseline rows';
+  END IF;
+  IF (SELECT count(DISTINCT id) FROM public.status_catalog) <> 185
+     OR (SELECT max(id) FROM public.status_catalog) IS DISTINCT FROM 263::bigint THEN
+    RAISE EXCEPTION 'status_catalog IDs must be unique, with maximum 263';
+  END IF;
+  IF (SELECT count(*) FROM public.status_catalog
+      WHERE categoria = 'sin_clasificar') <> 41 THEN
+    RAISE EXCEPTION 'status_catalog must retain 41 sin_clasificar rows';
+  END IF;
+  IF (SELECT count(*) FROM public.status_catalog
+      WHERE transportadora IS NULL) <> 23 THEN
+    RAISE EXCEPTION 'status_catalog must retain 23 NULL carriers';
+  END IF;
+  IF (SELECT count(*) FROM public.status_catalog
+      WHERE estado = 'EN CIUDAD DE ORIGEN DEVOLUCIÓN'
+        AND transportadora IS NULL) <> 2
+     OR (SELECT count(*) FROM public.status_catalog
+         WHERE id IN (259, 261)
+           AND estado = 'EN CIUDAD DE ORIGEN DEVOLUCIÓN'
+           AND transportadora IS NULL AND categoria = 'devolucion') <> 2 THEN
+    RAISE EXCEPTION 'Generic duplicate pair 259/261 must be preserved exactly';
+  END IF;
+  IF (SELECT count(*) FROM public.status_catalog
+      WHERE estado = 'ENTRADA A CENTRO DE DISTRIBUCION'
+        AND transportadora IS NULL) <> 2
+     OR (SELECT count(*) FROM public.status_catalog
+         WHERE id IN (260, 262)
+           AND estado = 'ENTRADA A CENTRO DE DISTRIBUCION'
+           AND transportadora IS NULL AND categoria = 'en_ruta') <> 2 THEN
+    RAISE EXCEPTION 'Generic duplicate pair 260/262 must be preserved exactly';
+  END IF;
+  IF (SELECT count(*) FROM (
+        SELECT estado, transportadora FROM public.status_catalog
+        GROUP BY estado, transportadora HAVING count(*) > 1
+      ) AS duplicate_groups) <> 2 THEN
+    RAISE EXCEPTION 'status_catalog must have exactly the two captured duplicate groups';
+  END IF;
+  IF (SELECT count(*) FROM public.wallet_movement_catalog) <> 75 THEN
+    RAISE EXCEPTION 'wallet_movement_catalog must contain exactly 75 baseline rows';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.wallet_movement_catalog
+             WHERE identification_code IS NULL OR btrim(identification_code) = '')
+     OR (SELECT count(DISTINCT identification_code)
+         FROM public.wallet_movement_catalog) <> 75 THEN
+    RAISE EXCEPTION 'Wallet codes must remain unique, non-NULL and nonblank';
+  END IF;
+
+  -- Fingerprints derived locally only from the Phase 2 JSONL evidence.
+  -- Canonicalization (includes every captured field, in INSERT column order):
+  -- * NULL -> N; non-NULL -> V followed by lowercase hex of its UTF-8 bytes.
+  -- * Integers -> decimal text; booleans -> true/false; enums -> exact label.
+  -- * Timestamps -> UTC YYYY-MM-DDTHH:MM:SS.ffffffZ (exact six-digit microseconds).
+  -- * Fields joined by |; rows joined by one LF, with no trailing LF.
+  -- * Status rows ordered by numeric ID; wallet rows by code COLLATE "C".
+  -- * MD5 of the resulting ASCII string; empty text (V) differs from NULL (N).
+  -- This serialization is independent of session timezone, JSON key ordering,
+  -- database encoding and local collation. It is distinct from the Phase 3B-1
+  -- live to_jsonb fingerprints; those hashes are not reused or inferred here.
+
+  SELECT md5(string_agg(encoded.row_text, E'\n' ORDER BY sc.id))
+    INTO status_fingerprint
+  FROM public.status_catalog AS sc
+  CROSS JOIN LATERAL (
+    SELECT string_agg(
+      CASE WHEN fields.field_text IS NULL THEN 'N'
+           ELSE 'V' || encode(convert_to(fields.field_text, 'UTF8'), 'hex') END,
+      '|' ORDER BY fields.ordinal
+    ) AS row_text
+    FROM (VALUES
+      (1, sc.id::text),
+      (2, sc.estado),
+      (3, sc.transportadora),
+      (4, sc.categoria::text),
+      (5, CASE WHEN sc.activo THEN 'true' ELSE 'false' END),
+      (6, sc.notas),
+      (7, to_char(sc.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')),
+      (8, to_char(sc.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'))
+    ) AS fields(ordinal, field_text)
+  ) AS encoded;
+
+  SELECT md5(string_agg(encoded.row_text, E'\n' ORDER BY wc.identification_code COLLATE "C"))
+    INTO wallet_fingerprint
+  FROM public.wallet_movement_catalog AS wc
+  CROSS JOIN LATERAL (
+    SELECT string_agg(
+      CASE WHEN fields.field_text IS NULL THEN 'N'
+           ELSE 'V' || encode(convert_to(fields.field_text, 'UTF8'), 'hex') END,
+      '|' ORDER BY fields.ordinal
+    ) AS row_text
+    FROM (VALUES
+      (1, wc.identification_code),
+      (2, wc.nombre),
+      (3, wc.categoria::text),
+      (4, to_char(wc.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')),
+      (5, to_char(wc.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'))
+    ) AS fields(ordinal, field_text)
+  ) AS encoded;
+
+  IF status_fingerprint IS DISTINCT FROM '42b5d8dbe2eb493d67e9e78ff7412032' THEN
+    RAISE EXCEPTION 'status_catalog fingerprint mismatch: %', status_fingerprint;
+  END IF;
+  IF wallet_fingerprint IS DISTINCT FROM 'fb6ab8a15d280040d346f928b5761458' THEN
+    RAISE EXCEPTION 'wallet_movement_catalog fingerprint mismatch: %', wallet_fingerprint;
+  END IF;
+END;
+$catalog_validation$;
+
+COMMIT;
