@@ -143,9 +143,29 @@ export async function GET(request: NextRequest) {
             report(campaign.id, "El umbral o el gasto previamente notificado es inválido.");
             continue;
           }
-          const spend = await getCampaignTotalSpend(campaign.id, "maximum", deadline);
+          let datePreset = "maximum";
+          let spend: number;
+          try {
+            spend = await getCampaignTotalSpend(campaign.id, "maximum", deadline);
+          } catch (e) {
+            if (e instanceof MetaCampaignsApiError && !(e instanceof MetaSpendRateLimitError)) {
+              datePreset = "today";
+              spend = await getCampaignTotalSpend(campaign.id, "today", deadline);
+            } else {
+              throw e;
+            }
+          }
           if (spend < previous + threshold) continue;
-          const ads = await getAdLevelInsights(campaign.id, "maximum", deadline);
+          let ads: AdLevelInsight[];
+          try {
+            ads = await getAdLevelInsights(campaign.id, datePreset, deadline);
+          } catch (e) {
+            if (datePreset === "maximum" && e instanceof MetaCampaignsApiError && !(e instanceof MetaSpendRateLimitError)) {
+              ads = await getAdLevelInsights(campaign.id, "today", deadline);
+            } else {
+              throw e;
+            }
+          }
           deadline.throwIfAborted();
           const message = buildMessage(campaign, spend, spend - previous, ads);
           let sent = false;
