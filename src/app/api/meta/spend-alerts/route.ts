@@ -136,40 +136,17 @@ export async function GET(request: NextRequest) {
             continue;
           }
           const threshold = Number(campaign.alerta_umbral_gasto);
-          const previous = Number(campaign.alerta_ultimo_gasto_notificado ?? 0);
-          if (!Number.isFinite(threshold) || threshold <= 0 || !Number.isFinite(previous) || previous < 0) {
+          const storedSpend = Number(campaign.alerta_ultimo_gasto_notificado ?? 0);
+          if (!Number.isFinite(threshold) || threshold <= 0 || !Number.isFinite(storedSpend) || storedSpend < 0) {
             report(campaign.id, "El umbral o el gasto previamente notificado es inválido.");
             continue;
           }
-          let datePreset = "maximum";
-          let spend: number;
-          try {
-            spend = await getCampaignTotalSpend(campaign.id, "maximum", deadline);
-          } catch (e) {
-            if (e instanceof MetaCampaignsApiError && !(e instanceof MetaSpendRateLimitError)) {
-              datePreset = "today";
-              spend = await getCampaignTotalSpend(campaign.id, "today", deadline);
-            } else {
-              throw e;
-            }
-          }
+          const spend = await getCampaignTotalSpend(campaign.id, "today", deadline);
+          const previous = spend < Number(campaign.alerta_ultimo_gasto_notificado ?? 0)
+            ? 0
+            : Number(campaign.alerta_ultimo_gasto_notificado ?? 0);
           if (spend < previous + threshold) continue;
-          let ads: AdLevelInsight[];
-          try {
-            ads = await getAdLevelInsights(campaign.id, datePreset, deadline);
-          } catch (e) {
-            if (e instanceof MetaSpendRateLimitError) throw e;
-            if (datePreset === "maximum" && e instanceof MetaCampaignsApiError) {
-              try {
-                ads = await getAdLevelInsights(campaign.id, "today", deadline);
-              } catch (e2) {
-                if (e2 instanceof MetaSpendRateLimitError) throw e2;
-                ads = [];
-              }
-            } else {
-              ads = [];
-            }
-          }
+          const ads = await getAdLevelInsights(campaign.id, "today", deadline);
           deadline.throwIfAborted();
           const message = buildMessage(campaign, spend, spend - previous, ads);
           let sent = false;
