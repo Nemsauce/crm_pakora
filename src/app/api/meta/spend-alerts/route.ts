@@ -18,6 +18,7 @@ type Campaign = {
   nombre: string;
   producto_base: string | null;
   moneda: string | null;
+  estado: string;
   alerta_activa: boolean;
   alerta_umbral_gasto: number | null;
   alerta_ultimo_gasto_notificado: number | null;
@@ -35,7 +36,7 @@ type SpendAlertsDatabase = Omit<Database, "public"> & {
   };
 };
 
-const columns = "id,nombre,producto_base,moneda,alerta_activa,alerta_umbral_gasto,alerta_ultimo_gasto_notificado";
+const columns = "id,nombre,producto_base,moneda,estado,alerta_activa,alerta_umbral_gasto,alerta_ultimo_gasto_notificado";
 const cop = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 });
 
 function escapeName(value: string) {
@@ -47,19 +48,27 @@ function escapeName(value: string) {
 
 function buildMessage(campaign: Campaign, spend: number, delta: number, ads: AdLevelInsight[]) {
   const header = [
-    "🔔 <b>Alerta de Gasto</b>",
-    `Campaña: <b>${escapeName(campaign.nombre)}</b>`,
-    `Producto: ${escapeName(campaign.producto_base ?? "Sin producto asignado")}`,
-    `Gasto total: $${cop.format(spend)} COP`,
-    `Nuevo gasto desde última alerta: $${cop.format(delta)} COP`,
-    "", "📊 <b>Desglose por anuncio:</b>",
+    "━━━━━━━━━━━━━━━━━━",
+    "🔔  <b>ALERTA DE GASTO</b>",
+    "━━━━━━━━━━━━━━━━━━",
+    "",
+    `📦  <b>${escapeName(campaign.producto_base ?? "Sin producto asignado")}</b>`,
+    `🏷  ${escapeName(campaign.nombre)}`,
+    "",
+    `💰 Gasto total: <b>$${cop.format(spend)} COP</b>`,
+    `📈 Nuevo gasto: <b>+$${cop.format(delta)} COP</b>`,
+    "",
+    "📊 <b>Desglose por anuncio:</b>",
+    "─────────────────",
   ].join("\n");
-  const footer = `\nTotal ventas: ${cop.format(ads.reduce((sum, ad) => sum + ad.purchases, 0))}`;
+  const footer = `\n─────────────────\n🛒 Total ventas: <b>${cop.format(ads.reduce((sum, ad) => sum + ad.purchases, 0))}</b>`;
   let message = header;
   let shown = 0;
   for (const ad of [...ads].sort((a, b) => b.spend - a.spend)) {
-    const cpa = ad.costPerPurchase === null ? "N/D" : `$${cop.format(ad.costPerPurchase)} COP`;
-    const line = `\n• ${escapeName(ad.adName)}: gastó $${cop.format(ad.spend)} COP → ${cop.format(ad.purchases)} ventas (CPA: ${cpa})`;
+    const cpa = ad.purchases === 0 ? ""
+      : ad.costPerPurchase === null ? " · sin ventas"
+      : ` · CPA $${cop.format(ad.costPerPurchase)}`;
+    const line = `\n▸ <b>${escapeName(ad.adName)}</b>\n   💵 $${cop.format(ad.spend)} · 🛒 ${cop.format(ad.purchases)} ventas${cpa}`;
     const remaining = ads.length - shown - 1;
     const omitted = remaining ? `\ny ${remaining} anuncios más` : "";
     if ((message + line + omitted + footer).length > TELEGRAM_MESSAGE_LIMIT) break;
@@ -111,7 +120,9 @@ export async function GET(request: NextRequest) {
     while (!stopped) {
       deadline.throwIfAborted();
       let query = supabase.from("meta_campaigns").select(columns)
-        .eq("alerta_activa", true).not("alerta_umbral_gasto", "is", null)
+        .eq("alerta_activa", true)
+        .eq("estado", "ACTIVE")
+        .not("alerta_umbral_gasto", "is", null)
         .order("id").limit(500);
       if (after) query = query.gt("id", after);
       const { data: campaigns, error } = await query.abortSignal(deadline);
