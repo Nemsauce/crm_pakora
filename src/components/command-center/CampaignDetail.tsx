@@ -258,9 +258,7 @@ function formatAutopauseRange(dateFrom: string | null, dateTo: string | null) {
   return `${from ? rangeDateFormatter.format(from) : dateFrom} – hoy (dinámico)`;
 }
 
-// AUTO-PAUSE HIDDEN: the render site below is commented out, so this component
-// and its helpers are intentionally unreferenced. Kept intact to restore the UI.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Preserved while auto-pause UI is hidden.
 function CampaignAutopauseSection({
   campaignId,
   dateFrom,
@@ -895,14 +893,13 @@ export function CampaignDetail({
         </div>
       </section>
 
-      {/* AUTO-PAUSE HIDDEN
-      <CampaignAutopauseSection
+      {/* AUTO-PAUSE HIDDEN */}
+      {/* <CampaignAutopauseSection
         key={campaign.id}
         campaignId={campaign.id}
         dateFrom={dateFrom}
         dateTo={dateTo}
-      />
-      */}
+      /> */}
 
       <div className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-bg-surface-elevated)] px-4 py-3 shadow-sm">
         <div className="flex items-start gap-3">

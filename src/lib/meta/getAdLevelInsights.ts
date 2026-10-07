@@ -5,50 +5,21 @@ import {
   MetaCampaignsConfigError,
 } from "@/lib/meta/fetchMetaCampaigns";
 
-const META_GRAPH_VERSION = "v21.0";
-const META_GRAPH_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
-const PAGE_LIMIT = 200;
-const MAX_PAGES = 25;
-const REQUEST_DELAY_MS = 250;
-const REQUEST_TIMEOUT_MS = 30_000;
+const META_GRAPH_BASE_URL = "https://graph.facebook.com/v21.0";
 const RATE_LIMIT_ERROR_CODES = new Set([
   4, 17, 32, 613, 80_000, 80_001, 80_002, 80_003, 80_004, 80_005, 80_006,
   80_008, 80_009, 80_014,
 ]);
-// Same precedence list and ordering as fetchMetaCampaigns.normalizeInsight, so a
-// campaign total and its per-ad breakdown count the same conversion (Invariant 4).
-// The first present type wins; summing them would double-count omni_purchase.
-const PURCHASE_ACTION_TYPES = [
-  "omni_purchase",
-  "purchase",
-  "offsite_conversion.fb_pixel_purchase",
-] as const;
-// Meta Graph v21.0 date_preset enum. There is no "lifetime" value in this
-// version; "maximum" is the whole-history preset. Validating against the enum
-// also keeps a caller-supplied string out of the query untouched.
+// Graph v21.0 AdsInsights.DatePreset enum.
 const DATE_PRESETS = new Set([
-  "today",
-  "yesterday",
-  "this_month",
-  "last_month",
-  "this_quarter",
-  "last_quarter",
-  "this_year",
-  "last_year",
-  "last_3d",
-  "last_7d",
-  "last_14d",
-  "last_28d",
-  "last_30d",
-  "last_90d",
-  "last_week_mon_sun",
-  "last_week_sun_sat",
-  "this_week_mon_today",
-  "this_week_sun_today",
-  "maximum",
-  "data_maximum",
+  "data_maximum", "last_14d", "last_28d", "last_30d", "last_3d", "last_7d",
+  "last_90d", "last_month", "last_quarter", "last_week_mon_sun",
+  "last_week_sun_sat", "last_year", "maximum", "this_month", "this_quarter",
+  "this_week_mon_today", "this_week_sun_today", "this_year", "today", "yesterday",
 ]);
-const DEFAULT_DATE_PRESET = "maximum";
+const PURCHASE_ACTION_TYPES = [
+  "omni_purchase", "purchase", "offsite_conversion.fb_pixel_purchase",
+] as const;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -57,338 +28,194 @@ export type AdLevelInsight = {
   adName: string;
   spend: number;
   purchases: number;
-  /** null when the ad recorded no purchases; never 0, which would read as free. */
   costPerPurchase: number | null;
 };
 
-/**
- * Raised when Meta refuses a request for rate limiting. Separate from
- * MetaCampaignsApiError so a caller can stop its whole run instead of
- * hammering the API campaign after campaign.
- */
-export class MetaAdInsightsRateLimitError extends Error {
+export class MetaSpendRateLimitError extends MetaCampaignsApiError {
   constructor() {
-    super("Meta rejected the request because of rate limiting");
-    this.name = "MetaAdInsightsRateLimitError";
+    super("Meta reached its rate limit; no further campaigns were checked");
+    this.name = "MetaSpendRateLimitError";
   }
 }
 
-/**
- * Per-ad spend and purchases for one campaign, newest Meta data, never cached.
- * Values are in the ad account's currency; the caller owns verifying that it is
- * the currency it intends to report.
- */
-export async function getAdLevelInsights(
-  campaignId: string,
-  datePreset?: string,
-): Promise<AdLevelInsight[]> {
-  const id = assertCampaignId(campaignId);
-  const preset = assertDatePreset(datePreset);
-  const insights: AdLevelInsight[] = [];
-  const seen = new Set<string>();
-  let after: string | null = null;
-
-  for (let page = 0; page < MAX_PAGES; page += 1) {
-    const body = await metaGet(`${id}/ads`, {
-      // date_preset must sit inside the nested insights expansion. The /ads edge
-      // itself does not take it, so a top-level date_preset would be ignored and
-      // Meta would silently answer with its own default window.
-      fields: `id,name,insights.date_preset(${preset}).fields(spend,actions,cost_per_action_type)`,
-      limit: String(PAGE_LIMIT),
-      ...(after ? { after } : {}),
-    });
-    const data = body.data;
-
-    if (!Array.isArray(data)) {
-      throw new MetaCampaignsApiError("Meta API returned an invalid list response");
-    }
-
-    for (const rawAd of data) {
-      const insight = normalizeAd(rawAd);
-
-      // Meta can repeat a row across cursors; keep the first reading per ad
-      // rather than adding its spend to the breakdown twice.
-      if (insight && !seen.has(insight.adId)) {
-        seen.add(insight.adId);
-        insights.push(insight);
-      }
-    }
-
-    const pagination = readPagination(body);
-
-    if (!pagination.hasNext) {
-      return insights;
-    }
-
-    if (!pagination.after) {
-      throw new MetaCampaignsApiError(
-        "Meta returned another ads page without a usable cursor",
-      );
-    }
-
-    after = pagination.after;
-    await delay(REQUEST_DELAY_MS);
-  }
-
-  // Never report a truncated breakdown as if it were the whole campaign.
-  throw new MetaCampaignsApiError(
-    "Meta returned more ad pages than this request reads",
-  );
+function isRecord(value: unknown): value is JsonRecord {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-/**
- * Campaign-level spend for the same window as getAdLevelInsights. Kept here so
- * the threshold comparison and the breakdown it explains always read the same
- * date_preset; the ad rows are not summed because ads deleted mid-campaign keep
- * their spend on the campaign total but drop out of the /ads edge.
- */
-export async function getCampaignTotalSpend(
-  campaignId: string,
-  datePreset?: string,
-): Promise<number> {
-  const id = assertCampaignId(campaignId);
-  const preset = assertDatePreset(datePreset);
-  const body = await metaGet(`${id}/insights`, {
-    fields: "spend",
-    date_preset: preset,
-  });
-  const data = body.data;
-
-  if (!Array.isArray(data)) {
-    throw new MetaCampaignsApiError("Meta API returned an invalid list response");
+function validate(campaignId: string, datePreset: string) {
+  if (!/^\d+$/.test(campaignId)) {
+    throw new MetaCampaignsConfigError("Meta campaign ID must be numeric");
   }
-
-  // An empty row set means the campaign never delivered in the window, which is
-  // a real zero rather than missing data.
-  if (data.length === 0) {
-    return 0;
+  if (!DATE_PRESETS.has(datePreset)) {
+    throw new MetaCampaignsConfigError("Invalid Graph v21.0 date_preset");
   }
-
-  const row = data[0];
-
-  if (!isJsonRecord(row)) {
-    throw new MetaCampaignsApiError("Meta returned an invalid insight row");
-  }
-
-  const spend = toOptionalMetricNumber(row.spend);
-
-  if (spend === null) {
-    throw new MetaCampaignsApiError("Meta returned an invalid campaign spend");
-  }
-
-  return spend;
 }
 
-function normalizeAd(value: unknown): AdLevelInsight | null {
-  if (!isJsonRecord(value)) {
-    throw new MetaCampaignsApiError("Meta returned an invalid ad");
+function metric(value: unknown): number {
+  const parsed = typeof value === "number" ||
+    (typeof value === "string" && value.trim()) ? Number(value) : NaN;
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new MetaCampaignsApiError("Meta returned an invalid insight metric");
   }
-
-  const adId = toNonEmptyString(value.id);
-
-  if (!adId) {
-    return null;
-  }
-
-  const row = readInsightRow(value.insights);
-
-  if (!row) {
-    // An ad that never delivered carries no insights edge at all. Report it with
-    // a real zero instead of dropping it from the breakdown.
-    return {
-      adId,
-      adName: toNonEmptyString(value.name) ?? adId,
-      spend: 0,
-      purchases: 0,
-      costPerPurchase: null,
-    };
-  }
-
-  const actions = normalizeActionValues(row.actions);
-  const costsPerAction = normalizeActionValues(row.cost_per_action_type);
-  const purchaseActionType = PURCHASE_ACTION_TYPES.find((actionType) =>
-    actions.has(actionType),
-  );
-  const purchases = purchaseActionType
-    ? (actions.get(purchaseActionType) ?? 0)
-    : 0;
-
-  return {
-    adId,
-    adName: toNonEmptyString(value.name) ?? adId,
-    spend: toOptionalMetricNumber(row.spend) ?? 0,
-    purchases,
-    costPerPurchase:
-      purchaseActionType && purchases > 0
-        ? (costsPerAction.get(purchaseActionType) ?? null)
-        : null,
-  };
+  return parsed;
 }
 
-function readInsightRow(value: unknown): JsonRecord | null {
-  if (!isJsonRecord(value) || !Array.isArray(value.data) || !value.data.length) {
-    return null;
-  }
-
-  const row = value.data[0];
-
-  return isJsonRecord(row) ? row : null;
-}
-
-function normalizeActionValues(value: unknown) {
+function actionValues(value: unknown) {
   const values = new Map<string, number>();
-
+  if (value === undefined) return values;
   if (!Array.isArray(value)) {
-    return values;
+    throw new MetaCampaignsApiError("Meta returned invalid insight actions");
   }
-
-  for (const rawAction of value) {
-    if (!isJsonRecord(rawAction)) {
-      continue;
+  for (const action of value) {
+    if (!isRecord(action) || typeof action.action_type !== "string") {
+      throw new MetaCampaignsApiError("Meta returned an invalid insight action");
     }
-
-    const actionType = toNonEmptyString(rawAction.action_type);
-    const metricValue = toOptionalMetricNumber(rawAction.value);
-
-    if (actionType && metricValue !== null) {
-      values.set(actionType, metricValue);
-    }
+    values.set(action.action_type, metric(action.value));
   }
-
   return values;
+}
+
+function dataRows(page: unknown): JsonRecord[] {
+  if (!isRecord(page) || !Array.isArray(page.data) || !page.data.every(isRecord)) {
+    throw new MetaCampaignsApiError("Meta returned an invalid insight list");
+  }
+  return page.data;
+}
+
+function nextCursor(page: JsonRecord): string | null {
+  if (!isRecord(page.paging) || !page.paging.next) return null;
+  const cursors = page.paging.cursors;
+  if (!isRecord(cursors) || typeof cursors.after !== "string" || !cursors.after) {
+    throw new MetaCampaignsApiError("Meta pagination is incomplete");
+  }
+  return cursors.after;
+}
+
+function usageIsHigh(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(usageIsHigh);
+  if (!isRecord(value)) return false;
+  return Object.entries(value).some(([key, nested]) =>
+    ["call_count", "total_cputime", "total_time", "acc_id_util_pct"].includes(key) &&
+      typeof nested === "number" && nested >= 90 || usageIsHigh(nested),
+  );
 }
 
 async function metaGet(
   path: string,
   parameters: Record<string, string>,
+  signal?: AbortSignal,
 ): Promise<JsonRecord> {
+  const token = process.env.META_ACCESS_TOKEN?.trim();
+  if (!token) throw new MetaCampaignsConfigError("META_ACCESS_TOKEN is not configured");
   const url = new URL(`${META_GRAPH_BASE_URL}/${path}`);
-
-  for (const [name, value] of Object.entries(parameters)) {
-    url.searchParams.set(name, value);
-  }
+  for (const [key, value] of Object.entries(parameters)) url.searchParams.set(key, value);
 
   let response: Response;
-
+  let body: unknown;
   try {
+    const timeout = AbortSignal.timeout(30_000);
     response = await fetch(url, {
-      headers: {
-        accept: "application/json",
-        authorization: `Bearer ${getAccessToken()}`,
-      },
+      headers: { accept: "application/json", authorization: `Bearer ${token}` },
       cache: "no-store",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     });
+    // Some throttled responses have no JSON body.
+    body = await response.json().catch(() => null);
   } catch {
-    // Never surface the raw error: the request URL and headers carry the token.
     throw new MetaCampaignsApiError("Meta API request could not be completed");
   }
-
-  const body = await readJson(response);
-  const metaErrorCode = readMetaErrorCode(body);
-
-  if (
-    response.status === 429 ||
-    (metaErrorCode !== null && RATE_LIMIT_ERROR_CODES.has(metaErrorCode))
-  ) {
-    throw new MetaAdInsightsRateLimitError();
+  const apiError = isRecord(body) && isRecord(body.error) ? body.error : null;
+  const code = typeof apiError?.code === "number" ? apiError.code : null;
+  if (response.status === 429 || (code !== null && RATE_LIMIT_ERROR_CODES.has(code))) {
+    throw new MetaSpendRateLimitError();
   }
-
-  if (!response.ok) {
+  for (const name of ["x-app-usage", "x-ad-account-usage", "x-business-use-case-usage"]) {
+    let usage: unknown;
+    try { usage = JSON.parse(response.headers.get(name) ?? "null"); } catch { continue; }
+    if (usageIsHigh(usage)) throw new MetaSpendRateLimitError();
+  }
+  if (!response.ok || apiError) {
     throw new MetaCampaignsApiError(
-      `Meta API request failed (HTTP ${response.status}, code ${metaErrorCode ?? "unknown"})`,
+      `Meta API request failed (HTTP ${response.status}, code ${code ?? "unknown"})`,
     );
   }
-
-  if (!isJsonRecord(body)) {
-    throw new MetaCampaignsApiError("Meta API returned an invalid response");
-  }
-
+  if (!isRecord(body)) throw new MetaCampaignsApiError("Meta API returned an invalid response");
   return body;
 }
 
-async function readJson(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    if (response.ok) {
-      throw new MetaCampaignsApiError("Meta API returned an invalid response");
+async function fetchPages(
+  path: string,
+  parameters: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<JsonRecord[]> {
+  const rows: JsonRecord[] = [];
+  const seen = new Set<string>();
+  let after: string | null = null;
+  do {
+    signal?.throwIfAborted();
+    if (after) {
+      // Match the catalog's pacing between pages. The run signal is checked
+      // again before the request and applied to the fetch itself.
+      await new Promise((resolve) => setTimeout(resolve, 250));
     }
+    const page = await metaGet(path, {
+      ...parameters, limit: "200", ...(after ? { after } : {}),
+    }, signal);
+    rows.push(...dataRows(page));
+    after = nextCursor(page);
+    if (after && seen.has(after)) {
+      throw new MetaCampaignsApiError("Meta returned a repeated pagination cursor");
+    }
+    if (after) seen.add(after);
+  } while (after);
+  return rows;
+}
 
-    return null;
+export async function getAdLevelInsights(
+  campaignId: string,
+  datePreset = "maximum",
+  signal?: AbortSignal,
+): Promise<AdLevelInsight[]> {
+  validate(campaignId, datePreset);
+  const rows = await fetchPages(`${campaignId}/ads`, {
+    // date_preset on the ads edge itself is ignored by Graph.
+    fields: `id,name,insights.date_preset(${datePreset}).fields(spend,actions,cost_per_action_type)`,
+  }, signal);
+  const ads = new Map<string, AdLevelInsight>();
+  for (const row of rows) {
+    if (typeof row.id !== "string" || !/^\d+$/.test(row.id) || typeof row.name !== "string") {
+      throw new MetaCampaignsApiError("Meta returned an invalid ad");
+    }
+    const insights = dataRows(row.insights);
+    if (insights.length > 1 || nextCursor(row.insights as JsonRecord)) {
+      throw new MetaCampaignsApiError("Meta returned incomplete or unaggregated ad insights");
+    }
+    const insight = insights[0];
+    const actions = actionValues(insight?.actions);
+    const costs = actionValues(insight?.cost_per_action_type);
+    const purchaseType = PURCHASE_ACTION_TYPES.find((type) => actions.has(type));
+    ads.set(row.id, {
+      adId: row.id,
+      adName: row.name,
+      spend: insight ? metric(insight.spend) : 0,
+      purchases: purchaseType ? actions.get(purchaseType)! : 0,
+      costPerPurchase: purchaseType ? costs.get(purchaseType) ?? null : null,
+    });
   }
+  return [...ads.values()];
 }
 
-function readPagination(body: JsonRecord) {
-  const paging = isJsonRecord(body.paging) ? body.paging : null;
-  const cursors = paging && isJsonRecord(paging.cursors) ? paging.cursors : null;
-  const next = paging ? paging.next : undefined;
-
-  return {
-    hasNext: typeof next === "string" && next.length > 0,
-    after: cursors ? toNonEmptyString(cursors.after) : null,
-  };
-}
-
-function readMetaErrorCode(value: unknown) {
-  if (!isJsonRecord(value) || !isJsonRecord(value.error)) {
-    return null;
-  }
-
-  return typeof value.error.code === "number" ? value.error.code : null;
-}
-
-function getAccessToken() {
-  const accessToken = process.env.META_ACCESS_TOKEN?.trim();
-
-  if (!accessToken) {
-    throw new MetaCampaignsConfigError("META_ACCESS_TOKEN is not configured");
-  }
-
-  return accessToken;
-}
-
-function assertCampaignId(campaignId: string) {
-  const id = campaignId?.trim();
-
-  // Meta campaign ids are numeric. Rejecting anything else keeps a stored value
-  // from reshaping the request path.
-  if (!id || !/^\d+$/.test(id)) {
-    throw new MetaCampaignsConfigError("Meta campaign id must be numeric");
-  }
-
-  return id;
-}
-
-function assertDatePreset(datePreset?: string) {
-  const preset = datePreset?.trim() || DEFAULT_DATE_PRESET;
-
-  if (!DATE_PRESETS.has(preset)) {
-    throw new MetaCampaignsConfigError(
-      `Meta date_preset "${preset}" is not supported by Graph ${META_GRAPH_VERSION}`,
-    );
-  }
-
-  return preset;
-}
-
-function toOptionalMetricNumber(value: unknown) {
-  if (typeof value !== "string" && typeof value !== "number") {
-    return null;
-  }
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-}
-
-function toNonEmptyString(value: unknown) {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function isJsonRecord(value: unknown): value is JsonRecord {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function delay(milliseconds: number) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+export async function getCampaignTotalSpend(
+  campaignId: string,
+  datePreset = "maximum",
+  signal?: AbortSignal,
+): Promise<number> {
+  validate(campaignId, datePreset);
+  // Fetch the campaign aggregate directly: summing the current /ads catalog
+  // can miss spend belonging to deleted ads.
+  const rows = await fetchPages(`${campaignId}/insights`, {
+    fields: "spend", date_preset: datePreset, time_increment: "all_days",
+  }, signal);
+  if (rows.length > 1) throw new MetaCampaignsApiError("Meta returned unaggregated campaign spend");
+  return rows.length ? metric(rows[0].spend) : 0;
 }

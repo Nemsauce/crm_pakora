@@ -11,7 +11,8 @@ export async function middleware(request: NextRequest) {
   if (
     request.nextUrl.pathname.startsWith("/api/webhooks/") ||
     request.nextUrl.pathname.startsWith("/api/cron/") ||
-    request.nextUrl.pathname === "/api/mcp"
+    request.nextUrl.pathname === "/api/mcp" ||
+    request.nextUrl.pathname === "/api/meta/spend-alerts"
   ) {
     return NextResponse.next();
   }
