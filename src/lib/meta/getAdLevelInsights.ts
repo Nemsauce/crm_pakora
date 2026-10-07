@@ -186,8 +186,10 @@ export async function getAdLevelInsights(
     if (typeof row.id !== "string" || !/^\d+$/.test(row.id) || typeof row.name !== "string") {
       throw new MetaCampaignsApiError("Meta returned an invalid ad");
     }
-    const insights = dataRows(row.insights);
-    if (insights.length > 1 || nextCursor(row.insights as JsonRecord)) {
+    const insights = row.insights != null && isRecord(row.insights) && Array.isArray((row.insights as JsonRecord).data)
+      ? dataRows(row.insights)
+      : [];
+    if (insights.length > 1 || (row.insights != null && nextCursor(row.insights as JsonRecord))) {
       throw new MetaCampaignsApiError("Meta returned incomplete or unaggregated ad insights");
     }
     const insight = insights[0];

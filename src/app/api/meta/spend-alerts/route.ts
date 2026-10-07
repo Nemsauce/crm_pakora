@@ -57,12 +57,10 @@ function buildMessage(campaign: Campaign, spend: number, delta: number, ads: AdL
     "",
     `💰 Gasto total: <b>$${cop.format(spend)} COP</b>`,
     `📈 Nuevo gasto: <b>+$${cop.format(delta)} COP</b>`,
-    "",
-    "📊 <b>Desglose por anuncio:</b>",
-    "─────────────────",
   ].join("\n");
+  if (ads.length === 0) return header;
   const footer = `\n─────────────────\n🛒 Total ventas: <b>${cop.format(ads.reduce((sum, ad) => sum + ad.purchases, 0))}</b>`;
-  let message = header;
+  let message = `${header}\n\n📊 <b>Desglose por anuncio:</b>\n─────────────────`;
   let shown = 0;
   for (const ad of [...ads].sort((a, b) => b.spend - a.spend)) {
     const cpa = ad.purchases === 0 ? ""
@@ -160,10 +158,16 @@ export async function GET(request: NextRequest) {
           try {
             ads = await getAdLevelInsights(campaign.id, datePreset, deadline);
           } catch (e) {
-            if (datePreset === "maximum" && e instanceof MetaCampaignsApiError && !(e instanceof MetaSpendRateLimitError)) {
-              ads = await getAdLevelInsights(campaign.id, "today", deadline);
+            if (e instanceof MetaSpendRateLimitError) throw e;
+            if (datePreset === "maximum" && e instanceof MetaCampaignsApiError) {
+              try {
+                ads = await getAdLevelInsights(campaign.id, "today", deadline);
+              } catch (e2) {
+                if (e2 instanceof MetaSpendRateLimitError) throw e2;
+                ads = [];
+              }
             } else {
-              throw e;
+              ads = [];
             }
           }
           deadline.throwIfAborted();
