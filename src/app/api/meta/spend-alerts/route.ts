@@ -88,6 +88,24 @@ export async function GET(request: NextRequest) {
 
   try {
     const supabase = createAdminClient() as unknown as SupabaseClient<SpendAlertsDatabase>;
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id,telegram_chat_id")
+      .not("telegram_chat_id", "is", null)
+      .abortSignal(deadline);
+    if (profilesError) {
+      report(null, "No se pudieron cargar los destinatarios de Telegram.");
+      return NextResponse.json(summary);
+    }
+    const recipients = (profiles ?? []).flatMap((profile) => {
+      const chatId = profile.telegram_chat_id?.trim();
+      return chatId ? [{ id: profile.id, chatId }] : [];
+    });
+    if (!recipients.length) {
+      return NextResponse.json({
+        ...summary, message: "No Telegram recipients configured",
+      });
+    }
     let after: string | null = null;
     let stopped = false;
     while (!stopped) {
@@ -118,7 +136,17 @@ export async function GET(request: NextRequest) {
           if (spend < previous + threshold) continue;
           const ads = await getAdLevelInsights(campaign.id, "maximum", deadline);
           deadline.throwIfAborted();
-          const sent = await sendTelegramAlert(buildMessage(campaign, spend, spend - previous, ads), deadline);
+          const message = buildMessage(campaign, spend, spend - previous, ads);
+          let sent = false;
+          for (const recipient of recipients) {
+            try {
+              const delivered = await sendTelegramAlert(recipient.chatId, message, deadline);
+              if (delivered) sent = true;
+              else report(campaign.id, `Telegram no confirmó el envío al perfil ${recipient.id}.`);
+            } catch {
+              report(campaign.id, `No se pudo enviar la alerta al perfil ${recipient.id}.`);
+            }
+          }
           if (!sent) {
             report(campaign.id, "Telegram no confirmó el envío; el gasto notificado no se actualizó.");
             continue;

@@ -3,14 +3,14 @@ import "server-only";
 export const TELEGRAM_MESSAGE_LIMIT = 4096;
 
 export async function sendTelegramAlert(
+  chatId: string,
   message: string,
   signal?: AbortSignal,
 ): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
-  const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
 
   if (!token || !chatId) {
-    console.error("Telegram alert requires TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID");
+    console.error("Telegram alert requires TELEGRAM_BOT_TOKEN and a recipient chat ID");
     return false;
   }
   if (!message || message.length > TELEGRAM_MESSAGE_LIMIT) {
